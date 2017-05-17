@@ -1,0 +1,49 @@
+{
+    "name": "iris-js-sdk",
+    "version": "3.3.1",
+    "description": "JavaScript SDK for Iris Rtc Platform",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/iris-platform/iris-js-sdk"
+    },
+    "license": "MIT",
+    "main": "IrisRtcSdk.js",
+    "keywords": [
+        "iris",
+        "JS",
+        "webrtc"
+    ],
+    "author": "Comcast",
+    "readmeFilename": "README.md",
+    "dependencies": {
+        "inherits": "^2.0.1",
+        "lodash.assign": "^4.0.0",
+        "ltx": "^2.2.0",
+        "md5.js": "^1.3.3",
+        "minimist": "^1.2.0",
+        "ws": "^1.1.1",
+        "uuid": "*",
+        "sdp-transform": "^1.6.2",
+        "sdp-interop": "^0.1.11",
+        "async": "0.9.0"
+    },
+    "devDependencies": {
+        "bufferutil": "^1.2.1",
+        "utf-8-validate": "^1.2.1",
+        "express": "^4.14.0",
+        "request": "^2.79.0",
+        "cors": "2.7.1",
+        "uglify-js": "^2.7.5",
+        "browserify": "^13.1.0",
+        "exorcist": "*",
+        "chai": "^3.2.0",
+        "chai-http": "^1.0.0",
+        "mocha": "^2.4.5",
+        "mongoreporter": "^0.2.1"
+    },
+    "scripts": {
+        "install": "npm run browserify  && npm run uglifyjs",
+        "browserify": "browserify -d IrisRtcSdk.js | exorcist iris-js-sdk.js.map > iris-js-sdk.js",
+        "uglifyjs": "uglifyjs -p relative iris-js-sdk.js -o iris-js-sdk.min.js --source-map iris-js-sdk.min.map --in-source-map iris-js-sdk.js.map"
+    }
+}
