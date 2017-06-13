@@ -1,5 +1,7 @@
 // Copyright 2016 Comcast Cable Communications Management, LLC
 
+// IrisRtcStream.js : Javascript code for creating audio and video streams
+
 // Import the modules
 var logger = require('./modules/RtcLogger.js');
 var errors = require('./modules/RtcErrors.js');
@@ -28,7 +30,7 @@ function IrisRtcStream() {
  *      "resolution": "hd", // or "sd",
  *      "fps": 15, // Frames per second
  *      "constraints": {audio: true, video: true}, // contraints required to create the stream (optional)
- *      "screenShare" : true // If screen share
+ *      "screenShare" : true // 'true' for screen share 'false' otherwise
  * }
  */
 IrisRtcStream.prototype.createStream = function(streamConfig) {
@@ -221,6 +223,7 @@ IrisRtcStream.prototype.stopMediaStream = function(mediaStream) {
 
 /** 
  *  Mute or Unmute the local video
+ * @private
  */
 IrisRtcStream.prototype.videoMuteToggle = function() {
     try {
@@ -242,6 +245,7 @@ IrisRtcStream.prototype.videoMuteToggle = function() {
 
 /**
  * Mute or Unmute the local audio
+ * @private
  */
 IrisRtcStream.prototype.audioMuteToggle = function() {
     try {
@@ -311,6 +315,22 @@ IrisRtcStream.prototype._setFPS = function(constraints, fps) {
     }
 }
 
+/**
+ * Get the media devices
+ */
+IrisRtcStream.prototype.getMediaDevices = function() {
+   if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        console.log("enumerateDevices() not supported.");
+        return;
+    }
+    return new Promise(function (resolve, reject) {
+        navigator.mediaDevices.enumerateDevices()
+        .then(function(devices) {
+            resolve (devices);
+        })
+    })
+    
+}
 // Defining the API module
 
 module.exports = IrisRtcStream;

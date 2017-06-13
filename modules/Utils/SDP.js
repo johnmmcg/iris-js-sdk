@@ -1,7 +1,7 @@
 // Copyright 2016 Comcast Cable Communications Management, LLC
 
 var logger = require('../RtcLogger.js');
-var SDPUtil = require("./SDPUtil");
+var SDPUtil = require("./SDPUtil.js");
 
 
 // SDP STUFF

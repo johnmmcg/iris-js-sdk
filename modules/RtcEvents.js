@@ -5,7 +5,9 @@
  * @namespace
  */
 
-var RtcEvents = {
+var RtcEvents = module.exports;
+
+RtcEvents = {
 
     CONNECTION_OPEN: "Connection.onOpen",
     CONNECTION_CLOSE: "Connection.onClose",

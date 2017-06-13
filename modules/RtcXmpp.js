@@ -13,9 +13,9 @@ var xmppClient = require('./node-xmpp-client')
 var Stanza = xmppClient.Stanza
 var Rtcconfig = require('./RtcConfig.js');
 var https = require('https');
-var SDPDiffer = require("./Utils/SDPDiffer");
-var SDPUtil = require("./Utils/SDPUtil");
-var SDP = require("./Utils/SDP");
+var SDPDiffer = require("./Utils/SDPDiffer.js");
+var SDPUtil = require("./Utils/SDPUtil.js");
+var SDP = require("./Utils/SDP.js");
 var RtcEvents = require("./RtcEvents.js");
 var transform = require("sdp-transform");
 
@@ -49,7 +49,8 @@ function RtcXmpp() {
     this.jid = null;
     this.successCb = null;
     this.errorCb = null;
-    this.server = null;
+    this.server = null; // Used for wss connection
+    this.rtcServer = null; // Used for room
     this.xmppJid = null;
     this.sid = null;
     this.localSDP = null;
@@ -247,6 +248,7 @@ RtcXmpp.prototype.sendCreateRootEventWithRoomId = function sendCreateRootEventWi
                     var resJson = JSON.parse(body);
                     resJson["sessionId"] = config.sessionId;
                     resJson["config"] = config;
+                    self.rtcServer = resJson.eventdata.rtc_server;
 
                     // emit the error event
                     // self.emit('onCreateRootEventWithRoomIdSent', resJson);
@@ -357,6 +359,17 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
         pres.c('audio').t('true');
         pres.c('video').t('true');
         pres = pres.up();
+
+        if (typeof config.audiomuted !== 'undefined') {
+            pres.c('audiomuted').t(config.audiomuted);
+        }
+
+        if (typeof config.videomuted !== 'undefined') {
+            pres.c('videomuted').t(config.videomuted);
+        }
+        if (config.nick) {
+            pres.c('nick').t(config.nick);
+        }
 
         pres.c('data', {
             'xmlns': "urn:xmpp:comcast:info",
@@ -1007,215 +1020,223 @@ RtcXmpp.prototype._onConference = function _onConference(stanza) {
     //
 RtcXmpp.prototype._onJingle = function _onJingle(stanza) {
 
-        // We are interested in Jingle messages
-        // Check if the IQ message has a element with name "jingle"
-        // Get the jingle node
-        var jingle = stanza.getChild('jingle');
-        if (!jingle) { return; }
+    // We are interested in Jingle messages
+    // Check if the IQ message has a element with name "jingle"
+    // Get the jingle node
+    var jingle = stanza.getChild('jingle');
+    if (!jingle) { return; }
 
-        this.sid = jingle.attrs.sid;
-        var action = jingle.attrs.action;
-        var fromJid = stanza.attrs.from;
+    this.sid = jingle.attrs.sid;
+    var action = jingle.attrs.action;
+    var fromJid = stanza.attrs.from;
 
-        logger.log(logger.level.VERBOSE, "RtcXmpp.onMessage",
-            " Jingle action " + jingle.attrs.action);
+    logger.log(logger.level.VERBOSE, "RtcXmpp.onMessage",
+        " Jingle action " + jingle.attrs.action);
 
-        // Check if the action is session-initiate
-        if (jingle.attrs.action === "session-initiate") {
-            // Parse session-initiate and convert it to sdp
-            // Send ack first
-            var ack = new xmppClient.Element('iq', {
-                type: 'result',
-                to: fromJid,
-                id: stanza.id,
-                from: stanza.attrs.to
-            });
+    // Check if the action is session-initiate
+    if (jingle.attrs.action === "session-initiate") {
+        // Parse session-initiate and convert it to sdp
+        // Send ack first
+        var ack = new xmppClient.Element('iq', {
+            type: 'result',
+            to: fromJid,
+            id: stanza.id,
+            from: stanza.attrs.to
+        });
 
-            // send ack
-            this.client.send(ack.tree());
+        // send ack
+        this.client.send(ack.tree());
 
-            // Create a variable for SDP
-            var remoteSDP = new SDP('');
+        // Create a variable for SDP
+        var remoteSDP = new SDP('');
 
-            // Convert to SDP
-            remoteSDP.fromJingle(stanza);
+        // Convert to SDP
+        remoteSDP.fromJingle(stanza);
 
-            // Assign it for next timer
-            this.sessionInitiateSdp = remoteSDP;
+        // Assign it for next timer
+        this.sessionInitiateSdp = remoteSDP;
 
-            // Create the json for session
-            var data = {
-                "jingle": jingle,
-                "sdp": remoteSDP.raw,
-                "roomName": stanza.attrs.from.split('@')[0],
-                "from": fromJid
-            };
+        // Create the json for session
+        var data = {
+            "jingle": jingle,
+            "sdp": remoteSDP.raw,
+            "roomName": stanza.attrs.from.split('@')[0],
+            "from": fromJid
+        };
 
+        // send the presence message
+        this.emit('onSessionInitiate', data);
+    } else if (jingle.attrs.action === "session-accept") {
+        // Parse session-initiate and convert it to sdp
+        // Send ack first
+        var ack = new xmppClient.Element('iq', {
+            type: 'result',
+            to: stanza.attrs.from,
+            id: stanza.id,
+            from: stanza.attrs.to
+        });
+
+        // send ack
+        this.client.send(ack.tree());
+
+        // Create a variable for SDP
+        this.remoteSDP = new SDP('');
+
+        // Convert to SDP
+        this.remoteSDP.fromJingle(stanza);
+
+        // Create the json for session
+        var data = {
+            "jingle": jingle,
+            "sdp": this.remoteSDP.raw,
+            "roomName": stanza.attrs.from.split('@')[0],
+            "from": stanza.attrs.from
+        };
+        var self = this;
+        process.nextTick(function() {
             // send the presence message
-            this.emit('onSessionInitiate', data);
-        } else if (jingle.attrs.action === "session-accept") {
-            // Parse session-initiate and convert it to sdp
-            // Send ack first
-            var ack = new xmppClient.Element('iq', {
-                type: 'result',
-                to: stanza.attrs.from,
-                id: stanza.id,
-                from: stanza.attrs.to
-            });
+            self.emit('onSessionAccept', data);
+        });
+    } else if (jingle.attrs.action === "source-add") {
+        // Send ack first
+        var ack = new xmppClient.Element('iq', {
+            type: 'result',
+            to: stanza.attrs.from,
+            id: stanza.id,
+            from: stanza.attrs.to
+        });
 
-            // send ack
-            this.client.send(ack.tree());
+        // send ack
+        this.client.send(ack.tree());
 
-            // Create a variable for SDP
-            this.remoteSDP = new SDP('');
-
-            // Convert to SDP
-            this.remoteSDP.fromJingle(stanza);
-
-            // Create the json for session
-            var data = {
-                "jingle": jingle,
-                "sdp": this.remoteSDP.raw,
-                "roomName": stanza.attrs.from.split('@')[0],
-                "from": stanza.attrs.from
-            };
-            var self = this;
-            process.nextTick(function() {
-                // send the presence message
-                self.emit('onSessionAccept', data);
-            });
-        } else if (jingle.attrs.action === "source-add") {
-            // Send ack first
-            var ack = new xmppClient.Element('iq', {
-                type: 'result',
-                to: stanza.attrs.from,
-                id: stanza.id,
-                from: stanza.attrs.to
-            });
-
-            // send ack
-            this.client.send(ack.tree());
-
-            // Create a variable for SDP
-            if (this.sessionInitiateSdp == null) {
-                return;
-            }
-
-            // Convert to SDP
-            console.log("***return value " + this.sessionInitiateSdp.addSources(jingle));
-
-            // Create the json for session
-            var data = {
-                "jingle": jingle,
-                "sdp": this.sessionInitiateSdp.raw,
-                "roomName": stanza.attrs.from.split('@')[0],
-                "from": stanza.attrs.from
-            };
-            var self = this;
-            process.nextTick(function() {
-                // send the presence message
-                self.emit('onSourceAdd', data);
-            });
-        } else if (jingle.attrs.action === "transport-info") {
-            // Get the transport element
-            var content = jingle.getChild('content');
-            var transport = content.getChild('transport');
-
-            // Send ack first
-            var ack = new xmppClient.Element('iq', {
-                type: 'result',
-                to: stanza.attrs.from,
-                id: stanza.id,
-                from: stanza.attrs.to
-            });
-
-            // send ack
-            this.client.send(ack.tree());
-
-            // Check if the transport exists
-            if (transport) {
-                // Get the candidates
-                var candidates = transport.getChildren('candidate');
-
-                // Get the name
-                var name = content.attrs.name;
-
-                // Assign self
-                var self = this;
-
-                // Go through the candidates
-                candidates.forEach(function(candidate) {
-                    var line, candidate;
-                    line = SDPUtil.candidateFromJingle(candidate);
-
-                    // Create the data
-                    var data = {
-                        "sdpMLineIndex": 0,
-                        "sdpMid": content.attrs.name,
-                        "line": line,
-                        "roomName": stanza.attrs.from.split('@')[0],
-                        "from": stanza.attrs.from
-                    };
-
-                    process.nextTick(function() {
-                        // send the candidate message
-                        self.emit('onCandidate', data);
-                    });
-
-                });
-            }
-        } else if (jingle.attrs.action === "source-remove") {
-
-            // Send ack first
-            var ack = new xmppClient.Element('iq', {
-                type: 'result',
-                to: stanza.attrs.from,
-                id: stanza.id,
-                from: stanza.attrs.to
-            });
-
-            // send ack
-            this.client.send(ack.tree());
-
-            // Create a variable for SDP
-            if (this.sessionInitiateSdp == null) {
-                return;
-            }
-
-            // Convert to SDP
-            // console.log("***return value " + this.sessionInitiateSdp.removeSources(jingle));
-
-            // Create the json for session
-            var data = {
-                "jingle": jingle,
-                "sdp": this.sessionInitiateSdp.raw,
-                "roomName": stanza.attrs.from.split('@')[0],
-                "from": stanza.attrs.from
-            };
-            var self = this;
-            process.nextTick(function() {
-                // send the presence message
-                self.emit('onSourceRemove', data);
-            });
-
-        } else if (jingle.attrs.action === "source-add") {
-            var ack = new xmppClient.Element('iq', {
-                type: 'result',
-                to: fromJid,
-                id: stanza.id
-            });
-
-            // send ack
-            this.client.send(ack.tree());
+        // Create a variable for SDP
+        if (this.sessionInitiateSdp == null) {
+            return;
         }
 
+        // Convert to SDP
+        console.log("***return value " + this.sessionInitiateSdp.addSources(jingle));
 
+        // Create the json for session
+        var data = {
+            "jingle": jingle,
+            "sdp": this.sessionInitiateSdp.raw,
+            "roomName": stanza.attrs.from.split('@')[0],
+            "from": stanza.attrs.from
+        };
+        var self = this;
+        process.nextTick(function() {
+            // send the presence message
+            self.emit('onSourceAdd', data);
+        });
+    } else if (jingle.attrs.action === "transport-info") {
+        // Get the transport element
+        var content = jingle.getChild('content');
+        var transport = content.getChild('transport');
+
+        // Send ack first
+        var ack = new xmppClient.Element('iq', {
+            type: 'result',
+            to: stanza.attrs.from,
+            id: stanza.id,
+            from: stanza.attrs.to
+        });
+
+        // send ack
+        this.client.send(ack.tree());
+
+        // Check if the transport exists
+        if (transport) {
+            // Get the candidates
+            var candidates = transport.getChildren('candidate');
+
+            // Get the name
+            var name = content.attrs.name;
+
+            // Assign self
+            var self = this;
+
+            // Go through the candidates
+            candidates.forEach(function(candidate) {
+                var line, candidate;
+                line = SDPUtil.candidateFromJingle(candidate);
+
+                // Create the data
+                var data = {
+                    "sdpMLineIndex": 0,
+                    "sdpMid": content.attrs.name,
+                    "line": line,
+                    "roomName": stanza.attrs.from.split('@')[0],
+                    "from": stanza.attrs.from
+                };
+
+                process.nextTick(function() {
+                    // send the candidate message
+                    self.emit('onCandidate', data);
+                });
+
+            });
+        }
+    } else if (jingle.attrs.action === "source-remove") {
+
+        // Send ack first
+        var ack = new xmppClient.Element('iq', {
+            type: 'result',
+            to: stanza.attrs.from,
+            id: stanza.id,
+            from: stanza.attrs.to
+        });
+
+        // send ack
+        this.client.send(ack.tree());
+
+        // Create a variable for SDP
+        if (this.sessionInitiateSdp == null) {
+            return;
+        }
+
+        // Convert to SDP
+        // console.log("***return value " + this.sessionInitiateSdp.removeSources(jingle));
+
+        // Create the json for session
+        var data = {
+            "jingle": jingle,
+            "sdp": this.sessionInitiateSdp.raw,
+            "roomName": stanza.attrs.from.split('@')[0],
+            "from": stanza.attrs.from
+        };
+        var self = this;
+        process.nextTick(function() {
+            // send the presence message
+            self.emit('onSourceRemove', data);
+        });
+
+    } else if (jingle.attrs.action === "source-add") {
+        var ack = new xmppClient.Element('iq', {
+            type: 'result',
+            to: fromJid,
+            id: stanza.id
+        });
+
+        // send ack
+        this.client.send(ack.tree());
     }
-    // Callback to to get the stanza from xmpp
-    //
-    // @param {msg} stanza
-    // @returns Nothing
-    //
+
+
+}
+
+function getVal(stanza, child) {
+    if (stanza.getChild(child)) {
+        return stanza.getChild(child).getText();
+    }
+}
+
+
+// Callback to to get the stanza from xmpp
+//
+// @param {msg} stanza
+// @returns Nothing
+//
 RtcXmpp.prototype._onPresence = function _onPresence(stanza) {
         var self = this;
 
@@ -1265,6 +1286,11 @@ RtcXmpp.prototype._onPresence = function _onPresence(stanza) {
                     jid = stanza.attrs.from.substring(stanza.attrs.from.indexOf('/') + 1);
                 }
 
+                var videomuted = getVal(stanza, 'videomuted');
+                var audiomuted = getVal(stanza, 'audiomuted');
+                var nick = getVal(stanza, 'nick');
+                var status = getVal(stanza, 'status');
+
                 // Create the presence config
                 var presenceConfig = {
                     "jid": jid,
@@ -1272,7 +1298,11 @@ RtcXmpp.prototype._onPresence = function _onPresence(stanza) {
                     "affiliation": item.attrs.affiliation,
                     "roomName": stanza.attrs.from.split('@')[0],
                     "type": "join",
-                    "from": stanza.attrs.from
+                    "from": stanza.attrs.from,
+                    "videomuted": videomuted,
+                    "audiomuted": audiomuted,
+                    "nick": nick,
+                    "status": status
 
                 };
 
@@ -1447,35 +1477,87 @@ RtcXmpp.prototype._onGroupChat = function(stanza) {
         " _onGroupChat");
 
     var self = this;
-    var from = stanza.attrs.from.split('/')[1];
-    var to = stanza.attrs.to.split('/')[0];
+    // var from = stanza.attrs.from.split('/')[0];
+    // var to = stanza.attrs.to.split('/')[0];
+    var from = stanza.attrs.from;
+    var to = stanza.attrs.to;
     var body = stanza.getChild('body');
-    if (body && (from != to)) {
-        var message = body.getText();
-        logger.log(logger.level.INFO, "RtcXmpp",
-            " _onGroupChat : message: " + message);
+    var id = stanza.attrs.id;
 
-        if (message) {
-            self.emit('onGroupChatMessage', message, from);
+    if (body) {
+
+        //Handle chat ack messages
+        if (from == to) {
+            var data = stanza.getChild('data');
+            if (!data || !data.attrs || !data.attrs.evmresponsecode) {
+                logger.log(logger.level.ERROR, "RtcXmpp", "_onGroupChat : " + " Missing Data element or attributes in data element");
+                return;
+            }
+            var status = parseInt(data.attrs.evmresponsecode);
+            var chatAckJson = {}
+
+            logger.log(logger.level.INFO, "RtcXmpp", "_onGroupChat : " + " Ack Received : status : " + status);
+            if (status == 0) {
+                chatAckJson = {
+                    id: id,
+                    statusCode: status,
+                    statusMessage: "EVM is down"
+                }
+            } else if (status >= 400) {
+                chatAckJson = {
+                    id: id,
+                    statusCode: status,
+                    statusMessage: "Failed"
+                }
+            } else if (200 <= status < 300) {
+                var rootNodeId = data.attrs.rootnodeid;
+                var childNodeId = data.attrs.childnodeid;
+                chatAckJson = {
+                    id: id,
+                    rootNodeId: rootNodeId,
+                    childNodeId: childNodeId,
+                    statusCode: status,
+                    statusMessage: "Success"
+                }
+            } else {
+                chatAckJson = {
+                    id: id,
+                    statusCode: status,
+                    statusMessage: "Error"
+                }
+            }
+            self.emit("onChatAck", chatAckJson);
+
+        } else {
+            //Handle messages from other participants
+
+            var message = body.getText();
+            logger.log(logger.level.INFO, "RtcXmpp",
+                " _onGroupChat : message: " + message);
+
+            if (message) {
+                self.emit('onGroupChatMessage', message, from);
+            }
         }
     }
 }
 
-RtcXmpp.prototype.sendGroupChatMessage = function(config, message, rootNodeId, childNodeId) {
-
+RtcXmpp.prototype.sendGroupChatMessage = function(config, id, message) {
     this.index++;
-    var mute = new xmppClient.Element(
+    var msg = new xmppClient.Element(
             'message', {
-                id: this.index.toString() + ':sendGroupChatMessage',
+                id: id,
                 from: this.jid,
-                to: config.emRoomId + '@' + this.server.replace('xmpp', 'conference'),
+                to: config.emRoomId + '@' + this.rtcServer.replace('xmpp', 'conference'),
                 type: 'groupchat',
-                rootnodeid: rootNodeId,
-                childnodeid: childNodeId,
             })
-        .c('body').t(message).up();
-    this.client.send(mute.tree());
-
+        .c('body').t(message).up()
+        .c('data', {
+            'xmlns': "urn:xmpp:comcast:info",
+            'traceid': config.traceId,
+            'host': this.server,
+        }).up();
+    this.client.send(msg.tree());
 }
 
 

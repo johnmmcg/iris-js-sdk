@@ -1,6 +1,6 @@
 // Copyright 2016 Comcast Cable Communications Management, LLC
 
-var SDPUtil = require("./SDPUtil");
+var SDPUtil = require("./SDPUtil.js");
 
 function SDPDiffer(mySDP, otherSDP) {
     this.mySDP = mySDP;

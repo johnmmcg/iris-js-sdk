@@ -18,6 +18,20 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 
 **Participant:** Each participant has a unique identifier and can share their streams with other participants. A participant can be part of multiple sessions. For self initiated call, a participant will have it's local stream.
 
+## Install Iris JS SDK
+  ```sh
+  npm install iris-js-sdk
+  ```
+  
+  or include iris-js-sdk as script tag in html using
+  
+  
+  ```html
+  <script src="https://unpkg.com/iris-js-sdk@3.3.0/dist/iris-js-sdk.min.js"></script>
+  ```
+
+
+
 ## APIs
 - [Initialize Iris Sdk](#initialize-iris-sdk)
 - [Create Iris Rtc Connection](#create-connection)
@@ -58,6 +72,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   stream                    string          (OPTIONAL)  By default call is "sendrecv". User can set "sendonly" or "recvonly"
   fromTN                    TN              (MANDATORY) Caller telephone number mandatory for PSTN calls only
   toTN                      TN              (MANDATORY) Callee telephone number mandatory for PSTN calls only
+  videoCodec                string          (OPTIONAL)  Optional parameter to set vide codec. Default if H264
   urls                      json            (MANDATORY) JSON object with the eventManager urls as mentioned below
   urls.eventManager         string          (MANDATORY) "eventManagerUrl"
   urls.UEStatsServer        string          (MANDATORY) "StatsServerUrl"
@@ -784,9 +799,31 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 
 # How to use IrisRtcSdk
 
-  ```javascript
+### Install SDK
 
-    // Include iris-rtc-js-sdk.js
+  Install Iris JavaScript SDK using npm
+
+  ```sh
+  npm install iris-js-sdk
+  ```
+  
+  or include iris-js-sdk as script tag in html using
+  
+  
+  ```html
+  <script src="https://unpkg.com/iris-js-sdk@3.3.0/dist/iris-js-sdk.min.js"></script>
+  ```
+  
+### Example for Using API's
+
+  ```javascript
+    // Require iris-js-sdk in client. This will load IrisRtcConnection,
+    // IrisRtcSession and IrisRtcStream
+    var IrisRtcSDK = require(iris-js-sdk);
+    var IrisRtcConnection = IrisRtcSDK.IrisRtcConnection;
+    var IrisRtcStream = IrisRtcSDK.IrisRtcStream;
+    var IrisRtcSession = IrisRtcSDK.IrisRtcSession;
+    
     // Initializing Iris Rtc Sdk
     // Initialize configuration with below mentioned parameters.
   
