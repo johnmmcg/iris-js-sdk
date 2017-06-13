@@ -27,7 +27,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   
   ```html
-  <script src="https://unpkg.com/iris-js-sdk@3.3.0/dist/iris-js-sdk.min.js"></script>
+  <script src="https://unpkg.com/iris-js-sdk@3.3.2/dist/iris-js-sdk.min.js"></script>
   ```
 
 
@@ -412,6 +412,43 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 
 
 
+**Receive Chat Message Acknowledgement**
+----
+  This API allows user to receive acknowledgement for group chat messages. 
+
+* **API Name** <br />
+  
+  ```javascript
+    IrisRtcSession.onChatAck
+  ```
+
+* **Parameters** <br />
+  Parameter in onChatMessage api call:
+
+  ```sh
+  -----------------------------------------------------------------------------
+  Property                Type            Description
+  -----------------------------------------------------------------------------
+  id                      string          Unique id for the message sent
+  statusCode              string          Status of the sent message
+                                          200 : Messages is sent
+                                          400 : Failed to send
+                                          0 : Evm is not available
+  statusMessage           string          Status message above codes "Sucess", "Failed" and "Evm is down"
+  rootNodeId              string          Tiemebased v1 uuid
+  childNodeId             string          Timebased v1 uuid
+ 
+  ```
+
+
+* **Example** <br />
+
+  ```javascript
+    irisRtcSession.onChatAck = function(chatAckJson){}
+  ```
+  * Listen to onChatAck callback of Iris Rtc Session to receive ack messages.
+
+
 **Audio Mute**
 ----
   This API allows user to mute local audio. 
@@ -419,12 +456,12 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 * **API Name** <br />
   
   ```javascript
-    IrisRtcStream.audioMuteToggle
+    IrisRtcSession.audioMuteToggle
   ```
 * **Example** <br />
 
   ```javascript
-    irisRtcStream.audioMuteToggle()
+    irisRtcSession.audioMuteToggle()
   ```
   * Call audioMuteToggle API of Iris Stream when you want to mute audio.
 
@@ -435,13 +472,13 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 * **API Name** <br />
 
   ```javascript
-    IrisRtcStream.videoMuteToggle
+    IrisRtcSession.videoMuteToggle
   ```
 
 * **Example** <br />
 
   ```javascript
-    irisRtcStream.videoMuteToggle()
+    irisRtcSession.videoMuteToggle()
   ```  
   * Call videoMuteToggle API of Iris Stream when you want to mute video
 
@@ -811,7 +848,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   
   ```html
-  <script src="https://unpkg.com/iris-js-sdk@3.3.0/dist/iris-js-sdk.min.js"></script>
+  <script src="https://unpkg.com/iris-js-sdk@3.3.2/dist/iris-js-sdk.min.js"></script>
   ```
   
 ### Example for Using API's
@@ -936,10 +973,10 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
     } 
     
     // Call toggleAudioMute API of Iris Stream when you want to mute audio.
-    irisRtcStream.audioMuteToggle()
+    irisRtcSession.audioMuteToggle()
   
     // Call toggleVideoMute API of Iris Stream when you want to mute video.
-    irisRtcStream.videoMuteToggle()
+    irisRtcSession.videoMuteToggle()
 
 
     // Create Iris Rtc Session
@@ -994,6 +1031,13 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
     // Listen to onChatMessage on session object
     irisRtcSession.onChatMessage = function(message, from){
       // Text message is received from a participant
+    }
+    
+    // Listen to this callback for Chat message acknowledgement
+    irisRtcSession.onChatAck = function(chatAckJson){
+      //This is event is recieved for every message sent out
+      //chatAckJson will id, statusCode, statusMessage, rootNodeId
+      // and childNodeId paramaeters
     }
           
      // Screen Share or Switch Streams
