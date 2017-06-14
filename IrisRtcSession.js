@@ -2137,8 +2137,12 @@ IrisRtcSession.prototype.audioMuteToggle = function() {
     this.connection.xmpp.sendPresence(this.config);
 }
 
-IrisRtcSession.prototype.setDisplayName = function(nick) {
-    this.config.nick = nick;
+/**
+ * API to set dispaly name for the user
+ * @param {string} name - Name for the user
+ */
+IrisRtcSession.prototype.setDisplayName = function(name) {
+    this.config.name = name;
     this.connection.xmpp.sendPresence(this.config);
 }
 
@@ -2344,12 +2348,11 @@ IrisRtcSession.prototype.onAudioMuted = function(id, audioMute) {
                 self.onParticipantAudioMuted(id, audioMute);
             }
         }
-
     });
 }
 
 /**
- * Called when participant's auido is mute
+ * Called when participant's auido is muted
  * @param {string} jid - Unique jid of the participant
  * @param {string} audioMute - Status of audio. True - Muted. False - Not muted
  */
@@ -2358,14 +2361,13 @@ IrisRtcSession.prototype.onParticipantAudioMuted = function(jid, audioMute) {
 }
 
 /**
- * Called when participant's video is mute
+ * Called when participant's video is muted
  * @param {string} jid - Unique jid of the participant
  * @param {string} videoMute - Status of video. True - Muted. False - Not muted
  */
 IrisRtcSession.prototype.onParticipantVideoMuted = function(jid, videoMute) {
 
 }
-
 
 /**
  * @private
@@ -2399,6 +2401,8 @@ IrisRtcSession.prototype.onUserStatusChange = function(id, status) {
  * Called when there is a change in uset profile. ex.Dispalyname
  * @param {string} jid - Unique jid of the user
  * @param {json} propertyJson - Change in displayName or status
+ * @property {string} displayName - Name of the participant
+ * @property {string} status - Status of pstn call
  */
 IrisRtcSession.prototype.onUserProfileChange = function(jid, propertyJson) {
     //

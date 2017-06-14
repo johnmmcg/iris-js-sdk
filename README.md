@@ -41,6 +41,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 - [Create Iris Rtc Chat Session](#create-chat-session)
 - [Join Iris Rtc Chat Session](#join-chat-session)
 - [Send Chat Messages](#send-chat-messages) 
+- [Set Display Name](#set-display-name)
 - [Mute Local Audio](#audio-mute)
 - [Mute Local Video](#video-mute)
 - [End Rtc Session](#end-the-call)
@@ -77,6 +78,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   urls.eventManager         string          (MANDATORY) "eventManagerUrl"
   urls.UEStatsServer        string          (MANDATORY) "StatsServerUrl"
   logLevel                  integer         (OPTIONAL)  Log level required by user
+  name                      string          (OPTIONAL)  Name of the participant
   ```
  
 * **Example**  <br />
@@ -463,7 +465,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   ```javascript
     irisRtcSession.audioMuteToggle()
   ```
-  * Call audioMuteToggle API of Iris Stream when you want to mute audio.
+  * Call audioMuteToggle API of Iris Session when you want to mute audio.
 
 **Video Mute**
 ----
@@ -480,7 +482,26 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   ```javascript
     irisRtcSession.videoMuteToggle()
   ```  
-  * Call videoMuteToggle API of Iris Stream when you want to mute video
+  * Call videoMuteToggle API of Iris Session when you want to mute video
+
+
+**Set Display Name**
+----
+  This API allows user to set the display name. 
+
+* **API Name** <br />
+
+  ```javascript
+    IrisRtcSession.setDisplayName
+  ```
+
+* **Example** <br />
+
+  ```javascript
+    irisRtcSession.setDisplayName(name)
+  ```  
+  * Call setDisplayName API of Iris Session to set the display name
+
 
 **End the Call**
 ----
@@ -911,6 +932,9 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
     // SDK log levels
     // 0 : ERROR; 1 : WARNING; 2 : INFO; 3 :  VERBOSE
     config.logLevel             =       3
+    
+    // Set name for the user
+    config.name                 =     "Shiva"
 
     // URLs required 
     config.urls.eventManager    =     "url";
@@ -990,8 +1014,12 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
     var irisRtcSession = new IrisRtcSession();
     irisRtcSession.createSession(userConfig, connection, stream);
     
+    // To set display name
+    // Call this API to set display name
+    irisRtcSession.setDisplayName(name);
+    
     // Wait for irisRtcSession.onSessionCreated callback event 
-    irisRtcSession.onSessionCreated = function() {
+    irisRtcSession.onSessionCreated = function(roomName, sessionId, myJid) {
       // Session is created
     }
     
@@ -1035,20 +1063,20 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
     
     // Listen to this callback for Chat message acknowledgement
     irisRtcSession.onChatAck = function(chatAckJson){
-      //This is event is recieved for every message sent out
-      //chatAckJson will id, statusCode, statusMessage, rootNodeId
+      // This event is recieved for every message sent out
+      // chatAckJson will id, statusCode, statusMessage, rootNodeId
       // and childNodeId paramaeters
     }
-          
-     // Screen Share or Switch Streams
-     //
-     // To switch streams between two camera devices
-     // This API also used for screen share with constraints in streamConfig
-     // irisRtcStream is an object of IrisRtcStream to listen to onLocalStream
-     irisRtcSession.switchStream(irisRtcStream, streamConfig){
-      // Switches the stream from one camera or other
-      // can share screen as well
-     }
+    
+    // Screen Share or Switch Streams
+    //
+    // To switch streams between two camera devices
+    // This API also used for screen share with constraints in streamConfig
+    // irisRtcStream is an object of IrisRtcStream to listen to onLocalStream
+    irisRtcSession.switchStream(irisRtcStream, streamConfig){
+     // Switches the stream from one camera or other
+     // can share screen as well
+    }
 
     // End Iris Rtc Session
     // Call endSession API of Iris Session to end the call

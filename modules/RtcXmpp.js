@@ -367,8 +367,8 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
         if (typeof config.videomuted !== 'undefined') {
             pres.c('videomuted').t(config.videomuted);
         }
-        if (config.nick) {
-            pres.c('nick').t(config.nick);
+        if (config.name) {
+            pres.c('nick').t(config.name);
         }
 
         pres.c('data', {
