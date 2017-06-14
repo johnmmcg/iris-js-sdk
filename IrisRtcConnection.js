@@ -322,7 +322,7 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
                         " onIncoming userdata " + JSON.stringify(userdata)
                     );
                     if (userdata.notification.type == 'pstn') {
-                        userdata.notification.type = 'audio';
+                        // userdata.notification.type = 'audio';
                     }
 
                 } catch (e) {

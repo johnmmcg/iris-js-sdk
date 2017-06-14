@@ -717,7 +717,7 @@ RtcStats.prototype.getPeerStats = function(conn, statsInterval) {
                     var res = results[i];
 
                     if (res) {
-                        logger.log(logger.level.INFO, "IrisRtcStats", "Each Stat Object : \n" + JSON.stringify(res));
+                        // logger.log(logger.level.INFO, "IrisRtcStats", "Each Stat Object : \n" + res);
                         logStats(res);
                     }
                 }

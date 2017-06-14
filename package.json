@@ -1,17 +1,17 @@
 {
     "name": "iris-js-sdk",
     "version": "3.3.2",
-    "description": "JavaScript SDK for Iris Rtc Platform",
+    "description": "JavaScript SDK for Iris Platform",
     "repository": {
         "type": "git",
         "url": "https://github.com/iris-platform/iris-js-sdk"
     },
     "license": "MIT",
-    "main": "dist/index.js",
+    "main": "dist/iris-js-sdk.min.js",
     "keywords": [
-        "iris",
+        "Iris",
         "JS",
-        "webrtc"
+        "WebRTC"
     ],
     "author": "Comcast",
     "readmeFilename": "README.md",
@@ -44,6 +44,7 @@
     "scripts": {
         "build": "npm run browserify  && npm run uglifyjs",
         "browserify": "browserify -d IrisRtcSdk.js | exorcist iris-js-sdk.js.map > iris-js-sdk.js",
-        "uglifyjs": "uglifyjs -p relative iris-js-sdk.js -o ./dist/index.js --source-map iris-js-sdk.min.map --in-source-map iris-js-sdk.js.map"
+        "uglifyjs": "uglifyjs -p relative iris-js-sdk.js -o iris-js-sdk.min.js --source-map iris-js-sdk.min.map --in-source-map iris-js-sdk.js.map",
+        "copy":"cp iris-js-sdk.min.js ./dist/iris-js-sdk.min.js"
     }
 }
