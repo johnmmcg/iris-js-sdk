@@ -1,6 +1,6 @@
 {
     "name": "iris-js-sdk",
-    "version": "3.3.2",
+    "version": "3.3.3",
     "description": "JavaScript SDK for Iris Platform",
     "repository": {
         "type": "git",
@@ -45,6 +45,6 @@
         "build": "npm run browserify  && npm run uglifyjs",
         "browserify": "browserify -d IrisRtcSdk.js | exorcist iris-js-sdk.js.map > iris-js-sdk.js",
         "uglifyjs": "uglifyjs -p relative iris-js-sdk.js -o iris-js-sdk.min.js --source-map iris-js-sdk.min.map --in-source-map iris-js-sdk.js.map",
-        "copy":"cp iris-js-sdk.min.js ./dist/iris-js-sdk.min.js"
+        "copy": "cp iris-js-sdk.min.js ./dist/iris-js-sdk.min.js"
     }
 }
