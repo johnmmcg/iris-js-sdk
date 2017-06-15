@@ -161,6 +161,7 @@ RtcXmpp.prototype.disconnect = function disconnect() {
         this.successCb = null;
         this.errorCb = null;
         this.server = null;
+        this.rtcServer = null;
         this.xmppJid = null;
         this.sid = null;
         this.localSDP = null;
@@ -318,7 +319,7 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
         // Join the room by sending the presence
         var pres = new xmppClient.Element(
             'presence', {
-                to: config.emRoomId + '@' + this.server.replace('xmpp', 'conference') + '/' +
+                to: config.emRoomId + '@' + this.rtcServer.replace('xmpp', 'conference') + '/' +
                     this.jid + '/' + this.xmppJid.resource,
                 type: "unavailable"
             });
@@ -336,7 +337,7 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
         // Join the room by sending the presence
         var pres = new xmppClient.Element(
                 'presence', {
-                    to: config.emRoomId + '@' + this.server.replace('xmpp', 'conference') + '/' +
+                    to: config.emRoomId + '@' + this.rtcServer.replace('xmpp', 'conference') + '/' +
                         this.jid + '/' + this.xmppJid.resource
                 })
             .c('x', { 'xmlns': 'http://jabber.org/protocol/muc' }).up()
@@ -405,7 +406,7 @@ RtcXmpp.prototype.sendPresenceAlive = function sendPresenceAlive(config) {
     // Join the room by sending the presence
     var pres = new xmppClient.Element(
         'presence', {
-            to: config.emRoomId + '@' + this.server.replace('xmpp', 'conference') + '/' +
+            to: config.emRoomId + '@' + this.rtcServer.replace('xmpp', 'conference') + '/' +
                 this.jid + '/' + this.xmppJid.resource
         });
     pres.c('data', {
@@ -518,7 +519,7 @@ RtcXmpp.prototype.sendSessionInitiate = function sendSessionInitiate(data) {
         }
         var initiate = new xmppClient.Element(
                 'iq', {
-                    to: data.emRoomId + '@' + this.server.replace('xmpp', 'conference') + '/' +
+                    to: data.emRoomId + '@' + this.rtcServer.replace('xmpp', 'conference') + '/' +
                         data.to,
                     type: 'set',
                     id: this.index.toString() + ':sendIQ'
@@ -701,10 +702,10 @@ RtcXmpp.prototype.sendAllocate = function sendAllocate(data) {
 
     // Join the room by sending the presence
     var allocate = new xmppClient.Element(
-            'iq', { to: this.server.replace('xmpp', 'focus'), "type": "set", id: this.index.toString() + ':sendIQ' })
+            'iq', { to: this.rtcServer.replace('xmpp', 'focus'), "type": "set", id: this.index.toString() + ':sendIQ' })
         .c('conference', {
             'xmlns': 'http://jitsi.org/protocol/focus',
-            'room': data.emRoomId + '@' + this.server.replace('xmpp', 'conference'),
+            'room': data.emRoomId + '@' + this.rtcServer.replace('xmpp', 'conference'),
             'machine-uid': sid()
         }).up();
     this.index++;
@@ -712,8 +713,8 @@ RtcXmpp.prototype.sendAllocate = function sendAllocate(data) {
     conference = allocate.getChild("conference");
 
     // Add properties
-    conference.c('property', { "name": "bridge", "value": "jitsi-videobridge." + this.server });
-    conference.c('property', { "name": "call_control", "value": this.server.replace('xmpp', 'callcontrol') });
+    conference.c('property', { "name": "bridge", "value": "jitsi-videobridge." + this.rtcServer });
+    conference.c('property', { "name": "call_control", "value": this.rtcServer.replace('xmpp', 'callcontrol') });
     conference.c('property', { "name": "channelLastN", "value": "-1" });
     conference.c('property', { "name": "adaptiveLastN", "value": "false" });
     conference.c('property', { "name": "adaptiveSimulcast", "value": "false" });
@@ -757,7 +758,7 @@ RtcXmpp.prototype.sendRayo = function sendRayo(data) {
             'to': data.toTN,
             'from': data.fromTN
         })
-        .c('header', { 'name': 'JvbRoomName', "value": data.emRoomId + '@' + this.server.replace('xmpp', 'conference') }).up().up();
+        .c('header', { 'name': 'JvbRoomName', "value": data.emRoomId + '@' + this.rtcServer.replace('xmpp', 'conference') }).up().up();
     rayo.c('data', {
         xmlns: 'urn:xmpp:comcast:info',
         event: 'eventTypeConnect PSTN',
@@ -783,7 +784,7 @@ RtcXmpp.prototype.sendRayo = function sendRayo(data) {
 RtcXmpp.prototype.sendHangup = function sendHangup(config) {
     logger.log(logger.level.VERBOSE, "RtcXmpp",
         " sendHangup");
-    var roomJid = config.emRoomId + '@' + this.server.replace('xmpp', 'callcontrol');
+    var roomJid = config.emRoomId + '@' + this.rtcServer.replace('xmpp', 'callcontrol');
 
     // Join the room by sending the presence
     var hangup = new xmppClient.Element(
@@ -803,7 +804,7 @@ RtcXmpp.prototype.sendHold = function sendHold(config) {
     logger.log(logger.level.VERBOSE, "RtcXmpp",
         " sendHold");
 
-    var roomJid = config.emRoomId + '@' + this.server.replace('xmpp', 'callcontrol');
+    var roomJid = config.emRoomId + '@' + this.rtcServer.replace('xmpp', 'callcontrol');
 
     // Join the room by sending the presence
     var hold = new xmppClient.Element(
@@ -822,7 +823,7 @@ RtcXmpp.prototype.sendHold = function sendHold(config) {
 RtcXmpp.prototype.sendUnHold = function sendUnHold(config) {
     logger.log(logger.level.VERBOSE, "RtcXmpp",
         " sendUnHold");
-    var roomJid = config.emRoomId + '@' + this.server.replace('xmpp', 'callcontrol');
+    var roomJid = config.emRoomId + '@' + this.rtcServer.replace('xmpp', 'callcontrol');
 
     // Join the room by sending the presence
     var unhold = new xmppClient.Element(
@@ -1485,17 +1486,17 @@ RtcXmpp.prototype._onGroupChat = function(stanza) {
     var id = stanza.attrs.id;
 
     if (body) {
+        var data = stanza.getChild('data');
+        if (!data || !data.attrs || !data.attrs.evmresponsecode) {
+            logger.log(logger.level.ERROR, "RtcXmpp", "_onGroupChat : " + " Missing Data element or attributes in data element");
+            return;
+        }
+
+        var status = parseInt(data.attrs.evmresponsecode);
+        var chatAckJson = {}
 
         //Handle chat ack messages
         if (from == to) {
-            var data = stanza.getChild('data');
-            if (!data || !data.attrs || !data.attrs.evmresponsecode) {
-                logger.log(logger.level.ERROR, "RtcXmpp", "_onGroupChat : " + " Missing Data element or attributes in data element");
-                return;
-            }
-            var status = parseInt(data.attrs.evmresponsecode);
-            var chatAckJson = {}
-
             logger.log(logger.level.INFO, "RtcXmpp", "_onGroupChat : " + " Ack Received : status : " + status);
             if (status == 0) {
                 chatAckJson = {
@@ -1534,9 +1535,18 @@ RtcXmpp.prototype._onGroupChat = function(stanza) {
             var message = body.getText();
             logger.log(logger.level.INFO, "RtcXmpp",
                 " _onGroupChat : message: " + message);
+            var rootNodeId = data.attrs.rootnodeid;
+            var childNodeId = data.attrs.childnodeid;
+            var chatMsg = {
+                // id: id,
+                from: from,
+                message: message,
+                rootNodeId: rootNodeId,
+                childNodeId: childNodeId
+            }
 
-            if (message) {
-                self.emit('onGroupChatMessage', message, from);
+            if (chatMsg) {
+                self.emit('onGroupChatMessage', chatMsg);
             }
         }
     }

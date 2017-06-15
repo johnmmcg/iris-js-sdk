@@ -25,13 +25,13 @@ function IrisRtcStream() {
  * set the type of the strem he wants <code>streamConfig.streamType</code> as "audio" or "video".<br/>
  * Client can also set few other parameters if streamType is used like resloution, bandwidth and fps.
  * @param {json} streamConfig  - Stream config json example as mentioned
- * 
- * @example  streamConfig = {  "streamType": "video", // "audio",
- *      "resolution": "hd", // or "sd",
- *      "fps": 15, // Frames per second
- *      "constraints": {audio: true, video: true}, // contraints required to create the stream (optional)
- *      "screenShare" : true // 'true' for screen share 'false' otherwise
- * }
+ * @param {string} streamConfig.streamType - Type of stream audio or video
+ * @param {string} streamConfig.resolution - Resolution for the video
+ * @param {string} streamConfig.fps - Frames per second
+ * @param {json} streamConfig.constraints - Media constraints for audio and video
+ * @param {string} streamConfig.constraints.audio - Media constraints for audio
+ * @param {string} streamConfig.constraints.video - Media constraints for video
+ * @param {string} streamConfig.screenShare - True if it is a screen share call
  */
 IrisRtcStream.prototype.createStream = function(streamConfig) {
 
@@ -319,18 +319,18 @@ IrisRtcStream.prototype._setFPS = function(constraints, fps) {
  * Get the media devices
  */
 IrisRtcStream.prototype.getMediaDevices = function() {
-   if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-        console.log("enumerateDevices() not supported.");
-        return;
-    }
-    return new Promise(function (resolve, reject) {
-        navigator.mediaDevices.enumerateDevices()
-        .then(function(devices) {
-            resolve (devices);
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+            console.log("enumerateDevices() not supported.");
+            return;
+        }
+        return new Promise(function(resolve, reject) {
+            navigator.mediaDevices.enumerateDevices()
+                .then(function(devices) {
+                    resolve(devices);
+                })
         })
-    })
-    
-}
-// Defining the API module
+
+    }
+    // Defining the API module
 
 module.exports = IrisRtcStream;
