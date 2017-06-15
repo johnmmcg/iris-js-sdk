@@ -395,7 +395,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   ```
 
 * **Parameters** <br />
-  Parameter in onChatMessage api call:
+  Parameter in onChatMessage api call is chatMsgJson which will have:
 
   ```sh
   -----------------------------------------------------------------------------
@@ -403,6 +403,8 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   -----------------------------------------------------------------------------
   message                 string          Message received
   from                    string          Remote participant id
+  rootNodeId              string          Root node id for the message
+  childNodeId             string          Child node id for the meesage
   ```
 
 * **Example** <br />
@@ -425,7 +427,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   ```
 
 * **Parameters** <br />
-  Parameter in onChatMessage api call:
+  Parameter in onChatAck api call is chatAckJson which will have :
 
   ```sh
   -----------------------------------------------------------------------------
