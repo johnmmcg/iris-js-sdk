@@ -1462,6 +1462,8 @@ RtcXmpp.prototype._onChat = function(stanza) {
         " _onChat");
 
     var self = this;
+    var from = stanza.attrs.from.includes('conference') ? stanza.attrs.from.split('/')[1] : stanza.attrs.from;
+    // var to = stanza.attrs.to.split('/')[0];
     var from = stanza.attrs.from;
     var to = stanza.attrs.to;
     var id = stanza.attrs.id;
