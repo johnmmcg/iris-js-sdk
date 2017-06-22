@@ -5,26 +5,40 @@ var browserVersion;
 
 var RtcBrowserType = {
 
-    RTC_BROWSER_CHROME: "chrome",
+    BROWSER_CHROME: "Chrome",
 
-    RTC_BROWSER_FIREFOX: "firefox",
+    BROWSER_FIREFOX: "Firefox",
 
-    RTC_BROWSER_OPERA: "opera",
+    BROWSER_OPERA: "Opera",
+
+    BROWSER_SAFARI: "Safari",
+
+    BROWSER_EDGE: "Edge",
 
     getBrowserType: function() {
         return currentBrowser;
     },
 
     isChrome: function() {
-        return currentBrowser === RtcBrowserType.RTC_BROWSER_CHROME;
+        return currentBrowser === RtcBrowserType.BROWSER_CHROME;
     },
 
     isFirefox: function() {
-        return currentBrowser === RtcBrowserType.RTC_BROWSER_FIREFOX;
+        return currentBrowser === RtcBrowserType.BROWSER_FIREFOX;
     },
 
     isOpera: function() {
-        return currentBrowser === RtcBrowserType.RTC_BROWSER_OPERA;
+        return currentBrowser === RtcBrowserType.BROWSER_OPERA;
+    },
+
+    isSafari: function() {
+        return currentBrowser === RtcBrowserType.BROWSER_SAFARI;
+
+    },
+
+    isEdge: function() {
+        return currentBrowser === RtcBrowserType.BROWSER_EDGE;
+
     },
 
     getFirefoxVersion: function() {
@@ -39,7 +53,7 @@ var RtcBrowserType = {
 
 function detectChrome() {
     if (navigator.webkitGetUserMedia) {
-        currentBrowser = RtcBrowserType.RTC_BROWSER_CHROME;
+        currentBrowser = RtcBrowserType.BROWSER_CHROME;
         var userAgent = navigator.userAgent.toLowerCase();
         // We can assume that user agent is chrome, because it's
         // enforced when 'ext' streaming method is set
@@ -53,7 +67,7 @@ function detectChrome() {
 function detectOpera() {
     var userAgent = navigator.userAgent;
     if (userAgent.match(/Opera|OPR/)) {
-        currentBrowser = RtcBrowserType.RTC_BROWSER_OPERA;
+        currentBrowser = RtcBrowserType.BROWSER_OPERA;
         var version = userAgent.match(/(Opera|OPR) ?\/?(\d+)\.?/)[2];
         return version;
     }
@@ -62,26 +76,69 @@ function detectOpera() {
 
 function detectFirefox() {
     if (navigator.mozGetUserMedia) {
-        currentBrowser = RtcBrowserType.RTC_BROWSER_FIREFOX;
+        currentBrowser = RtcBrowserType.BROWSER_FIREFOX;
         var version = parseInt(
             navigator.userAgent.match(/Firefox\/([0-9]+)\./)[1], 10);
+
         return version;
     }
     return null;
 }
 
+function detectSafari() {
+
+    if (navigator.mediaDevices) {
+        var userAgent = navigator.userAgent;
+        var version = "";
+        // navigator.userAgent.match(/Version\/[\d\.]+.*Safari/)
+
+        if (navigator.userAgent.indexOf("Safari") > -1) {
+            currentBrowser = RtcBrowserType.BROWSER_SAFARI;
+            version = userAgent.substring(userAgent.indexOf('safari/') + 7);
+            version = userAgent.substring(0, userAgent.indexOf('.'));
+            return version;
+        }
+        return null;
+    }
+
+}
+
+function detectEdge() {
+    var version;
+    var userAgent = window.navigator.userAgent;
+    var edge = ua.indexOf('Edge/');
+
+    if (!version && edge > 0) {
+        version = parseInt(ua.substring(edge + 5, ua.indexOf('.', edge)), 10);
+    }
+    if (version) {
+        currentBrowser = RtcBrowserType.BROWSER_EDGE;
+    }
+
+    return version;
+}
+
+
 function detectBrowser() {
+
+    if (typeof window === 'undefined' || !window.navigator) {
+        console.log("Check browser");
+    }
+
     var version;
     var detectors = [
         //     detectOpera,
         detectChrome,
         detectFirefox,
+        detectSafari
     ];
     // Try all browser detectors
     for (var i = 0; i < detectors.length; i++) {
         version = detectors[i]();
-        if (version)
+        if (version) {
+            console.log("Browser : " + currentBrowser);
             return version;
+        }
     }
 
     //Browser default to chrome

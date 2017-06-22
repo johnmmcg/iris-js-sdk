@@ -18,7 +18,7 @@ var SDPUtil = require("./modules/Utils/SDPUtil.js");
 var SDPDiffer = require('./modules/Utils/SDPDiffer.js');
 var RtcBrowserType = require("./modules/Utils/RtcBrowserType.js");
 var Interop = require('sdp-interop').Interop;
-var async = require("async");
+var SDPMangler = require('./modules/Utils/SDPMangler.js');
 
 // var WebRTC      = require('./modules/node-webrtc/webrtc.node');
 var WebRTC = require('./modules/RtcWebrtcAdapter.js');
@@ -75,6 +75,8 @@ function IrisRtcSession() {
     this.remoteStreams = {};
     this.dataChannels = [];
     this.isStreamMuted = false;
+    this.isVideoMuted = false;
+    this.isAudioMuted = false;
     // Add the entry
     sessionsList[this.sessionId] = this;
     this.interop = new Interop();
@@ -171,8 +173,13 @@ IrisRtcSession.prototype.create = function(config, connection) {
         self.config.emRoomId = response.eventdata.room_id;
         self.config.roomtoken = response.eventdata.room_token;
         self.config.roomtokenexpirytime = response.eventdata.room_token_expiry_time;
-        self.config.rtcServer = response.rtc_server;
 
+        if (rtcConfig.json.useXmppServer) {
+            self.config.rtcServer = rtcConfig.json.useXmppServer;
+            self.connection.xmpp.rtcServer = rtcConfig.json.useXmppServer;
+        } else {
+            self.config.rtcServer = response.rtc_server;
+        }
         // Set the state to CONNECTING
         self.state = IrisRtcSession.CONNECTING;
 
@@ -587,6 +594,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
     });
 
     // Setup callbacks for session initiate 
+    connection.xmpp.removeAllListeners(["onSourceAdd"]);
     this.connection.xmpp.on('onSourceAdd', function(data) {
 
         logger.log(logger.level.VERBOSE, "IrisRtcSession",
@@ -695,20 +703,27 @@ IrisRtcSession.prototype.create = function(config, connection) {
     });
 
     // Event listener for mute or unmute events
-    // mute - true Remove stream from conference
-    // mute - false Add stream to conference
-    this.connection.xmpp.on('onMute', function(mute) {
-
+    // mute - true - Mute the local video
+    // mute - false - Unmute the local video
+    this.connection.xmpp.on('onVideoMute', function(mute) {
         logger.log(logger.level.INFO, "IrisRtcSession",
-            " onMute " + " mute " + mute);
+            " onVideoMute " + " mute " + mute);
         if (self.localStream) {
+            if ((mute && !self.isVideoMuted) || (!mute && self.isVideoMuted)) {
+                self.videoMuteToggle();
+            }
+        }
+    });
 
-            if (mute) {
-                // Remote local stream from the conference on onMute - true event
-                self.peerconnection.removeStream(self.localStream);
-            } else {
-                // Add local stream to conference on onMute - false event
-                self.peerconnection.addStream(self.localStream);
+    // Event listener for mute or unmute events
+    // mute - true - Mute the local audio
+    // mute - false - Unmute the local audio
+    this.connection.xmpp.on('onAudioMute', function(mute) {
+        logger.log(logger.level.INFO, "IrisRtcSession",
+            " onAudioMute " + " mute " + mute);
+        if (self.localStream) {
+            if ((mute && !self.isAudioMuted) || (!mute && self.isAudioMuted)) {
+                self.audioMuteToggle();
             }
         }
     });
@@ -731,17 +746,29 @@ IrisRtcSession.prototype.create = function(config, connection) {
 }
 
 /**
- * @private
+ * Mute remote participant's video
+ * @param {string} jid - Remote participant's id
+ * @param {boolean} mute - true -> mute, false -> unmute
  */
-IrisRtcSession.prototype.sendMute = function(mute) {
-    this.connection.xmpp.sendMute(this.jid, mute);
+IrisRtcSession.prototype.muteParticipantVideo = function(jid, mute) {
+    try {
+        this.connection.xmpp.sendVideoMute(jid, mute);
+    } catch (error) {
+        logger.log(logger.level.ERROR, "IrisRtcSession", "muteParticipantVideo error ", error);
+    }
 }
 
 /**
- * @private
+ * Mute remote participant's audio
+ * @param {string} jid - Remote participant's id
+ * @param {boolean} mute - true -> mute, false -> unmute
  */
-IrisRtcSession.prototype.sendAudioMute = function(mute) {
-    this.connection.xmpp.sendAudioMute(this.jid, mute);
+IrisRtcSession.prototype.muteParticipantAudio = function(jid, mute) {
+    try {
+        this.connection.xmpp.sendAudioMute(jid, mute);
+    } catch (error) {
+        logger.log(logger.level.ERROR, "IrisRtcSession", "muteParticipantAudio error ", error);
+    }
 }
 
 /**
@@ -1181,37 +1208,43 @@ IrisRtcSession.prototype.initWebRTC = function(response, type) {
         if (json && json.ice_servers) {
             var urlArray = json.ice_servers;
             logger.log(logger.level.VERBOSE, "IrisRtcSession",
-                " Received ice urls " + urlArray);
+                " Received ice urls ", urlArray);
             for (var i = 0; i < urlArray.length; i++) {
 
                 // Check if the element itself is an array or not
                 if (urlArray[i].urls instanceof Array) {
                     for (var j = 0; j < urlArray[i].urls.length; j++) {
 
+                        if (rtcConfig.json.useBridge && (urlArray[i].urls[j].includes('turn:') || urlArray[i].urls[j].includes('turns:')))
+                            continue;
+
                         if (urlArray[i].username && urlArray[i].credential) {
                             iceUrls.push({
-                                'url': urlArray[i].urls[j],
+                                'urls': [urlArray[i].urls[j]],
                                 'username': urlArray[i].username,
                                 'credential': urlArray[i].credential
                             });
                         } else {
                             iceUrls.push({
-                                'url': urlArray[i].urls[j],
+                                'urls': [urlArray[i].urls[j]],
                             });
                         }
                     }
                 }
                 // Add element to the array
                 else {
+                    if (rtcConfig.json.useBridge && (urlArray[i].urls.includes('turn:') || urlArray[i].urls.includes('turns:')))
+                        continue;
+
                     if (urlArray[i].urls.username && urlArray[i].urls.credential) {
                         iceUrls.push({
-                            'url': urlArray[i].urls,
+                            'urls': [urlArray[i].urls],
                             'username': urlArray[i].urls.username,
                             'credential': urlArray[i].urls.credential
                         });
                     } else {
                         iceUrls.push({
-                            'url': urlArray[i].urls,
+                            'urls': [urlArray[i].urls],
                         });
                     }
                 }
@@ -1219,9 +1252,7 @@ IrisRtcSession.prototype.initWebRTC = function(response, type) {
         }
 
         // For testing as xmpp ones arent working
-        iceUrls.push({
-            'url': "stun:stun.l.google.com:19302",
-        });
+        iceUrls.push({ urls: ["stun:stun.l.google.com:19302"] });
 
         // Urls populated, add to main element
         var iceServers = { 'iceServers': iceUrls };
@@ -1314,7 +1345,7 @@ IrisRtcSession.prototype.setOffer = function(desc, from) {
 
     if ((self.config.type == "video" || self.config.type == "audio") && rtcConfig.json.useBridge == true) {
         // Remove codecs not supported
-        if (self.config.videoCodec.toLowerCase() == "h264") {
+        if (self.config.videoCodec && self.config.videoCodec.toLowerCase() == "h264") {
             //desc.sdp = removeCodec(desc.sdp, "VP8");
             //desc.sdp = removeCodec(desc.sdp, "VP9");
             desc.sdp = preferH264(desc.sdp);
@@ -1323,6 +1354,10 @@ IrisRtcSession.prototype.setOffer = function(desc, from) {
         // Preferring audio codecs
         if (self.config.audioCodec && self.config.audioCodec.toLowerCase() == "isac") {
             desc.sdp = preferISAC(desc.sdp);
+        }
+        //opus/48000/2
+        if (self.config.audioCodec && self.config.audioCodec.toLowerCase() == "opus") {
+            desc.sdp = preferOpus(desc.sdp);
         }
 
         logger.log(logger.level.INFO, "IrisRtcSession",
@@ -1654,6 +1689,21 @@ IrisRtcSession.prototype.createOffer = function(type) {
                     desc.sdp = removeCodec(desc.sdp, "H264");
                     desc.sdp = removeCodec(desc.sdp, "VP8");
                 }
+                if (self.config.audioCodec && self.config.audioCodec == "isac") {
+                    var serializer = new SDPMangler(desc.sdp);
+                    // 111 103 104 9 0 8 106 105 13 110 112 113 126
+                    serializer.audio.payload(111).remove();
+                    desc.sdp = serializer.deserialize();
+                }
+
+                if (self.config.audioCodec && self.config.audioCodec == "opus") {
+                    var serializer = new SDPMangler(desc.sdp);
+                    // 111 103 104 9 0 8 106 105 13 110 112 113 126
+                    serializer.audio.payload(103).remove();
+                    serializer.audio.payload(104).remove();
+
+                    desc.sdp = serializer.deserialize();
+                }
 
                 //TBD - Preferring audio codec for p2p call
 
@@ -1898,21 +1948,14 @@ IrisRtcSession.prototype.switchStream = function(irisRtcStream, streamConfig) {
         // Create a new stream with new config
         irisRtcStream.createStream(streamConfig).then(function(stream) {
             if (stream) {
-
                 if (streamConfig.screenShare) {
-
                     irisRtcStream.createStream({ streamType: "audio" }).then(function(audioStream) {
-
                         if (audioStream) {
                             var audioTrack = audioStream.getAudioTracks()[0];
                             if (audioTrack) {
-
                                 logger.log(logger.level.VERBOSE, "IrisRtcSession", "Audio Track is received ", audioTrack);
-
                                 stream.addTrack(audioTrack);
-
                                 self.addStream(stream);
-
                                 self.sendSwitchStreamAdd();
                             }
                         }
@@ -1977,173 +2020,56 @@ IrisRtcSession.prototype.sendSwitchStreamAdd = function() {
     })
 }
 
-/**
- * @private
- */
-IrisRtcSession.prototype.toggleStreamMute = function(irisRtcStream, streamConfig) {
-    try {
-        var self = this;
-        if (self.isStreamMuted) {
-            logger.log(logger.level.INFO, "IrisRtcSession", "toggleStreamMute :: Unmute local stream ");
-            self.unMuteLocalStream(irisRtcStream, streamConfig);
-            self.isStreamMuted = false;
-        } else {
-            logger.log(logger.level.INFO, "IrisRtcSession", "toggleStreamMute :: Mute local stream ");
-            irisRtcStream.stopMediaStream(self.localStream);
-            self.muteLocalStream();
-            self.isStreamMuted = true;
-        }
-    } catch (error) {
-        logger.log(logger.level.ERROR, "IrisRtcSession", "toggleStreamMute failed ", error);
-    }
-}
-
-/**
- * Start the local stream
- * @private
- */
-IrisRtcSession.prototype.unMuteLocalStream = function(irisRtcStream, streamConfig) {
-    try {
-        var self = this;
-        var constraints = irisRtcStream.getMediaConstraints(streamConfig);
-        if (constraints) {
-            irisRtcStream.getUserMedia(constraints).then(function(stream) {
-                if (stream) {
-                    logger.log(logger.level.INFO, "IrisRtcSession", "local stream is created ", stream);
-                    self.addStream(stream);
-                    self.setMuteUnmuteOfferAnswer(false);
-                    if (irisRtcStream.container) {
-                        irisRtcStream.attachMediaStream(irisRtcStream.container, stream);
-                    }
-                    irisRtcStream.onStreamEndedListener(stream);
-                }
-            });
-        }
-    } catch (error) {
-        logger.log(logger.level.ERROR, "IrisRtcSession", "unMuteLocalStream failed ", error);
-    }
-}
-
-/**
- * @private
- */
-IrisRtcSession.prototype.muteLocalStream = function() {
-    var self = this;
-    try {
-        if (self.localStream) {
-
-            self.removeStream(self.localStream);
-            self.setMuteUnmuteOfferAnswer(true);
-            try {
-                logger.log(logger.level.INFO, "IrisRtcStream : stopLocalStream");
-                self.localStream.getTracks().forEach(function(track) {
-                    track.stop();
-                });
-            } catch (error) {
-                logger.log(logger.level.INFO, "IrisRtcStream : stopLocalStream");
-                if (self.localStream.stop) {
-                    self.localStream.stop();
-                }
-            }
-        }
-    } catch (error) {
-        logger.log(logger.level.INFO, "IrisRtcStream : stopLocalStream", error);
-    }
-}
-
-
-IrisRtcSession.prototype.setMuteUnmuteOfferAnswer = function(mute) {
-    try {
-        var self = this;
-
-        logger.log(logger.level.INFO, "IrisRtcSession", "setMuteUnmuteOfferAnswer");
-
-        if (!self.peerconnection.localDescription.sdp || !self.peerconnection.remoteDescription.sdp) {
-            logger.log(logger.level.INFO, "IrisRtcSession", "local or remote sdp is null");
-            return;
-        }
-
-        var remoteSDP = new SDP(self.peerconnection.remoteDescription.sdp);
-        remoteSDP.raw = remoteSDP.session + remoteSDP.media.join('');
-
-        var remoteDesc = new RTCSessionDescription({ "sdp": remoteSDP.raw, "type": "offer" });
-
-        self.peerconnection.setRemoteDescription(remoteDesc, function() {
-            logger.log(logger.level.INFO, "IrisRtcSession", "setRemoteDescription success");
-
-            self.peerconnection.createAnswer(function(answer) {
-                logger.log(logger.level.INFO, "IrisRtcSession", "createAnswer success");
-
-                // Handle Mute and Unmute - as sendrecv and recvonly
-                // Update the answer the sendrecv/recvonly before setting
-
-                var sdp = new SDP(answer.sdp);
-
-                if (sdp.media.length > 1) {
-
-                    if (mute) {
-                        // Set recvonly description if streams are removed from peerconnection
-                        sdp.media[1] = sdp.media[1].replace('a=sendrecv', 'a=recvonly');
-                    } else {
-                        sdp.media[1] = sdp.media[1].replace('a=recvonly', 'a=sendrecv');
-                    }
-                    sdp.raw = sdp.session + sdp.media.join('');
-                    answer.sdp = sdp.raw;
-                }
-                self.peerconnection.setLocalDescription(answer, function() {
-                    logger.log(logger.level.INFO, "IrisRtcSession", "setLocalDescription success");
-
-                    if (!(self.peerconnection.signalingState == 'stable' &&
-                            self.peerconnection.iceConnectionState == 'connected')) {
-                        logger.log(logger.level.INFO, "Too early to send updates");
-                        return;
-                    }
-
-                }, function(error) {
-                    logger.log(logger.level.ERROR, "IrisRtcSession", "Failed to setLocalDescription ", error);
-                });
-            }, function(error) {
-                logger.log(logger.level.ERROR, "IrisRtcSession", "Failed to createAnswer ", error);
-            }, self.pcConstraints);
-        }, function(error) {
-            logger.log(logger.level.ERROR, "IrisRtcSession", "Failed to setRemoteDescription ", error);
-
-        });
-
-    } catch (error) {
-
-    }
-}
-
-
 /** 
  *  Mute or unmute local video
  */
 IrisRtcSession.prototype.videoMuteToggle = function() {
-    this.isVideoMuted = this.localStream.getVideoTracks()[0].enabled;
-    logger.log(logger.level.INFO, "IrisRtcSession", "Video Mute : " + this.isVideoMuted);
 
-    this.config.videomuted = this.isVideoMuted.toString();
-    if (this.isVideoMuted)
-        this.localStream.getVideoTracks()[0].enabled = false;
-    else
-        this.localStream.getVideoTracks()[0].enabled = true;
-    this.connection.xmpp.sendPresence(this.config);
+    try {
+        var self = this;
+        if (self.localStream && self.localStream.getVideoTracks().length >= 1 && self.localStream.getVideoTracks()[0]) {
+            this.isVideoMuted = this.localStream.getVideoTracks()[0].enabled;
+            logger.log(logger.level.INFO, "IrisRtcSession", "videoMuteToggle : Video Mute : " + this.isVideoMuted);
+            this.config.videomuted = this.isVideoMuted.toString();
+            if (this.isVideoMuted)
+                this.localStream.getVideoTracks()[0].enabled = false;
+            else
+                this.localStream.getVideoTracks()[0].enabled = true;
+            this.connection.xmpp.sendPresence(this.config);
+        } else {
+            logger.log(logger.level.WARNING, "IrisRtcSession", "videoMuteToggle: No video to mute");
+        }
+    } catch (error) {
+        logger.log(logger.level.ERROR, "IrisRtcSession", "videoMuteToggle : Failed to mute video");
+
+    }
 }
 
 /**
  * Mute or Unmute local audio
  */
 IrisRtcSession.prototype.audioMuteToggle = function() {
-    this.isAudioMuted = this.localStream.getAudioTracks()[0].enabled;
-    logger.log(logger.level.INFO, "IrisRtcSession", "Audio Mute : " + this.isAudioMuted);
 
-    this.config.audiomuted = this.isAudioMuted.toString();
-    if (this.isAudioMuted)
-        this.localStream.getAudioTracks()[0].enabled = false;
-    else
-        this.localStream.getAudioTracks()[0].enabled = true;
-    this.connection.xmpp.sendPresence(this.config);
+    try {
+        var self = this;
+        if (self.localStream && self.localStream.getAudioTracks().length >= 1 && self.localStream.getAudioTracks()[0]) {
+            this.isAudioMuted = this.localStream.getAudioTracks()[0].enabled;
+            logger.log(logger.level.INFO, "IrisRtcSession", "audioMuteToggle :: Audio Mute : " + this.isAudioMuted);
+
+            this.config.audiomuted = this.isAudioMuted.toString();
+            if (this.isAudioMuted)
+                this.localStream.getAudioTracks()[0].enabled = false;
+            else
+                this.localStream.getAudioTracks()[0].enabled = true;
+            this.connection.xmpp.sendPresence(this.config);
+        } else {
+            logger.log(logger.level.WARNING, "IrisRtcSession", "audioMuteToggle: No audio to mute");
+        }
+
+    } catch (error) {
+        logger.log(logger.level.ERROR, "IrisRtcSession", "audioMuteToggle : Failed to mute audio");
+
+    }
 }
 
 /**
@@ -2154,51 +2080,6 @@ IrisRtcSession.prototype.setDisplayName = function(name) {
     this.config.name = name;
     this.connection.xmpp.sendPresence(this.config);
 }
-
-/**
- * Mute remote participant's video
- * @param {string} jid - Remote participant's id
- * @private
- */
-IrisRtcSession.prototype.muteParticipantVideo = function(jid) {
-    try {
-        var self = this;
-        Object.keys(this.participants).forEach(function(id) {
-            if (id == jid && self.participants[id].stream) {
-                if (self.participants[id].stream.getVideoTracks()[0].enabled) {
-                    self.participants[id].stream.getVideoTracks()[0].enabled = false;
-                } else {
-                    self.participants[id].stream.getVideoTracks()[0].enabled = true;
-                }
-            }
-        });
-    } catch (error) {
-        logger.log(logger.level.ERROR, "IrisRtcSession", "muteParticipantVideo error ", error);
-    }
-}
-
-/**
- * Mute remote participant's audio
- * @param {string} jid - Remote participant's id
- * @private
- */
-IrisRtcSession.prototype.muteParticipantAudio = function(jid) {
-    try {
-        var self = this;
-        Object.keys(this.participants).forEach(function(id) {
-            if (id == jid && self.participants[id].stream) {
-                if (self.participants[id].stream.getAudioTracks()[0].enabled) {
-                    self.participants[id].stream.getAudioTracks()[0].enabled = false;
-                } else {
-                    self.participants[id].stream.getAudioTracks()[0].enabled = true;
-                }
-            }
-        });
-    } catch (error) {
-        logger.log(logger.level.ERROR, "IrisRtcSession", "muteParticipantAudio error ", error);
-    }
-}
-
 
 /** 
  * Set properties
@@ -2391,9 +2272,7 @@ IrisRtcSession.prototype.onVideoMuted = function(id, videoMute) {
                 self.onParticipantVideoMuted(id, videoMute);
             }
         }
-
     });
-
 }
 
 /**
@@ -2706,6 +2585,37 @@ function setISAC3200Codec(mLine, payload) {
     return newLine.join(' ');
 };
 
+function preferOpus(sdp) {
+    logger.log(logger.level.INFO, "IrisRtcSession :: preferISAC");
+
+    var sdpLines = sdp.split('\r\n');
+
+    for (var i = 0; i < sdpLines.length; i++) {
+        if (sdpLines[i].search('m=audio') !== -1) {
+            var mLineIndex = i;
+            break;
+        }
+    }
+
+    if (mLineIndex === null) return sdp;
+
+    for (i = 0; i < sdpLines.length; i++) {
+        if (sdpLines[i].search('opus/48000/2') !== -1) {
+            var isacPayload = extractSdp(sdpLines[i], /:(\d+) opus\/48000\/2/i);
+            if (isacPayload)
+                sdpLines[mLineIndex] = setDefaultCodec(sdpLines[mLineIndex], isacPayload);
+            break;
+        }
+    }
+    sdpLines = removeCN(sdpLines, mLineIndex);
+
+    sdp = sdpLines.join('\r\n');
+
+    return sdp;
+};
+
+
+
 /**
  * This API is called to create a new Iris Rtc session or to join a incoming call. 
  * In case of anonymousm call client application should pass <code>stream</code> having local media tracks for creating/joining a session.
@@ -2732,26 +2642,32 @@ IrisRtcSession.prototype.createSession = function(config, connection, stream) {
     if (!config || !connection) {
         logger.log(logger.level.ERROR, "IrisRtcSession",
             " Invalid user config or rtc connection !! ");
-    } else if ((config.type == "video" || config.type == "audio") && !stream && config.stream != "recvonly") {
-        logger.log(logger.level.ERROR, "IrisRtcSession",
-            " local media stream cannot be null for video or audio call ");
     } else if (!config.roomId) {
         logger.log(logger.level.ERROR, "IrisRtcSession",
-            " RoomID cannot be empty");
+            " config.roomId cannot be empty");
+        return;
     } else if (!config.type) {
         logger.log(logger.level.ERROR, "IrisRtcSession",
             " config.type parameter is missing");
+        return;
+    } else if (config.stream == "recvonly" && stream) {
+        logger.log(logger.level.ERROR, "IrisRtcSession", "Stream is not required for recvonly calls");
+        return;
+    } else if ((config.type == "video" || config.type == "audio") && !stream && config.stream != "recvonly") {
+        logger.log(logger.level.ERROR, "IrisRtcSession",
+            " local media stream cannot be null for video or audio call ");
+        return;
     } else {
         logger.log(logger.level.INFO, "IrisRtcSession",
             " Create session with config " + JSON.stringify(config));
 
-        if (config.type == "audio" && stream.getVideoTracks().length >= 1) {
-            logger.log(logger.level.ERROR, "IrisRtcSession", "For Audio Call send Audio Stream only");
+        if (config.type == "audio" && config.stream != "recvonly" && stream.getVideoTracks().length >= 1) {
+            logger.log(logger.level.ERROR, "IrisRtcSession", "For audio call, send audio stream only");
             return;
         }
 
-        if (config.type == "video" && stream.getVideoTracks().length < 1) {
-            logger.log(logger.level.ERROR, "IrisRtcSession", "For Video Call, video stream is required");
+        if (config.type == "video" && config.stream != "recvonly" && stream.getVideoTracks().length < 1) {
+            logger.log(logger.level.ERROR, "IrisRtcSession", "For video call, video stream is required");
             return;
         }
 
@@ -2793,9 +2709,17 @@ IrisRtcSession.prototype.joinSession = function(config, connection, stream, noti
         config.roomtoken = notificationPayload.roomtoken;
         config.roomtokenexpirytime = notificationPayload.roomtokenexpirytime;
         config.traceId = notificationPayload.traceId;
-        config.rtcServer = notificationPayload.rtcserver;
+
+        // Use custom xmmp server if available
+        if (rtcConfig.json.useXmppServer) {
+            config.rtcServer = rtcConfig.json.useXmppServer;
+            connection.xmpp.rtcServer = rtcConfig.json.useXmppServer;
+        } else {
+            config.rtcServer = notificationPayload.rtcserver;
+            connection.xmpp.rtcServer = notificationPayload.rtcserver;
+        }
+
         config.sessionType = "join";
-        connection.xmpp.rtcServer = notificationPayload.rtcserver;
 
         logger.log(logger.level.INFO, "IrisRtcSession",
             " join session with config " + JSON.stringify(config));
@@ -2864,7 +2788,15 @@ IrisRtcSession.prototype.joinChatSession = function(config, connection, notifica
         config.roomtokenexpirytime = notificationPayload.roomtokenexpirytime;
         config.traceId = notificationPayload.traceId;
         config.sessionType = "join";
-        connection.xmpp.rtcServer = notificationPayload.rtcserver;
+
+        // Use custom xmmp server if available
+        if (rtcConfig.json.useXmppServer) {
+            config.rtcServer = rtcConfig.json.useXmppServer;
+            connection.xmpp.rtcServer = rtcConfig.json.useXmppServer;
+        } else {
+            config.rtcServer = notificationPayload.rtcserver;
+            connection.xmpp.rtcServer = notificationPayload.rtcserver;
+        }
 
         logger.log(logger.level.INFO, "IrisRtcSession",
             " join session with config " + JSON.stringify(config));
@@ -2922,7 +2854,7 @@ IrisRtcSession.prototype.onSessionParticipantJoined = function(roomName, session
  * @param {string} roomName - Room name of the participant joined
  * @param {string} sessionId - Session Id to which participant joined
  * @param {string} participantJid - Unique Jid of the remote participant
- * @param {boolean} closeSession - Boolean value to close the session if all participants leaves room
+ * @param {boolean} closeSession - Boolean value to close the session if all remote participants leave room
  */
 IrisRtcSession.prototype.onSessionParticipantLeft = function(roomName, sessionId, participantJid, closeSession) {
 

@@ -69,7 +69,7 @@ IrisRtcStream.prototype.createStream = function(streamConfig) {
             }
         }).catch(function(error) {
             logger.log(logger.level.ERROR, "IrisRtcStream",
-                " getUserMedia Error ", error);
+                " getUserMedia :: Error :: ", error);
         });
     } catch (error) {
         logger.log(logger.level.ERROR, "IrisRtcSession",
@@ -82,8 +82,8 @@ IrisRtcStream.prototype.createStream = function(streamConfig) {
  * @private
  */
 IrisRtcStream.prototype.getMediaConstraints = function(streamConfig) {
+    var self = this;
     var constraints = { audio: false, video: false };
-
 
     //Check for streamConfig availability
     if (!streamConfig) {
@@ -105,17 +105,17 @@ IrisRtcStream.prototype.getMediaConstraints = function(streamConfig) {
 
             //Set the required resolution
             if (streamConfig.resolution) {
-                self._setResolution(constraints, streamConfig.resolution);
+                _setResolution(constraints, streamConfig.resolution);
             }
 
             // Set required bandwidth
             if (streamConfig.bandwidth) {
-                self._setBandwidth(constraints, streamConfig.bandwidth);
+                _setBandwidth(constraints, streamConfig.bandwidth);
             }
 
             // Set required frames per second
             if (streamConfig.fps) {
-                self._setFPS(constraints, streamConfig.fps);
+                _setFPS(constraints, streamConfig.fps);
             }
         } else if (streamConfig.streamType == "audio") {
             constraints.video = false;
@@ -270,7 +270,7 @@ IrisRtcStream.prototype.audioMuteToggle = function() {
  * Set the required resolution before calling getUserMedia
  * @private
  */
-IrisRtcStream.prototype._setResolution = function(constraints, resolution) {
+function _setResolution(constraints, resolution) {
 
     if (Resolutions[resolution]) {
         constraints.video.mandatory.minWidth = Resolutions[resolution].width;
@@ -292,7 +292,7 @@ IrisRtcStream.prototype._setResolution = function(constraints, resolution) {
  * Set the bandwidth
  * @private 
  */
-IrisRtcStream.prototype._setBandwidth = function(constraints, bandwidth) {
+function _setBandwidth(constraints, bandwidth) {
     if (bandwidth) {
         if (!constraints.video) {
             constraints.video = { mandatory: {}, optional: [] };
@@ -305,7 +305,7 @@ IrisRtcStream.prototype._setBandwidth = function(constraints, bandwidth) {
  * Set the frames per second(FPS)
  * @private
  */
-IrisRtcStream.prototype._setFPS = function(constraints, fps) {
+function _setFPS(constraints, fps) {
     if (fps) {
         if (!constraints.video) {
             // same behaviour as true;

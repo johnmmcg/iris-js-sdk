@@ -44,6 +44,8 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 - [Set Display Name](#set-display-name)
 - [Mute Local Audio](#audio-mute)
 - [Mute Local Video](#video-mute)
+- [Mute Remote Participant Audio](#mute-remote-participant-audio)
+- [Mute Remote Participant Video](#mute-remote-participant-video)
 - [End Rtc Session](#end-the-call)
 - [End Rtc Connection](#disconnect-rtc-connection)
 - [Switch Streams](#switch-streams)
@@ -371,14 +373,13 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   Property                Type            Description
   -----------------------------------------------------------------------------
   message                 String          (MANDATORY) Message to be sent
-  rootNodeId              UUID            (MANDATORY) timebased v1 uuid
-  childNodeId             UUID            (MANDATORY) timebased v1 uuid
+  id                      string          (MANDATORY) Unique id for the message
   ```
 
 * **Example** <br />
 
   ```javascript
-    irisRtcSession.sendChatMessage(message, rootNodeId, childNodeId)
+    irisRtcSession.sendChatMessage(id, message)
   ```
   * Call sendChatMessage API of Iris Rtc Session to send messages.
 
@@ -485,6 +486,40 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
     irisRtcSession.videoMuteToggle()
   ```  
   * Call videoMuteToggle API of Iris Session when you want to mute video
+
+
+**Mute Remote Participant Audio**
+----
+  This API allows user to mute remote participant audio. 
+
+* **API Name** <br />
+  
+  ```javascript
+    IrisRtcSession.muteParticipantAudio
+  ```
+* **Example** <br />
+
+  ```javascript
+    irisRtcSession.muteParticipantAudio(jid, mute)
+  ```
+  * Call muteParticipantAudio API of Iris Session when you want to mute participant audio.
+
+**Mute Remote Participant Video**
+----
+  This API allows user to mute remote participant video. 
+
+* **API Name** <br />
+
+  ```javascript
+    IrisRtcSession.muteParticipantVideo
+  ```
+
+* **Example** <br />
+
+  ```javascript
+    irisRtcSession.muteParticipantVideo(jid, mute)
+  ```  
+  * Call muteParticipantVideo API of Iris Session when you want to mute participant video
 
 
 **Set Display Name**
@@ -997,13 +1032,6 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
       // Render local video and audio to user
       // Pass these tracks to createSession API of IriRtcSession to create session
     } 
-    
-    // Call toggleAudioMute API of Iris Stream when you want to mute audio.
-    irisRtcSession.audioMuteToggle()
-  
-    // Call toggleVideoMute API of Iris Stream when you want to mute video.
-    irisRtcSession.videoMuteToggle()
-
 
     // Create Iris Rtc Session
     //
@@ -1053,9 +1081,8 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
     // To Send and Receive chat messages
     // To send chat message call sendChatMessage
     // message - text message to be sent
-    // rootNodeId - timebased uuid v1
-    // childNodeId - timebased uuid v1
-    irisRtcSession.sendChatMessage(message, rootNodeId, childNodeId);
+    // id - Unique Id for the message
+    irisRtcSession.sendChatMessage(id, message,);
 
     // To receive chat message
     // Listen to onChatMessage on session object
@@ -1079,6 +1106,18 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
      // Switches the stream from one camera or other
      // can share screen as well
     }
+
+    // Call toggleAudioMute API of Iris Stream when you want to mute audio.
+    irisRtcSession.audioMuteToggle()
+  
+    // Call toggleVideoMute API of Iris Stream when you want to mute video.
+    irisRtcSession.videoMuteToggle()
+
+    // Call muteParticipantAudio API of Iris Stream when you want to mute participant audio.
+    irisRtcSession.muteParticipantAudio(jid, mute)
+  
+    // Call muteParticipantVideo API of Iris Stream when you want to mute participant video.
+    irisRtcSession.muteParticipantVideo(jid, mute)
 
     // End Iris Rtc Session
     // Call endSession API of Iris Session to end the call
