@@ -663,8 +663,8 @@ RtcStats.prototype.getPeerStats = function(conn, statsInterval) {
 
         if (obj.names) {
             var names = obj.names();
-            logger.log(logger.level.VERBOSE, "RtcStats", "Names of each stats object : " + JSON.stringify(names));
-            logger.log(logger.level.VERBOSE, "RtcStats", "Names of each stats object : " + JSON.stringify(obj.stat(names[i])));
+            // logger.log(logger.level.VERBOSE, "RtcStats", "Names of each stats object : " + JSON.stringify(names));
+            // logger.log(logger.level.VERBOSE, "RtcStats", "Names of each stats object : " + JSON.stringify(obj.stat(names[i])));
 
             for (var i = 0; i < names.length; ++i) {
                 if (names[i] == 'audioOutputLevel') {

@@ -407,8 +407,22 @@ RtcXmpp.prototype.sendPresenceAlive = function sendPresenceAlive(config) {
     var pres = new xmppClient.Element(
         'presence', {
             to: config.emRoomId + '@' + this.rtcServer.replace('xmpp', 'conference') + '/' +
-                this.jid + '/' + this.xmppJid.resource
+                this.jid + '/' + this.xmppJid.resource,
+            id: 'c2p1'
         });
+
+    if (typeof config.audiomuted !== 'undefined') {
+        pres.c('audiomuted').t(config.audiomuted);
+    }
+
+    if (typeof config.videomuted !== 'undefined') {
+        pres.c('videomuted').t(config.videomuted);
+    }
+    if (config.name) {
+        pres.c('nick').t(config.name);
+    }
+
+
     pres.c('data', {
         'xmlns': "urn:xmpp:comcast:info",
         'traceid': config.traceId,
@@ -1450,17 +1464,26 @@ RtcXmpp.prototype._onChat = function(stanza) {
     var self = this;
     var from = stanza.attrs.from;
     var to = stanza.attrs.to;
+    var id = stanza.attrs.id;
     var body = stanza.getChild('body');
     if (body) {
         var message = body.getText();
         logger.log(logger.level.INFO, "RtcXmpp",
             " _onChat : message: " + message);
         if (message) {
-            if (message == 'mute') {
-
-                self.emit('onMute', true);
-            } else if (message == 'unmute') {
-                self.emit('onMute', false);
+            //Handle mute/unmute of the particpant
+            if (id && id == "mute") {
+                if (message == 'mute') {
+                    self.emit('onVideoMute', true);
+                } else if (message == 'unmute') {
+                    self.emit('onVideoMute', false);
+                } else if (message == 'audioMute') {
+                    self.emit('onAudioMute', true);
+                } else if (message == 'audioUnmute') {
+                    self.emit('onAudioMute', false);
+                }
+            } else {
+                // For handling chat messages
             }
         }
     }
@@ -1511,12 +1534,25 @@ RtcXmpp.prototype._onGroupChat = function(stanza) {
                     statusMessage: "Failed"
                 }
             } else if (200 <= status < 300) {
-                var rootNodeId = data.attrs.rootnodeid;
-                var childNodeId = data.attrs.childnodeid;
+
+                var rootNodeId = "";
+                var childNodeId = "";
+                var timereceived = "";
+
+                if (data.attrs.rootnodeid)
+                    rootNodeId = data.attrs.rootnodeid;
+
+                if (data.attrs.childnodeid)
+                    childNodeId = data.attrs.childnodeid;
+
+                if (data.attrs.timereceived)
+                    timereceived = data.attrs.timereceived;
+
                 chatAckJson = {
                     id: id,
                     rootNodeId: rootNodeId,
                     childNodeId: childNodeId,
+                    timeReceived: timereceived,
                     statusCode: status,
                     statusMessage: "Success"
                 }
@@ -1571,12 +1607,12 @@ RtcXmpp.prototype.sendGroupChatMessage = function(config, id, message) {
 }
 
 
-RtcXmpp.prototype.sendMute = function(to, isMute) {
+RtcXmpp.prototype.sendVideoMute = function(to, isMute) {
 
     this.index++;
     var mute = new xmppClient.Element(
             'message', {
-                id: this.index.toString() + ':sendPrivateMessage',
+                id: 'mute',
                 from: this.jid,
                 to: to,
                 type: 'chat',
@@ -1592,7 +1628,7 @@ RtcXmpp.prototype.sendAudioMute = function(to, isMute) {
     this.index++;
     var mute = new xmppClient.Element(
             'message', {
-                id: this.index.toString() + ':sendPrivateMessage',
+                id: 'mute',
                 from: this.jid,
                 to: to,
                 type: 'chat',

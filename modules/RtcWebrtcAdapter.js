@@ -43,5 +43,12 @@ function rtcAdapterInit() {
         RtcWebrtcAdapter.RTCPeerConnection = mozRTCPeerConnection;
         RtcWebrtcAdapter.RTCIceCandidate = mozRTCIceCandidate;
         RtcWebrtcAdapter.getUserMedia = navigator.mozGetUserMedia.bind(navigator);
+    } else if (RtcBrowserType.isSafari()) {
+        RtcWebrtcAdapter.RTCPeerConnection = RTCPeerConnection;
+        RtcWebrtcAdapter.RTCIceCandidate = RTCIceCandidate;
+        RtcWebrtcAdapter.getUserMedia = function(constraints, cb, errcb) {
+            navigator.mediaDevices.getUserMedia(constraints)
+                .then(cb, errcb);
+        }.bind(navigator);
     }
 }
