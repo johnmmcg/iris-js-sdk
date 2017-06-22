@@ -35,7 +35,7 @@ RtcConfig.json = {
 
     authMgrPath: '/v1/login/',
     audioForSessions: true,
-    sdkVersion: '3.3.3',
+    sdkVersion: '3.3.4',
 }
 
 /**
