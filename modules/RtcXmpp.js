@@ -1462,9 +1462,15 @@ RtcXmpp.prototype._onChat = function(stanza) {
         " _onChat");
 
     var self = this;
-    var from = stanza.attrs.from.includes('conference') ? stanza.attrs.from.split('/')[1] : stanza.attrs.from;
+    var from = "";
+    var roomId = "";
+    if (stanza.attrs.from.includes('conference')) {
+        from = stanza.attrs.from.substring(stanza.attrs.from.indexOf('/') + 1);
+        roomId = stanza.attrs.from.split('/')[0].split('@')[0];
+    } else {
+        from = stanza.attrs.from;
+    }
     // var to = stanza.attrs.to.split('/')[0];
-    var from = stanza.attrs.from;
     var to = stanza.attrs.to;
     var id = stanza.attrs.id;
     var body = stanza.getChild('body');
@@ -1503,9 +1509,19 @@ RtcXmpp.prototype._onGroupChat = function(stanza) {
         " _onGroupChat");
 
     var self = this;
+
+    var from = "";
+    var roomId = "";
+    if (stanza.attrs.from.includes('conference')) {
+        from = stanza.attrs.from.substring(stanza.attrs.from.indexOf('/') + 1);
+        roomId = stanza.attrs.from.split('/')[0].split('@')[0];
+    } else {
+        from = stanza.attrs.from;
+    }
+
     // var from = stanza.attrs.from.split('/')[0];
     // var to = stanza.attrs.to.split('/')[0];
-    var from = stanza.attrs.from;
+    // var from = stanza.attrs.from;
     var to = stanza.attrs.to;
     var body = stanza.getChild('body');
     var id = stanza.attrs.id;
@@ -1532,6 +1548,7 @@ RtcXmpp.prototype._onGroupChat = function(stanza) {
             } else if (status >= 400) {
                 chatAckJson = {
                     id: id,
+                    roomId: roomId,
                     statusCode: status,
                     statusMessage: "Failed"
                 }
@@ -1552,6 +1569,7 @@ RtcXmpp.prototype._onGroupChat = function(stanza) {
 
                 chatAckJson = {
                     id: id,
+                    roomId: roomId,
                     rootNodeId: rootNodeId,
                     childNodeId: childNodeId,
                     timeReceived: timereceived,
@@ -1561,6 +1579,7 @@ RtcXmpp.prototype._onGroupChat = function(stanza) {
             } else {
                 chatAckJson = {
                     id: id,
+                    roomId: roomId,
                     statusCode: status,
                     statusMessage: "Error"
                 }
@@ -1577,10 +1596,11 @@ RtcXmpp.prototype._onGroupChat = function(stanza) {
             var childNodeId = data.attrs.childnodeid;
             var chatMsg = {
                 // id: id,
+                roomId: roomId,
                 from: from,
                 message: message,
                 rootNodeId: rootNodeId,
-                childNodeId: childNodeId
+                childNodeId: childNodeId,
             }
 
             if (chatMsg) {
