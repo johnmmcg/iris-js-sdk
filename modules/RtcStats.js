@@ -325,9 +325,13 @@ RtcStats.prototype.submitStats = function() {
     logger.log(logger.level.INFO, "IrisRtcStats",
         "FinalStats :: " + JSON.stringify(statsPayload));
 
-    sendRequest(self.options.UEStatsServer, statsPayload);
+    if (self.options.UEStatsServer) {
+        sendRequest(self.options.UEStatsServer, statsPayload);
+    } else {
+        logger.log(logger.level.ERROR, "IrisRtcStats",
+            "config.urls.UEStatsServer is not available");
+    }
 };
-
 
 function getStats(peerconnection, callback, errback) {
     if (RtcBrowserType.isFirefox()) {

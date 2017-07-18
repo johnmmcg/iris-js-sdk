@@ -1013,12 +1013,12 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
  
     var irisRtcStream = new IrisRtcStream();
     
-    // User can set stream type as video or audio with resolution
+    // set stream type as video or audio and video resolution
     var streamConfig = {
         "streamType": "video", // audio, pstn
         "resolution": "hd", //640, 320
     }
-    // User can media constraints
+    // Set media constraints, this is optional if you are setting streamType above
     var constraints = {
       video : { mandatory: {}, optional: [] },
       audio : { mandatory: {}, optional: [] }
@@ -1043,11 +1043,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
     
     var irisRtcSession = new IrisRtcSession();
     irisRtcSession.createSession(userConfig, connection, stream);
-    
-    // To set display name
-    // Call this API to set display name
-    irisRtcSession.setDisplayName(name);
-    
+
     // Wait for irisRtcSession.onSessionCreated callback event 
     irisRtcSession.onSessionCreated = function(roomName, sessionId, myJid) {
       // Session is created
@@ -1077,7 +1073,12 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
       // Remove local tracks from conference
       // end the session
     }
+        
+    // To set display name
+    // Call this API to set display name
+    irisRtcSession.setDisplayName(name);
     
+
     // To Send and Receive chat messages
     // To send chat message call sendChatMessage
     // message - text message to be sent
