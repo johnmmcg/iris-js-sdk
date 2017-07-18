@@ -115,7 +115,7 @@ IrisRtcConnection.prototype.close = function() {
     this.domain = null;
     this.iceServerJson = null;
     this.myJid = null;
-}
+};
 
 /**
  * Function to retrieve XMPP server details
@@ -153,7 +153,7 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId) {
     try {
         // Send the http request and wait for response
         var req = https.request(options, function(response) {
-            var body = ''
+            var body = '';
 
             // Callback for data
             response.on('data', function(chunk) {
@@ -185,7 +185,7 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId) {
                     resJson.Rtc_server = resJson.websocket_server;
                     resJson.Xmpp_token = resJson.websocket_server_token;
                     resJson.Xmpp_token_expiry_time = resJson.websocket_server_token_expiry_time;
-                    resJson.Turn_credentials = resJson.turn_credentials
+                    resJson.Turn_credentials = resJson.turn_credentials;
                 }
                 // Check if we have all the data
                 if (!resJson.Rtc_server || !resJson.Xmpp_token || !resJson.Xmpp_token_expiry_time) {
@@ -241,7 +241,7 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId) {
     }
 
     return 0; // Success
-}
+};
 
 /**
  * Function to connect to XMPP server
@@ -321,21 +321,18 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
                     logger.log(logger.level.VERBOSE, "IrisRtcConnection",
                         " onIncoming userdata " + JSON.stringify(userdata)
                     );
-                    if (userdata.notification.type == 'pstn') {
-                        // userdata.notification.type = 'audio';
-                    }
-
                 } catch (e) {
                     logger.log(logger.level.ERROR, "IrisRtcConnection", " onIncoming JSON parse failed");
                 }
             }
-            if (userdata) {
-                config = response;
+            config = response;
+            config.sessionType = "join";
+            config.anonymous = false;
+            if (userdata)
                 config.userdata = userdata;
-                config.sessionType = "join";
-                config.anonymous = false;
-                self.onNotification(config);
-            }
+
+            self.onNotification(config);
+
         });
     }
 
@@ -347,7 +344,7 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
 
     // Call connect method
     this.xmpp.connect(xmppServer, path, this.userID, this.traceId, this.token);
-}
+};
 
 /**
  * Function to reconnect connection
@@ -389,7 +386,7 @@ IrisRtcConnection.prototype._doreconnect = function() {
         }
 
     }, delay);
-}
+};
 
 /**
  * Called when websocket is opened
@@ -397,20 +394,20 @@ IrisRtcConnection.prototype._doreconnect = function() {
  */
 IrisRtcConnection.prototype.onOpen = function() {
     this.onConnected();
-}
+};
 
 /**
  * Callback for websocket is disconnection
  */
 IrisRtcConnection.prototype.onClose = function() {
     // this.onDisconnected();
-}
+};
 
 /**
  * Called when websocket has a message
  * @private
  */
-IrisRtcConnection.prototype.onMessage = function(data, flags) {}
+IrisRtcConnection.prototype.onMessage = function(data, flags) {};
 
 /**
  * Called when websocket has a error
@@ -418,7 +415,7 @@ IrisRtcConnection.prototype.onMessage = function(data, flags) {}
  */
 IrisRtcConnection.prototype.onError = function(e) {
     this.onConnectionFailed(e);
-}
+};
 
 /**
  * Called when connection has an event
@@ -427,34 +424,47 @@ IrisRtcConnection.prototype.onError = function(e) {
 IrisRtcConnection.prototype.sendEvent = function(state, details) {
     var eventdata = { "type": "connection", "state": state, "details": details };
     this.onEvent(eventdata);
-}
+};
 
 /**
  * Called when connection has an event
  */
 IrisRtcConnection.prototype.onEvent = function(event) {
 
-}
+};
 
 /**
  * Called when websocket is connection is established
  */
 IrisRtcConnection.prototype.onConnected = function() {
     // Same as onOpen
-}
+};
 
 /**
  *  Called when websocket has a error
  */
 IrisRtcConnection.prototype.onConnectionFailed = function(e) {
     // Same as onError
-}
+};
 
 /**
  * This callback is called when an incoming call notification is received and
  * notifies client about the incoming call and passes notification information received.
  * @param {json} notificationInfo - Notfication payload received from the remote participant
+ * @param {string} notificationInfo.type - It can be "notify" or "cancel"
+ * @param {string} notificationInfo.roomId - Room id to be joined
+ * @param {string} notificationInfo.routingId - Routing Id of the user calling
+ * @param {string} notificationInfo.roomtoken - Room token
+ * @param {string} notificationInfo.roomtokenexpirytime - Room token expiry time
+ * @param {string} notificationInfo.traceId - Trace id for the call
+ * @param {string} notificationInfo.userdata - user related data
+ * @param {string} notificationInfo.userdata.data - User data like cname
+ * @param {string} notificationInfo.userdata.data.cname - cname set by the caller
+ * @param {string} notificationInfo.userdata.data.cid - Id of the caller
+ * @param {string} notificationInfo.userdata.notification - Notification related topic or srcTN
+ * @param {string} notificationInfo.userdata.notification.srcTN - Telephone number of caller
+ * @param {string} notificationInfo.userdata.notification.topic - Notification topic
  */
 IrisRtcConnection.prototype.onNotification = function(notificationInfo) {
 
-}
+};

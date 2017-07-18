@@ -43,7 +43,7 @@ IrisRtcStream.prototype.createStream = function(streamConfig) {
         rtcConfig.streamConfig = streamConfig;
 
         // Get media constraints required to getUserMedia 
-        var constraints = self.getMediaConstraints(streamConfig);
+        var constraints = getMediaConstraints(streamConfig);
         if (!constraints) {
             return;
         }
@@ -54,11 +54,18 @@ IrisRtcStream.prototype.createStream = function(streamConfig) {
         // Call getusermedia
 
         // return new Promise(function(resolve, reject) {
-        return self.getUserMedia(constraints).then(function(stream) {
+        return getUserMedia(constraints).then(function(stream) {
             logger.log(logger.level.INFO, "IrisRtcStream",
                 " getUserMedia Success with constraints " + JSON.stringify(constraints));
 
             if (stream) {
+                // Mute the stream before it is being sent to client
+                if (streamConfig.startMutedStream) {
+                    if (stream.getVideoTracks() && stream.getVideoTracks().length >= 1)
+                        stream.getVideoTracks()[0].enabled = false;
+                    if (stream.getAudioTracks() && stream.getAudioTracks().length >= 1)
+                        stream.getAudioTracks()[0].enabled = false;
+                }
 
                 self.localStream = stream;
 
@@ -81,8 +88,7 @@ IrisRtcStream.prototype.createStream = function(streamConfig) {
  * Get the media constraints
  * @private
  */
-IrisRtcStream.prototype.getMediaConstraints = function(streamConfig) {
-    var self = this;
+function getMediaConstraints(streamConfig) {
     var constraints = { audio: false, video: false };
 
     //Check for streamConfig availability
@@ -94,6 +100,11 @@ IrisRtcStream.prototype.getMediaConstraints = function(streamConfig) {
     if (streamConfig.constraints) {
         if (streamConfig.constraints.video || streamConfig.constraints.audio) {
             constraints = streamConfig.constraints;
+
+            if (streamConfig.constraints.video) {
+                setParamsToConstraints(streamConfig, constraints);
+            }
+
             return constraints;
         } else {
             logger.log(logger.level.ERROR, "IrisRtcStream", "Invalid constraints in streamConfig " + JSON.stringify(streamConfig));
@@ -103,20 +114,10 @@ IrisRtcStream.prototype.getMediaConstraints = function(streamConfig) {
             constraints.video = { mandatory: {}, optional: [] };
             constraints.audio = { mandatory: {}, optional: [] };
 
-            //Set the required resolution
-            if (streamConfig.resolution) {
-                _setResolution(constraints, streamConfig.resolution);
+            if (constraints.video) {
+                setParamsToConstraints(streamConfig, constraints);
             }
 
-            // Set required bandwidth
-            if (streamConfig.bandwidth) {
-                _setBandwidth(constraints, streamConfig.bandwidth);
-            }
-
-            // Set required frames per second
-            if (streamConfig.fps) {
-                _setFPS(constraints, streamConfig.fps);
-            }
         } else if (streamConfig.streamType == "audio") {
             constraints.video = false;
             constraints.audio = { mandatory: {}, optional: [] };
@@ -129,12 +130,30 @@ IrisRtcStream.prototype.getMediaConstraints = function(streamConfig) {
     }
 }
 
+function setParamsToConstraints(streamConfig, constraints) {
+
+    //Set the required resolution
+    if (streamConfig.resolution) {
+        _setResolution(constraints, streamConfig.resolution);
+    }
+
+    // Set required bandwidth
+    if (streamConfig.bandwidth) {
+        _setBandwidth(constraints, streamConfig.bandwidth);
+    }
+
+    // Set required frames per second
+    if (streamConfig.fps) {
+        _setFPS(constraints, streamConfig.fps);
+    }
+}
+
 /**
  * Gets local media stream 
  * @param {json} constraints - get user media constraints for 
  * @private
  */
-IrisRtcStream.prototype.getUserMedia = function(constraints) {
+function getUserMedia(constraints) {
     try {
         logger.log(logger.level.INFO, "IrisRtcStream", " getUserMedia");
 
@@ -150,7 +169,7 @@ IrisRtcStream.prototype.getUserMedia = function(constraints) {
     } catch (error) {
         logger.log(logger.level.ERROR, "IrisRtcStream", " Failed to getUserMedia");
     }
-}
+};
 
 /**
  * Called when a local stream is created.
@@ -158,7 +177,7 @@ IrisRtcStream.prototype.getUserMedia = function(constraints) {
  */
 IrisRtcStream.prototype.onLocalStream = function(stream) {
 
-}
+};
 
 /**
  * @private
@@ -181,23 +200,23 @@ IrisRtcStream.prototype.onStreamEndedListener = function(stream) {
     } catch (error) {
         logger.log(logger.level.ERROR, "IrisRtcStream", " onStreamEndedListener ", error);
     }
-}
+};
 
 /**
  * Callback when iris video stream is stopped
  * @private
  */
 IrisRtcStream.prototype.irisVideoStreamStopped = function() {
-    logger.log(logger.level.INFO, "IrisRtcStream", "Stream is stopped")
-}
+    logger.log(logger.level.INFO, "IrisRtcStream", "Stream is stopped");
+};
 
 /**
  * Callback when iris audio stream is stopped
  * @private
  */
 IrisRtcStream.prototype.irisAudioStreamStopped = function() {
-    logger.log(logger.level.INFO, "IrisRtcStream", "Stream is stopped")
-}
+    logger.log(logger.level.INFO, "IrisRtcStream", "Stream is stopped");
+};
 
 /**
  * This API stops the given media stream
@@ -219,7 +238,7 @@ IrisRtcStream.prototype.stopMediaStream = function(mediaStream) {
     if (mediaStream.stop) {
         mediaStream.stop();
     }
-}
+};
 
 /** 
  *  Mute or Unmute the local video
@@ -241,7 +260,7 @@ IrisRtcStream.prototype.videoMuteToggle = function() {
     } catch (error) {
         logger.log(logger.level.ERROR, "IrisRtcStream", "videoMuteToggle failed : ", error);
     }
-}
+};
 
 /**
  * Mute or Unmute the local audio
@@ -263,7 +282,7 @@ IrisRtcStream.prototype.audioMuteToggle = function() {
     } catch (error) {
         logger.log(logger.level.ERROR, "IrisRtcStream", "audioMuteToggle failed : ", error);
     }
-}
+};
 
 
 /**
@@ -330,7 +349,7 @@ IrisRtcStream.prototype.getMediaDevices = function() {
                 })
         })
 
-    }
+    };
     // Defining the API module
 
 module.exports = IrisRtcStream;

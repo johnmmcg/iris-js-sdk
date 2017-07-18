@@ -71,107 +71,109 @@ util.inherits(RtcXmpp, eventEmitter);
 //
 RtcXmpp.prototype.connect = function connect(server, path, jid, traceId, token) {
 
-        logger.log(logger.level.INFO, "RtcXmpp",
-            " Connecting to server at  " + "wss://" + server + path);
+    logger.log(logger.level.INFO, "RtcXmpp",
+        " Connecting to server at  " + "wss://" + server + path);
 
-        // If already not created 
-        /*if (this.client != null )
-        {
-          logger.log(logger.level.INFO, "RtcXmpp.connect", 
-                    " Client already connected ");
-          return;
-        }*/
+    // If already not created 
+    /*if (this.client != null )
+    {
+      logger.log(logger.level.INFO, "RtcXmpp.connect", 
+                " Client already connected ");
+      return;
+    }*/
 
-        // Create the xmpp client
-        this.client = new xmppClient({
-            jid: jid,
-            password: "",
-            preferred: 'NOAUTH',
-            xmlns: 'jabber:client',
-            websocket: {
-                url: "wss://" + server + path,
-            },
-            irisOptions: {
-                routingId: jid,
-                traceid: traceId
-            }
-        });
+    // Create the xmpp client
+    this.client = new xmppClient({
+        jid: jid,
+        password: "",
+        preferred: 'NOAUTH',
+        xmlns: 'jabber:client',
+        websocket: {
+            url: "wss://" + server + path,
+        },
+        irisOptions: {
+            routingId: jid,
+            traceid: traceId
+        }
+    });
 
-        // Assign self
-        var self = this;
+    // Assign self
+    var self = this;
 
-        // Store variables
-        this.jid = jid;
-        this.token = token;
-        this.server = server;
+    // Store variables
+    this.jid = jid;
+    this.token = token;
+    this.server = server;
 
-        // Register for events emitted from XMPP client
-        this.client.on('stanza', function(stanza) {
-            //logger.log(logger.level.INFO, "RtcXmpp.connect", 'Received stanza: ' +  stanza.toString())
-            self.onMessage(stanza);
-        });
+    // Register for events emitted from XMPP client
+    this.client.on('stanza', function(stanza) {
+        //logger.log(logger.level.INFO, "RtcXmpp.connect", 'Received stanza: ' +  stanza.toString())
+        self.onMessage(stanza);
+    });
 
-        // Online event
-        this.client.on('online', function(data) {
-            logger.log(logger.level.INFO, "RtcXmpp.connect", "XMPP connection established" +
-                " data " + JSON.stringify(data));
+    // Online event
+    this.client.on('online', function(data) {
+        logger.log(logger.level.INFO, "RtcXmpp.connect", "XMPP connection established" +
+            " data " + JSON.stringify(data));
 
-            // Store jid
-            self.xmppJid = data.jid;
+        // Store jid
+        self.xmppJid = data.jid;
 
-            self.emit('onOpen', data.jid);
+        self.emit('onOpen', data.jid);
 
-            // Start a timer to send ping to keep this connection alive
-            self.startPing();
+        // Start a timer to send ping to keep this connection alive
+        self.startPing();
 
-        });
+    });
 
-        // Offline event
-        this.client.on('offline', function() {
-            logger.log(logger.level.INFO, "RtcXmpp.connect", "XMPP connection disconnected");
+    // Offline event
+    this.client.on('offline', function() {
+        logger.log(logger.level.INFO, "RtcXmpp.connect", "XMPP connection disconnected");
 
-            // Stop the ping timer
-            //clearTimeout(self.timer);
-            self.stopPing();
+        // Stop the ping timer
+        //clearTimeout(self.timer);
+        self.stopPing();
 
-            this.client = null;
-
-            self.emit('onClose');
-        });
-
-        // Error event
-        this.client.on('error', function(e) {
-            logger.log(logger.level.INFO, "RtcXmpp.connect error ", e);
-            self.emit('onError', e);
-        });
-    }
-    // Method to disconnect from websocket server
-    //
-    // @param {Nothing}
-    // @returns {retValue} 0 on success, negative value on error
-    //
-RtcXmpp.prototype.disconnect = function disconnect() {
-        this.client = null; // Is there a disconnect method?
-        this.ws = null;
         this.client = null;
-        this.timer = null;
-        this.prestimer = [];
-        this.token = null;
-        this.jid = null;
-        this.successCb = null;
-        this.errorCb = null;
-        this.server = null;
-        this.rtcServer = null;
-        this.xmppJid = null;
-        this.sid = null;
-        this.localSDP = null;
-        this.presIQ = null;
-    }
-    // Method to create xmpp root event
-    //
-    // @param None
-    // @returns {retValue} 0 on success, negative value on error
-    //
+
+        self.emit('onClose');
+    });
+
+    // Error event
+    this.client.on('error', function(e) {
+        logger.log(logger.level.INFO, "RtcXmpp.connect error ", e);
+        self.emit('onError', e);
+    });
+}
+
+// Method to disconnect from websocket server
+//
+// @param {Nothing}
+// @returns {retValue} 0 on success, negative value on error
+//
+RtcXmpp.prototype.disconnect = function disconnect() {
+    this.client = null; // Is there a disconnect method?
+    this.ws = null;
+    this.client = null;
+    this.timer = null;
+    this.prestimer = [];
+    this.token = null;
+    this.jid = null;
+    this.successCb = null;
+    this.errorCb = null;
+    this.server = null;
+    this.rtcServer = null;
+    this.xmppJid = null;
+    this.sid = null;
+    this.localSDP = null;
+    this.presIQ = null;
+}
+
+// Method to create xmpp root event
+//
+// @param None
+// @returns {retValue} 0 on success, negative value on error
+//
 RtcXmpp.prototype.sendCreateRootEventWithRoomId = function sendCreateRootEventWithRoomId(config) {
 
     logger.log(logger.level.VERBOSE, "RtcXmpp",
@@ -446,8 +448,16 @@ RtcXmpp.prototype.sendPresenceAlive = function sendPresenceAlive(config) {
 //
 RtcXmpp.prototype.stopPresenceAlive = function stopPresenceAlive(roomid) {
 
-    // Stop the presence timer
-    clearInterval(this.prestimer[roomid]);
+    if (!roomid) {
+        for (var member in this.prestimer) {
+            clearInterval(this.prestimer[member]);
+            delete this.prestimer[member];
+        }
+    } else {
+        // Stop the presence timer
+        clearInterval(this.prestimer[roomid]);
+        delete this.prestimer[roomid];
+    }
 }
 
 // Method to send ping
@@ -729,7 +739,7 @@ RtcXmpp.prototype.sendAllocate = function sendAllocate(data) {
     // Add properties
     conference.c('property', { "name": "bridge", "value": "jitsi-videobridge." + this.rtcServer });
     conference.c('property', { "name": "call_control", "value": this.rtcServer.replace('xmpp', 'callcontrol') });
-    conference.c('property', { "name": "channelLastN", "value": "-1" });
+    conference.c('property', { "name": "channelLastN", "value": data.channelLastN ? data.channelLastN : "-1" });
     conference.c('property', { "name": "adaptiveLastN", "value": "false" });
     conference.c('property', { "name": "adaptiveSimulcast", "value": "false" });
     conference.c('property', { "name": "openSctp", "value": "true" });
@@ -1396,14 +1406,25 @@ RtcXmpp.prototype._onPrivateIQ = function _onPrivateIQ(stanza) {
             "routingId": data.attrs.routingid,
             "rtcserver": data.attrs.rtcserver,
             "traceId": nTraceid,
-            "type": "incoming",
             "userdata": data.attrs.userdata,
             "roomtoken": data.attrs.roomtoken,
-            "roomtokenexpirytime": data.attrs.roomtokenexpirytime
+            "roomtokenexpirytime": data.attrs.roomtokenexpirytime,
+            "type": data.attrs.type
         };
 
-        // send the incoming message
-        self.emit('onIncoming', incomingConfig);
+        if (data.attrs.type) {
+            if (incomingConfig.type == 'notify') {
+                // send the incoming message
+                self.emit('onIncoming', incomingConfig);
+            } else if (incomingConfig.type == 'cancel' && !self.rtcServer) {
+                // send the incoming message
+                self.emit('onIncoming', incomingConfig);
+            }
+        } else {
+            // send the incoming message
+            self.emit('onIncoming', incomingConfig);
+        }
+
     } else {
         logger.log(logger.level.ERROR, "RtcXmpp._onPrivateIQ",
             " Received privateiq error");
@@ -1480,19 +1501,19 @@ RtcXmpp.prototype._onChat = function(stanza) {
             " _onChat : message: " + message);
         if (message) {
             //Handle mute/unmute of the particpant
-            if (id && id == "mute") {
-                if (message == 'mute') {
-                    self.emit('onVideoMute', true);
-                } else if (message == 'unmute') {
-                    self.emit('onVideoMute', false);
-                } else if (message == 'audioMute') {
-                    self.emit('onAudioMute', true);
-                } else if (message == 'audioUnmute') {
-                    self.emit('onAudioMute', false);
-                }
-            } else {
-                // For handling chat messages
+            // if (id && id == "mute") {
+            if (message == 'mute') {
+                self.emit('onVideoMute', true);
+            } else if (message == 'unmute') {
+                self.emit('onVideoMute', false);
+            } else if (message == 'audioMute') {
+                self.emit('onAudioMute', true);
+            } else if (message == 'audioUnmute') {
+                self.emit('onAudioMute', false);
             }
+            // } else {
+            // For handling chat messages
+            // }
         }
     }
 }
@@ -1549,6 +1570,7 @@ RtcXmpp.prototype._onGroupChat = function(stanza) {
                 chatAckJson = {
                     id: id,
                     roomId: roomId,
+                    from: from,
                     statusCode: status,
                     statusMessage: "Failed"
                 }
@@ -1570,6 +1592,7 @@ RtcXmpp.prototype._onGroupChat = function(stanza) {
                 chatAckJson = {
                     id: id,
                     roomId: roomId,
+                    from: from,
                     rootNodeId: rootNodeId,
                     childNodeId: childNodeId,
                     timeReceived: timereceived,

@@ -31,11 +31,9 @@ RtcConfig.json = {
     /* PROD keys */
     appKey: '',
     appSecret: '',
-
-
-    authMgrPath: '/v1/login/',
     audioForSessions: true,
-    sdkVersion: '3.3.4',
+    channelLastN: "-1",
+    sdkVersion: '3.3.4'
 }
 
 /**
@@ -49,7 +47,7 @@ RtcConfig.updateConfig = function updateConfig(userConfig) {
     for (key in userConfig) {
         RtcConfig.json[key] = userConfig[key];
     }
+    console.log("Iris LogLevel : " + RtcConfig.json.logLevel);
 }
 
-
-console.log("JS SDK Version : " + RtcConfig.json.sdkVersion);
+console.log("Iris JS SDK Version : " + RtcConfig.json.sdkVersion);
