@@ -121,12 +121,14 @@ IrisRtcSession.prototype.create = function(config, connection) {
     logger.log(logger.level.INFO, "IrisRtcSession",
         " Join session " + JSON.stringify(config));
 
-    // Init webrtc
-    // Create peerconnection now
-    self.initWebRTC(connection.iceServerJson, this.config.type);
+    if (this.config.type != "chat") {
+        // Init webrtc
+        // Create peerconnection now
+        self.initWebRTC(connection.iceServerJson, this.config.type);
 
-    // Add stream to peer connection
-    self.addStream(self.localStream);
+        // Add stream to peer connection
+        self.addStream(self.localStream);
+    }
 
     // Dont send create room for join room call
     if (config.sessionType != "join") {
@@ -151,7 +153,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
         self.state = IrisRtcSession.CONNECTING;
 
         sessionConfig = self.config;
-        if (rtcConfig.json.useBridge || (self.config.type == "pstn")) {
+        if ((rtcConfig.json.useBridge || (self.config.type == "pstn")) && self.config.type != "chat") {
             if (rtcConfig.json.channelLastN)
                 sessionConfig.channelLastN = rtcConfig.json.channelLastN;
 
