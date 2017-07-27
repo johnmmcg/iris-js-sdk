@@ -63,8 +63,14 @@ function IrisRtcConnection() {
  * 
  * @param {string} irisToken - Authorisation token or iris token is obtained from Auth manager by providing media token and authentication type 
  * @param {string} routingId - Unique participant Id of user. It is obtained from application server
+ * @param {string} eventManagerUrl - Event Manager url to make iris connection
  */
-IrisRtcConnection.prototype.connect = function(irisToken, routingId) {
+IrisRtcConnection.prototype.connect = function(irisToken, routingId, eventManagerUrl) {
+
+    if (this.state == IrisRtcConnection.CONNECTED) {
+        logger.log(logger.level.INFO, "IrisRtcConnection", "Iris Connection exits");
+        return;
+    }
 
     if (!irisToken || !routingId) {
         logger.log(logger.level.ERROR, "IrisRtcConnection", "irisToken and routingId are required to create a connection");
@@ -82,7 +88,7 @@ IrisRtcConnection.prototype.connect = function(irisToken, routingId) {
     self.userID = routingId;
     self.token = "Bearer " + irisToken;
 
-    if (self._getWSTurnServerInfo(self.token, self.userID) < 0) {
+    if (self._getWSTurnServerInfo(self.token, self.userID, eventManagerUrl) < 0) {
         logger.log(logger.level.ERROR, "IrisRtcConnection",
             "  Connection with XMPP server failed with error");
         self.onError(new Error("Connection with XMPP server failed"));
@@ -125,9 +131,9 @@ IrisRtcConnection.prototype.close = function() {
  * @returns {retValue} 0 on success, negative value on error
  * @private
  */
-IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId) {
+IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, eventManagerUrl) {
     // Error checking
-    if (!config.json.urls.eventManager ||
+    if (!(config.json.urls.eventManager || eventManagerUrl) ||
         !token ||
         !routingId) {
         logger.log(logger.level.ERROR, "IrisRtcConnection",
@@ -137,7 +143,7 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId) {
 
     // Options for wsturnserverinfo request
     var options = {
-        host: config.json.urls.eventManager,
+        host: config.json.urls.eventManager ? config.json.urls.eventManager : eventManagerUrl,
         path: '/v1/wsturnserverinfo/routingid/' + routingId,
         method: 'GET',
         headers: { "Authorization": token }
@@ -196,8 +202,8 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId) {
                 }
 
                 // Store the data for next time
-                if (config.json.useXmppServer) {
-                    self.xmppServer = config.json.useXmppServer;
+                if (config.json.wsServer) {
+                    self.xmppServer = config.json.wsServer;
                 } else {
                     self.xmppServer = resJson.Rtc_server;
                 }

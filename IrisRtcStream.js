@@ -224,7 +224,13 @@ IrisRtcStream.prototype.irisAudioStreamStopped = function() {
  */
 IrisRtcStream.prototype.stopMediaStream = function(mediaStream) {
     try {
+        if (!mediaStream) {
+            logger.log(logger.level.ERROR, "IrisRtcStream : mediaStream is null");
+            return;
+        }
+
         logger.log(logger.level.INFO, "IrisRtcStream : stopMediaStream");
+
         mediaStream.getTracks().forEach(function(track) {
             track.stop();
         });
@@ -338,18 +344,19 @@ function _setFPS(constraints, fps) {
  * Get the media devices
  */
 IrisRtcStream.prototype.getMediaDevices = function() {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-            console.log("enumerateDevices() not supported.");
-            return;
-        }
-        return new Promise(function(resolve, reject) {
-            navigator.mediaDevices.enumerateDevices()
-                .then(function(devices) {
-                    resolve(devices);
-                })
-        })
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        console.log("enumerateDevices() not supported.");
+        return;
+    }
+    return new Promise(function(resolve, reject) {
+        navigator.mediaDevices.enumerateDevices()
+            .then(function(devices) {
+                resolve(devices);
+            })
+    })
 
-    };
-    // Defining the API module
+};
+
+// Defining the API module
 
 module.exports = IrisRtcStream;
