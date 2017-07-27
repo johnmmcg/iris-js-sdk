@@ -115,8 +115,13 @@ IrisRtcSession.prototype.create = function(config, connection) {
 
     this.config.sessionId = this.sessionId;
     this.config.presenceType = "join";
-    this.config.audiomuted = "false";
-    this.config.videomuted = "false";
+    if (!self.localStream) {
+        this.config.audiomuted = "true";
+        this.config.videomuted = "true";
+    } else {
+        this.config.audiomuted = "false";
+        this.config.videomuted = "false";
+    }
 
     logger.log(logger.level.INFO, "IrisRtcSession",
         " Join session " + JSON.stringify(config));
@@ -133,7 +138,6 @@ IrisRtcSession.prototype.create = function(config, connection) {
     // Dont send create room for join room call
     if (config.sessionType != "join") {
         sessionConfig = this.config;
-        sessionConfig.traceId = this.traceId;
 
         connection.xmpp.sendCreateRootEventWithRoomId(sessionConfig);
     } else {
@@ -181,9 +185,9 @@ IrisRtcSession.prototype.create = function(config, connection) {
         self.config.roomtoken = response.eventdata.room_token;
         self.config.roomtokenexpirytime = response.eventdata.room_token_expiry_time;
 
-        if (rtcConfig.json.useXmppServer) {
-            self.config.rtcServer = rtcConfig.json.useXmppServer;
-            self.connection.xmpp.rtcServer = rtcConfig.json.useXmppServer;
+        if (rtcConfig.json.rtcServer) {
+            self.config.rtcServer = rtcConfig.json.rtcServer;
+            self.connection.xmpp.rtcServer = rtcConfig.json.rtcServer;
         } else {
             self.config.rtcServer = response.rtc_server;
         }
@@ -198,6 +202,10 @@ IrisRtcSession.prototype.create = function(config, connection) {
         } else {
             // Send the presence if room is created
             connection.xmpp.sendPresence(sessionConfig);
+
+            if (!rtcConfig.json.useBridge)
+                connection.xmpp.sendPresenceAlive(sessionConfig);
+
         }
 
         self.onCreated(response.eventdata.room_id);
@@ -302,7 +310,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
                     }
                     return;
                 }
-                self.onSessionJoined(response.roomName, self.sessionId, response.jid);
+                self.onJoined(response.roomName, self.sessionId, response.jid);
                 self.presenceState = IrisRtcSession.PRESENCE_JOINED;
 
                 logger.log(logger.level.INFO, "IrisRtcSession",
@@ -875,7 +883,8 @@ IrisRtcSession.prototype.end = function() {
         this.connection = null;
         this.emRoomId = null;
         this.participants = {};
-        this.peerconnection.close();
+        if (this.peerconnection)
+            this.peerconnection.close();
         this.peerconnection = null;
         this.stream = null;
         this.localSdp = null;
@@ -917,19 +926,16 @@ IrisRtcSession.prototype.onAddStream = function(event) {
 
         var streamId = self.getStreamID(event.stream);
 
-        if (event.stream.id == 'default' && self.config.useBridge) {
+        if (event && event.stream && event.stream.id && event.stream.id == 'default' && self.config.useBridge) {
             logger.log(logger.level.INFO, "IrisRtcSession", "Ignore onAddStream if streamId is default");
             return;
         }
 
-        // var streamId = self.getStreamID(event.stream);
+        logger.log(logger.level.INFO, "IrisRtcSession", "onAddStream : streamId : " + streamId);
 
         if (!streamId) {
-            logger.log(logger.level.INFO, "IrisRtcSession", "No streamId is found for the stream");
-
             logger.log(logger.level.INFO, "IrisRtcSession", "No streamId is found, still sending stream");
             this.onRemoteStream(event.stream);
-
         } else if (streamId && streamId.indexOf('mixedmslabel') === -1) {
             logger.log(logger.level.INFO, "IrisRtcSession", " StreamId is " + streamId);
             var ssrcLines = "";
@@ -941,7 +947,7 @@ IrisRtcSession.prototype.onAddStream = function(event) {
                 ssrcLines = self.peerconnection.remoteDescription ? SDPUtil.find_lines(self.peerconnection.remoteDescription.sdp, 'a=ssrc:') : [];
             }
 
-            logger.log(logger.level.INFO, "IrisRtcSession", "Remote SDP " + self.peerconnection.remoteDescription.sdp);
+            logger.log(logger.level.VERBOSE, "IrisRtcSession", "Remote SDP " + self.peerconnection.remoteDescription.sdp);
 
             ssrcLines = ssrcLines.filter(function(line) {
                 return ((line.indexOf('msid:' + streamId) !== -1));
@@ -995,6 +1001,8 @@ IrisRtcSession.prototype.onAddStream = function(event) {
                     logger.log(logger.level.ERROR, "IrisRtcSession", " onAddStream ", err);
                 }
             }
+        } else {
+            logger.log(logger.level.INFO, "IrisRtcSession", " Stream is mixedmslabel : streamId " + streamId);
         }
     } catch (error) {
         logger.log(logger.level.ERROR, "IrisRtcSession", " onAddStream ", error);
@@ -2462,10 +2470,13 @@ IrisRtcSession.prototype.onCreated = function(roomId) {
     this.onSessionCreated(roomId);
 };
 
-IrisRtcSession.prototype.onSessionJoined = function(roomName, sessionId, myJid) {
-    this.onSessionJoined(roomName, sessionId, myJid);
+/**
+ * @private
+ */
+IrisRtcSession.prototype.onJoined = function(roomId, sessionId, myJid) {
+    this.onSessionJoined(roomId, sessionId, myJid);
+}
 
-};
 
 /**
  * onParticipantJoined callback
@@ -2698,7 +2709,7 @@ function preferH264(sdp) {
     if (mLineIndex === null) return sdp;
 
     for (i = 0; i < sdpLines.length; i++) {
-        if (sdpLines[i].search('H264/90000') !== -1) {
+        if ((sdpLines[i].search('H264/90000') !== -1) || (sdpLines[i].search('h264/90000') !== -1)) {
             var opusPayload = extractSdp(sdpLines[i], /:(\d+) H264\/90000/i);
             if (opusPayload)
                 sdpLines[mLineIndex] = setDefaultCodec(sdpLines[mLineIndex], opusPayload);
@@ -2898,6 +2909,8 @@ IrisRtcSession.prototype.createSession = function(config, connection, stream) {
         if (!config.videoCodec)
             config.videoCodec = "h264";
 
+        config.sessionType = "create";
+
         self.localStream = stream;
         self.create(config, connection);
     }
@@ -2934,9 +2947,9 @@ IrisRtcSession.prototype.joinSession = function(config, connection, stream, noti
         config.traceId = notificationPayload.traceId;
 
         // Use custom xmmp server if available
-        if (rtcConfig.json.useXmppServer) {
-            config.rtcServer = rtcConfig.json.useXmppServer;
-            connection.xmpp.rtcServer = rtcConfig.json.useXmppServer;
+        if (rtcConfig.json.rtcServer) {
+            config.rtcServer = rtcConfig.json.rtcServer;
+            connection.xmpp.rtcServer = rtcConfig.json.rtcServer;
         } else {
             config.rtcServer = notificationPayload.rtcserver;
             connection.xmpp.rtcServer = notificationPayload.rtcserver;
@@ -2977,6 +2990,8 @@ IrisRtcSession.prototype.createChatSession = function(config, connection) {
         logger.log(logger.level.INFO, "IrisRtcSession",
             " Create session with config " + JSON.stringify(config));
 
+        config.sessionType = "create";
+
         self.create(config, connection);
     }
 };
@@ -3013,9 +3028,9 @@ IrisRtcSession.prototype.joinChatSession = function(config, connection, notifica
         config.sessionType = "join";
 
         // Use custom xmmp server if available
-        if (rtcConfig.json.useXmppServer) {
-            config.rtcServer = rtcConfig.json.useXmppServer;
-            connection.xmpp.rtcServer = rtcConfig.json.useXmppServer;
+        if (rtcConfig.json.rtcServer) {
+            config.rtcServer = rtcConfig.json.rtcServer;
+            connection.xmpp.rtcServer = rtcConfig.json.rtcServer;
         } else {
             config.rtcServer = notificationPayload.rtcserver;
             connection.xmpp.rtcServer = notificationPayload.rtcserver;
@@ -3046,11 +3061,21 @@ IrisRtcSession.prototype.setLocalTracks = function() {
 
 /**
  * Callback for succeffully created session
- * @param {string} roomName - roomName created
+ * @param {string} roomId - roomName created
  * @param {string} sessionId - Unique session id
  * @param {string} myJid - User's own jid
  */
-IrisRtcSession.prototype.onSessionCreated = function(roomName, sessionId, myJid) {
+IrisRtcSession.prototype.onSessionCreated = function(roomId) {
+
+}
+
+/**
+ * onSessionJoined is called when caller joins session.
+ * @param {string} roomId - RoomId to which user has joined 
+ * @param {string} sessionId - Unique Id of the session
+ * @param {string} myJid - Jid of the caller
+ */
+IrisRtcSession.prototype.onSessionJoined = function(roomId, sessionId, myJid) {
 
 };
 

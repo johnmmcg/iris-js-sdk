@@ -230,7 +230,7 @@ RtcXmpp.prototype.sendCreateRootEventWithRoomId = function sendCreateRootEventWi
 
                 // Callback when complete data is received
                 response.on('end', function() {
-                    logger.log(logger.level.INFO, "IrisRtcConnection",
+                    logger.log(logger.level.INFO, "RtcXmpp",
                         " Received server response  " + body);
 
                     // check if the status code is correct
@@ -325,6 +325,13 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
                     this.jid + '/' + this.xmppJid.resource,
                 type: "unavailable"
             });
+
+        pres.c('data', {
+            'xmlns': "urn:xmpp:comcast:info",
+            'traceid': config.traceId,
+            'host': this.server,
+        }).up();
+
         this.client.send(pres.tree());
 
         this.stopPresenceAlive(config.emRoomId);
@@ -509,14 +516,7 @@ RtcXmpp.prototype.sendSessionAccept = function sendSessionAccept(data) {
             initiator: data.to,
             responder: this.xmppJid.toString(),
             sid: this.sid
-        }).c('data', {
-            'xmlns': "urn:xmpp:comcast:info",
-            'traceid': data.traceId,
-            'childnodeid': data.childNodeId,
-            'rootnodeid': data.rootNodeId,
-            'event': "eventTypeConnect",
-            'host': this.server
-        }).up();
+        });
 
     // Create a variable for SDP
     this.localSDP = new SDP(data.sdp);
@@ -525,6 +525,15 @@ RtcXmpp.prototype.sendSessionAccept = function sendSessionAccept(data) {
 
     // get the xmpp element
     accept = this.localSDP.toJingle(accept, 'responder');
+
+    accept.c('data', {
+        'xmlns': "urn:xmpp:comcast:info",
+        'traceid': data.traceId,
+        'childnodeid': data.childNodeId,
+        'rootnodeid': data.rootNodeId,
+        'event': "eventTypeConnect",
+        'host': this.server
+    }).up();
 
     // Send the session-initiate
     this.client.send(accept.tree());
@@ -554,14 +563,7 @@ RtcXmpp.prototype.sendSessionInitiate = function sendSessionInitiate(data) {
                 initiator: this.xmppJid.toString(),
                 responder: data.to,
                 sid: this.sid
-            }).c('data', {
-                'xmlns': "urn:xmpp:comcast:info",
-                'traceid': data.traceId,
-                'childnodeid': data.childNodeId,
-                'rootnodeid': data.rootNodeId,
-                'event': "eventTypeConnect",
-                'host': this.server
-            }).up();
+            });
 
         this.index++;
         // Create a variable for SDP
@@ -569,6 +571,15 @@ RtcXmpp.prototype.sendSessionInitiate = function sendSessionInitiate(data) {
 
         // get the xmpp element
         initiate = this.localSDP.toJingle(initiate, 'initiator');
+
+        initiate = initiate.c('data', {
+            'xmlns': "urn:xmpp:comcast:info",
+            'traceid': data.traceId,
+            'childnodeid': data.childNodeId,
+            'rootnodeid': data.rootNodeId,
+            'event': "eventTypeConnect",
+            'host': this.server
+        }).up();
 
         // Send the session-initiate
         this.client.send(initiate.tree());
@@ -590,14 +601,7 @@ RtcXmpp.prototype.sendTransportInfo = function sendTransportInfo(data) {
             initiator: data.to,
             //                                  responder: this.xmppJid.toString(),
             sid: this.sid
-        }).c('data', {
-            'xmlns': "urn:xmpp:comcast:info",
-            'traceid': data.traceId,
-            'childnodeid': data.childNodeId,
-            'rootnodeid': data.rootNodeId,
-            'event': "eventTypeConnect",
-            'host': this.server
-        }).up();
+        });
 
     this.index++;
 
@@ -636,6 +640,16 @@ RtcXmpp.prototype.sendTransportInfo = function sendTransportInfo(data) {
             transportinfo = transportinfo.up(); // content			
         }
     }
+    transportinfo = transportinfo.up(); // jingle
+    transportinfo = transportinfo.c('data', {
+        'xmlns': "urn:xmpp:comcast:info",
+        'traceid': data.traceId,
+        'childnodeid': data.childNodeId,
+        'rootnodeid': data.rootNodeId,
+        'event': "eventTypeConnect",
+        'host': this.server
+    }).up();
+
 
     // Send the session-initiate
     this.client.send(transportinfo.tree());
@@ -694,6 +708,15 @@ RtcXmpp.prototype.requestCapabilities = function requestCapabilities(data) {
             .c('query', { 'xmlns': 'http://jabber.org/protocol/disco#info' }).up();
         this.index++;
 
+        // Add data element
+        caps.c('data', {
+            'xmlns': "urn:xmpp:comcast:info",
+            'traceid': data.traceId,
+            'childnodeid': data.childNodeId,
+            'rootnodeid': data.rootNodeId,
+            'event': "eventTypeConnect",
+            'host': this.server
+        });
         this.client.send(caps.tree());
     }
     // Method to send allocate request
@@ -1028,21 +1051,22 @@ RtcXmpp.prototype._onIQ = function _onIQ(stanza) {
 //
 RtcXmpp.prototype._onConference = function _onConference(stanza) {
 
-        // Check if it was a success
-        var conf = stanza.getChild("conference");
+    // Check if it was a success
+    var conf = stanza.getChild("conference");
 
-        // Get focus jid
-        if (conf.attrs.focusjid) {
-            var data = { "focusJid": conf.attrs.focusjid };
-            this.emit('onAllocateSuccess', data);
-        }
-
+    // Get focus jid
+    if (conf.attrs.focusjid) {
+        var data = { "focusJid": conf.attrs.focusjid };
+        this.emit('onAllocateSuccess', data);
     }
-    // Callback to to parse XMPP IQ
-    //
-    // @param {msg} stanza
-    // @returns Nothing
-    //
+
+}
+
+// Callback to to parse XMPP IQ
+//
+// @param {msg} stanza
+// @returns Nothing
+//
 RtcXmpp.prototype._onJingle = function _onJingle(stanza) {
 
     // We are interested in Jingle messages
@@ -1068,6 +1092,11 @@ RtcXmpp.prototype._onJingle = function _onJingle(stanza) {
             id: stanza.id,
             from: stanza.attrs.to
         });
+
+        ack.c('data', {
+            'xmlns': "urn:xmpp:comcast:info",
+            'host': this.server,
+        }).up();
 
         // send ack
         this.client.send(ack.tree());
@@ -1101,6 +1130,11 @@ RtcXmpp.prototype._onJingle = function _onJingle(stanza) {
             from: stanza.attrs.to
         });
 
+        ack.c('data', {
+            'xmlns': "urn:xmpp:comcast:info",
+            'host': this.server,
+        }).up();
+
         // send ack
         this.client.send(ack.tree());
 
@@ -1130,6 +1164,11 @@ RtcXmpp.prototype._onJingle = function _onJingle(stanza) {
             id: stanza.id,
             from: stanza.attrs.to
         });
+
+        ack.c('data', {
+            'xmlns': "urn:xmpp:comcast:info",
+            'host': this.server,
+        }).up();
 
         // send ack
         this.client.send(ack.tree());
@@ -1166,6 +1205,11 @@ RtcXmpp.prototype._onJingle = function _onJingle(stanza) {
             id: stanza.id,
             from: stanza.attrs.to
         });
+
+        ack.c('data', {
+            'xmlns': "urn:xmpp:comcast:info",
+            'host': this.server,
+        }).up();
 
         // send ack
         this.client.send(ack.tree());
@@ -1212,6 +1256,11 @@ RtcXmpp.prototype._onJingle = function _onJingle(stanza) {
             from: stanza.attrs.to
         });
 
+        ack.c('data', {
+            'xmlns': "urn:xmpp:comcast:info",
+            'host': this.server,
+        }).up();
+
         // send ack
         this.client.send(ack.tree());
 
@@ -1242,6 +1291,11 @@ RtcXmpp.prototype._onJingle = function _onJingle(stanza) {
             to: fromJid,
             id: stanza.id
         });
+
+        ack.c('data', {
+            'xmlns': "urn:xmpp:comcast:info",
+            'host': this.server,
+        }).up();
 
         // send ack
         this.client.send(ack.tree());
