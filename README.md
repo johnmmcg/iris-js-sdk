@@ -27,7 +27,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   
   ```html
-  <script src="https://unpkg.com/iris-js-sdk@3.3.5/dist/iris-js-sdk.min.js"></script>
+  <script src="https://unpkg.com/iris-js-sdk@3.3.6/dist/iris-js-sdk.min.js"></script>
   ```
 
 
@@ -906,7 +906,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   
   ```html
-  <script src="https://unpkg.com/iris-js-sdk@3.3.5/dist/iris-js-sdk.min.js"></script>
+  <script src="https://unpkg.com/iris-js-sdk@3.3.6/dist/iris-js-sdk.min.js"></script>
   ```
   
 ### Example for Using API's

@@ -33,7 +33,7 @@ RtcConfig.json = {
     appSecret: '',
     audioForSessions: true,
     channelLastN: "-1",
-    sdkVersion: '3.3.5'
+    sdkVersion: '3.3.6'
 }
 
 /**
