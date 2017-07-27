@@ -135,6 +135,17 @@ IrisRtcSession.prototype.create = function(config, connection) {
         self.addStream(self.localStream);
     }
 
+    // Create a DTMF Manager
+    if (self.peerconnection && self.localStream && self.localStream.getAudioTracks()) {
+        var audiotracks = self.localStream.getAudioTracks();
+        if (audiotracks) {
+            for (var i = 0; i < audiotracks.length; i++) {
+                DTMFManager(self, audiotracks[i], self.peerconnection);
+            }
+        }
+    }
+
+
     // Dont send create room for join room call
     if (config.sessionType != "join") {
         sessionConfig = this.config;
@@ -2848,6 +2859,61 @@ function preferOpus(sdp) {
     return sdp;
 };
 
+/**
+ * 
+ * @param {object} self - IrisRtcSession object
+ * @param {object} audioTrack - AudioTrack of local stream
+ * @param {object} peerconnection - Peer Connection object
+ * @private
+ */
+function DTMFManager(self, audioTrack, peerconnection) {
+    try {
+        pc = peerconnection;
+
+        if (!pc) {
+            logger.log(logger.level.ERROR, "IrisRtcSession", 'DTMFManager :: Peerconnection is null');
+            return;
+        }
+
+        if (!audioTrack) {
+            logger.log(logger.level.ERROR, "IrisRtcSession", 'DTMFManager :: No audio track');
+            return;
+        }
+
+        if (pc.getSenders) {
+            self.dtmfSender = pc.getSenders()[0].dtmf;
+        } else {
+            logger.log(logger.level.INFO, "IrisRtcSession", "DTMFManager :: " +
+                "Your browser doesn't support RTCPeerConnection.getSenders(), so " +
+                "falling back to use <strong>deprecated</strong> createDTMFSender() " +
+                "instead.");
+            self.dtmfSender = pc.createDTMFSender(audioTrack);
+        }
+        //dtmfSender.ontonechange = handleToneChangeEvent;
+        logger.log(logger.level.ERROR, "IrisRtcSession", 'DTMFManager :: Initialized DTMFSender');
+
+    } catch (error) {
+        logger.log(logger.level.ERROR, "IrisRtcSession", 'DTMFManager :: Failed to initialize DTMF sender');
+
+    }
+
+}
+
+/**
+ * @param {string} tones - DTMF tone
+ * @param {string} duration - duration of the tone
+ * @param {string} interToneGap - inter tone gap 
+ * @public
+ */
+IrisRtcSession.prototype.sendDTMFTone = function(tone, duration, interToneGap) {
+    if (this.dtmfSender) {
+        logger.log(logger.level.INFO, "IrisRtcSession", 'sendDTMFTone :: sending DTMF tone :: tone ' +
+            tone + " duration " + duration + " interToneGap " + interToneGap);
+        this.dtmfSender.insertDTMF(tones, duration || 200, interToneGap || 200);
+    } else {
+        logger.log(logger.level.INFO, "IrisRtcSession", 'DTMFManager :: DTMF sender not initialized');
+    }
+};
 
 
 /**
