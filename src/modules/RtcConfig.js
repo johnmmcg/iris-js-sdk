@@ -48,6 +48,8 @@ RtcConfig.updateConfig = function updateConfig(userConfig) {
         RtcConfig.json[key] = userConfig[key];
     }
     console.log("Iris LogLevel : " + RtcConfig.json.logLevel);
+
+    console.log("RtcConfig :: Updated RTC config is " + JSON.stringify(RtcConfig.json));
 }
 
 console.log("Iris JS SDK Version : " + RtcConfig.json.sdkVersion);

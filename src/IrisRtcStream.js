@@ -32,6 +32,7 @@ function IrisRtcStream() {
  * @param {string} streamConfig.constraints.audio - Media constraints for audio
  * @param {string} streamConfig.constraints.video - Media constraints for video
  * @param {string} streamConfig.screenShare - True if it is a screen share call
+ * @public
  */
 IrisRtcStream.prototype.createStream = function(streamConfig) {
 
@@ -130,6 +131,12 @@ function getMediaConstraints(streamConfig) {
     }
 }
 
+/**
+ * 
+ * @param {json} streamConfig 
+ * @param {json} constraints 
+ * @private
+ */
 function setParamsToConstraints(streamConfig, constraints) {
 
     //Set the required resolution
@@ -174,6 +181,7 @@ function getUserMedia(constraints) {
 /**
  * Called when a local stream is created.
  * @param {object} stream - local stream 
+ * @public
  */
 IrisRtcStream.prototype.onLocalStream = function(stream) {
 
@@ -221,6 +229,7 @@ IrisRtcStream.prototype.irisAudioStreamStopped = function() {
 /**
  * This API stops the given media stream
  * @param {object} mediaStream - Stream to be stopped
+ * @public
  */
 IrisRtcStream.prototype.stopMediaStream = function(mediaStream) {
     try {
@@ -342,6 +351,7 @@ function _setFPS(constraints, fps) {
 
 /**
  * Get the media devices
+ * @public
  */
 IrisRtcStream.prototype.getMediaDevices = function() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {

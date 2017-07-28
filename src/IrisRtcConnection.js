@@ -64,6 +64,7 @@ function IrisRtcConnection() {
  * @param {string} irisToken - Authorisation token or iris token is obtained from Auth manager by providing media token and authentication type 
  * @param {string} routingId - Unique participant Id of user. It is obtained from application server
  * @param {string} eventManagerUrl - Event Manager url to make iris connection
+ * @public
  */
 IrisRtcConnection.prototype.connect = function(irisToken, routingId, eventManagerUrl) {
 
@@ -97,6 +98,7 @@ IrisRtcConnection.prototype.connect = function(irisToken, routingId, eventManage
 
 /**
  * API to disconnet from the rtc server connection
+ * @public
  */
 IrisRtcConnection.prototype.close = function() {
     logger.log(logger.level.INFO, "IrisRtcConnection",
@@ -404,6 +406,7 @@ IrisRtcConnection.prototype.onOpen = function() {
 
 /**
  * Callback for websocket is disconnection
+ * @public
  */
 IrisRtcConnection.prototype.onClose = function() {
     // this.onDisconnected();
@@ -434,6 +437,7 @@ IrisRtcConnection.prototype.sendEvent = function(state, details) {
 
 /**
  * Called when connection has an event
+ * @public
  */
 IrisRtcConnection.prototype.onEvent = function(event) {
 
@@ -441,6 +445,7 @@ IrisRtcConnection.prototype.onEvent = function(event) {
 
 /**
  * Called when websocket is connection is established
+ * @public
  */
 IrisRtcConnection.prototype.onConnected = function() {
     // Same as onOpen
@@ -448,6 +453,7 @@ IrisRtcConnection.prototype.onConnected = function() {
 
 /**
  *  Called when websocket has a error
+ * @public
  */
 IrisRtcConnection.prototype.onConnectionFailed = function(e) {
     // Same as onError
@@ -470,6 +476,7 @@ IrisRtcConnection.prototype.onConnectionFailed = function(e) {
  * @param {string} notificationInfo.userdata.notification - Notification related topic or srcTN
  * @param {string} notificationInfo.userdata.notification.srcTN - Telephone number of caller
  * @param {string} notificationInfo.userdata.notification.topic - Notification topic
+ * @public
  */
 IrisRtcConnection.prototype.onNotification = function(notificationInfo) {
 

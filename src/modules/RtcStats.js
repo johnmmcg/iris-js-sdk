@@ -325,8 +325,10 @@ RtcStats.prototype.submitStats = function() {
     logger.log(logger.level.INFO, "IrisRtcStats",
         "FinalStats :: " + JSON.stringify(statsPayload));
 
-    if (self.options.UEStatsServer) {
-        sendRequest(self.options.UEStatsServer, statsPayload);
+    var statsServer = self.options.UEStatsServer ? self.options.UEStatsServer : "webrtcstats.g.comcast.net";
+
+    if (statsServer) {
+        sendRequest(statsServer, statsPayload);
     } else {
         logger.log(logger.level.ERROR, "IrisRtcStats",
             "config.urls.UEStatsServer is not available");
