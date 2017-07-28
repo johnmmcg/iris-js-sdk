@@ -818,7 +818,9 @@ IrisRtcSession.prototype.create = function(config, connection) {
  */
 IrisRtcSession.prototype.muteParticipantVideo = function(jid, mute) {
     try {
-        this.connection.xmpp.sendVideoMute(jid, mute);
+        if (jid && this.connection && this.connection.xmpp) {
+            this.connection.xmpp.sendVideoMute(jid, mute);
+        }
     } catch (error) {
         logger.log(logger.level.ERROR, "IrisRtcSession", "muteParticipantVideo error ", error);
     }
@@ -832,7 +834,9 @@ IrisRtcSession.prototype.muteParticipantVideo = function(jid, mute) {
  */
 IrisRtcSession.prototype.muteParticipantAudio = function(jid, mute) {
     try {
-        this.connection.xmpp.sendAudioMute(jid, mute);
+        if (jid && this.connection && this.connection.xmpp) {
+            this.connection.xmpp.sendAudioMute(jid, mute);
+        }
     } catch (error) {
         logger.log(logger.level.ERROR, "IrisRtcSession", "muteParticipantAudio error ", error);
     }
@@ -2282,9 +2286,13 @@ IrisRtcSession.prototype.videoMuteToggle = function() {
 
             this.isVideoMuted = this.localStream.getVideoTracks()[0].enabled;
             logger.log(logger.level.INFO, "IrisRtcSession", "videoMuteToggle : Video Mute : " + !this.isVideoMuted);
-            this.connection.xmpp.stopPresenceAlive();
-            this.connection.xmpp.sendPresence(this.config);
-            this.connection.xmpp.sendPresenceAlive(this.config);
+            if (this.connection && this.connection.xmpp) {
+                this.connection.xmpp.stopPresenceAlive();
+                this.connection.xmpp.sendPresence(this.config);
+                this.connection.xmpp.sendPresenceAlive(this.config);
+            } else {
+                logger.log(logger.level.WARNING, "IrisRtcSession", "videoMuteToggle : Check if session is created");
+            }
         } else {
             logger.log(logger.level.WARNING, "IrisRtcSession", "videoMuteToggle: No video to mute");
         }
@@ -2311,9 +2319,14 @@ IrisRtcSession.prototype.audioMuteToggle = function() {
                 this.localStream.getAudioTracks()[0].enabled = false;
             else
                 this.localStream.getAudioTracks()[0].enabled = true;
-            this.connection.xmpp.stopPresenceAlive();
-            this.connection.xmpp.sendPresence(this.config);
-            this.connection.xmpp.sendPresenceAlive(this.config);
+            if (this.connection && this.connection.xmpp) {
+                this.connection.xmpp.stopPresenceAlive();
+                this.connection.xmpp.sendPresence(this.config);
+                this.connection.xmpp.sendPresenceAlive(this.config);
+            } else {
+                logger.log(logger.level.WARNING, "IrisRtcSession", "audioMuteToggle: Check if session is created");
+            }
+
         } else {
             logger.log(logger.level.WARNING, "IrisRtcSession", "audioMuteToggle: No audio to mute");
         }
@@ -2330,10 +2343,17 @@ IrisRtcSession.prototype.audioMuteToggle = function() {
  * @public
  */
 IrisRtcSession.prototype.setDisplayName = function(name) {
-    this.config.name = name;
-    this.connection.xmpp.stopPresenceAlive();
-    this.connection.xmpp.sendPresence(this.config);
-    this.connection.xmpp.sendPresenceAlive(this.config);
+    if (!name) {
+        logger.log(logger.level.ERROR, "IrisRtcSession", "setDisplayName : name can't be empty");
+        return;
+    } else if (this.connection && this.connection.xmpp) {
+        this.config.name = name;
+        this.connection.xmpp.stopPresenceAlive();
+        this.connection.xmpp.sendPresence(this.config);
+        this.connection.xmpp.sendPresenceAlive(this.config);
+    } else {
+        logger.log(logger.level.ERROR, "IrisRtcSession", "setDisplayName : Check if session is created");
+    }
 };
 
 /** 
@@ -2476,11 +2496,14 @@ IrisRtcSession.prototype.getProperties = function() {
  */
 IrisRtcSession.prototype.pstnHold = function(value) {
     logger.log(logger.level.INFO, "IrisRtcSession", "PSTN call hold : " + value);
-
-    if (value)
-        this.connection.xmpp.sendHold(this.config);
-    else
-        this.connection.xmpp.sendUnHold(this.config);
+    if (this.connection && this.connection.xmpp) {
+        if (value)
+            this.connection.xmpp.sendHold(this.config);
+        else
+            this.connection.xmpp.sendUnHold(this.config);
+    } else {
+        logger.log(logger.level.ERROR, "IrisRtcSession", "Check if session is created");
+    }
 };
 
 /**
@@ -2489,8 +2512,11 @@ IrisRtcSession.prototype.pstnHold = function(value) {
  */
 IrisRtcSession.prototype.pstnHangup = function() {
     logger.log(logger.level.INFO, "IrisRtcSession", "hangup");
-
-    this.connection.xmpp.sendHangup(this.config);
+    if (this.connection && this.connection.xmpp) {
+        this.connection.xmpp.sendHangup(this.config);
+    } else {
+        logger.log(logger.level.ERROR, "IrisRtcSession", "Check if session is created");
+    }
 };
 
 /**

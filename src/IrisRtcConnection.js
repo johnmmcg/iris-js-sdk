@@ -60,7 +60,7 @@ function IrisRtcConnection() {
  * to get <code>websocket_server</code>, <code>websocket_server_token</code>, <code>websocket_server_token_expiry_time</code> and <code>turn_credentials</code> details.<br/>
  *
  * Establishes a web socket connection with the rtc server for the user with routingId.<br/>
- * 
+ *
  * @param {string} irisToken - Authorisation token or iris token is obtained from Auth manager by providing media token and authentication type 
  * @param {string} routingId - Unique participant Id of user. It is obtained from application server
  * @param {string} eventManagerUrl - Event Manager url to make iris connection
@@ -77,11 +77,9 @@ IrisRtcConnection.prototype.connect = function(irisToken, routingId, eventManage
         logger.log(logger.level.ERROR, "IrisRtcConnection", "irisToken and routingId are required to create a connection");
         return;
     } else {
-
         logger.log(logger.level.INFO, "IrisRtcConnection",
             " connect :: get xmpp details for routingId  " + routingId +
             " token " + irisToken);
-
     }
 
     var self = this;
@@ -128,9 +126,9 @@ IrisRtcConnection.prototype.close = function() {
 /**
  * Function to retrieve XMPP server details
  * 
- * @param {token} token for authorization
- * @param {RoutingId} Routing id
- * @returns {retValue} 0 on success, negative value on error
+ * @param {string} token for authorization
+ * @param {string} Routing id
+ * @returns {int} 0 on success, negative value on error
  * @private
  */
 IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, eventManagerUrl) {
@@ -253,9 +251,9 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
 
 /**
  * Function to connect to XMPP server
- * @param {xmpptoken} token for xmpp server
- * @param {xmppServer} Xmpp server url
- * @returns {retValue} 0 on success, negative value on error
+ * @param {string} token for xmpp server
+ * @param {string} Xmpp server url
+ * @returns {int} 0 on success, negative value on error
  * @private
  */
 IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, tokenExpiry) {
@@ -461,8 +459,8 @@ IrisRtcConnection.prototype.onConnectionFailed = function(e) {
 
 /**
  * This callback is called when an incoming call notification is received and
- * notifies client about the incoming call and passes notification information received.
- * @param {json} notificationInfo - Notfication payload received from the remote participant
+ * notifies client about the incoming call and passes notification information received
+ * @param {json} notificationInfo - Notification payload received from the remote participant
  * @param {string} notificationInfo.type - It can be "notify" or "cancel"
  * @param {string} notificationInfo.roomId - Room id to be joined
  * @param {string} notificationInfo.routingId - Routing Id of the user calling

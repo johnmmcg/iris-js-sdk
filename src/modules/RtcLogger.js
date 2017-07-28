@@ -36,11 +36,13 @@ RtcLogger.log = function log(level, module, text, obj) {
         if (level == RtcLogger.level.ERROR) {
             // Currently all the logs are directly to console
             console.error("\n" + getDate() + " :: " + module + " :: " + text + " ", obj ? obj : "");
+        } else if (level == RtcLogger.level.WARNING) {
+            // Currently all the logs are directly to console
+            console.warn("\n" + getDate() + " :: " + module + " :: " + text + " ", obj ? obj : "");
         } else {
             // Currently all the logs are directly to console
             console.log("\n" + getDate() + " :: " + module + " :: " + text + " ", obj ? obj : "");
         }
-
         self.onSDKLog(getDate() + " :: " + module + " :: " + text + " ", obj ? obj : "");
     }
 };

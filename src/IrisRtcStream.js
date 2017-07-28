@@ -80,7 +80,7 @@ IrisRtcStream.prototype.createStream = function(streamConfig) {
                 " getUserMedia :: Error :: ", error);
         });
     } catch (error) {
-        logger.log(logger.level.ERROR, "IrisRtcSession",
+        logger.log(logger.level.ERROR, "IrisRtcStream",
             " Failed to create a local stream ", error);
     }
 };
