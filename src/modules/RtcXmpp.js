@@ -201,7 +201,7 @@ RtcXmpp.prototype.sendCreateRootEventWithRoomId = function sendCreateRootEventWi
         else if (config.type == "audio" || config.type == "pstn")
             eventType = "audiocall";
         else if (config.type = "chat")
-            eventType = "chat";
+            eventType = "groupchat";
 
         // JSON body 
         var jsonBody = {
@@ -1672,7 +1672,7 @@ RtcXmpp.prototype._onGroupChat = function(stanza) {
             var rootNodeId = data.attrs.rootnodeid;
             var childNodeId = data.attrs.childnodeid;
             var chatMsg = {
-                // id: id,
+                id: id,
                 roomId: roomId,
                 from: from,
                 message: message,
@@ -1707,7 +1707,6 @@ RtcXmpp.prototype.sendGroupChatMessage = function(config, id, message) {
 
 
 RtcXmpp.prototype.sendVideoMute = function(to, isMute) {
-
     this.index++;
     var mute = new xmppClient.Element(
             'message', {
