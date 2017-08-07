@@ -62,6 +62,10 @@ IrisRtcStream.prototype.createStream = function(streamConfig) {
             if (stream) {
                 // Mute the stream before it is being sent to client
                 if (streamConfig.startMutedStream) {
+
+                    logger.log(logger.level.INFO, "IrisRtcStream",
+                        " Stream is started with mute enabled ");
+
                     if (stream.getVideoTracks() && stream.getVideoTracks().length >= 1)
                         stream.getVideoTracks()[0].enabled = false;
                     if (stream.getAudioTracks() && stream.getAudioTracks().length >= 1)

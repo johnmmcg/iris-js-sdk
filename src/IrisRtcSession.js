@@ -213,10 +213,6 @@ IrisRtcSession.prototype.create = function(config, connection) {
         } else {
             // Send the presence if room is created
             connection.xmpp.sendPresence(sessionConfig);
-
-            if (!rtcConfig.json.useBridge)
-                connection.xmpp.sendPresenceAlive(sessionConfig);
-
         }
 
         self.onCreated(response.eventdata.room_id);
@@ -321,7 +317,10 @@ IrisRtcSession.prototype.create = function(config, connection) {
                     }
                     return;
                 }
-                self.onJoined(response.roomName, self.sessionId, response.jid);
+
+                if (self.presenceState !== IrisRtcSession.PRESENCE_JOINED) {
+                    self.onJoined(response.roomName, self.sessionId, response.jid);
+                }
                 self.presenceState = IrisRtcSession.PRESENCE_JOINED;
 
                 logger.log(logger.level.INFO, "IrisRtcSession",
@@ -899,6 +898,8 @@ IrisRtcSession.prototype.end = function() {
 
         // De-initialize
         this.traceId = null;
+        if (this.config)
+            this.config.traceId = null;
         this.sessionId = null;
         this.state = IrisRtcSession.NONE;
         //this.config = null;
@@ -2531,6 +2532,10 @@ IrisRtcSession.prototype.onCreated = function(roomId) {
  * @private
  */
 IrisRtcSession.prototype.onJoined = function(roomId, sessionId, myJid) {
+
+    if (!rtcConfig.json.useBridge)
+        this.connection.xmpp.sendPresenceAlive(this.config);
+
     this.onSessionJoined(roomId, sessionId, myJid);
 }
 
@@ -2993,6 +2998,10 @@ IrisRtcSession.prototype.sendDTMFTone = function(tones, duration, interToneGap) 
 IrisRtcSession.prototype.createSession = function(config, connection, stream) {
 
     var self = this;
+
+    logger.log(logger.level.INFO, "IrisRtcSession",
+        " Create session with config " + JSON.stringify(config));
+
     if (!config || !connection || !connection.xmpp) {
         logger.log(logger.level.ERROR, "IrisRtcSession",
             " Invalid user config or rtc connection !! ");
@@ -3012,8 +3021,6 @@ IrisRtcSession.prototype.createSession = function(config, connection, stream) {
             " local media stream cannot be null for video or audio call ");
         return;
     } else {
-        logger.log(logger.level.INFO, "IrisRtcSession",
-            " Create session with config " + JSON.stringify(config));
 
         if (config.type == "audio" && config.stream != "recvonly" && stream.getVideoTracks().length >= 1) {
             logger.log(logger.level.ERROR, "IrisRtcSession", "For audio call, send audio stream only");
@@ -3319,7 +3326,8 @@ IrisRtcSession.prototype.onDataChannelMessage = function(colibriClass, obj) {
 IrisRtcSession.prototype.endSession = function() {
     logger.log(logger.level.INFO, "IrisRtcSession",
         "endSession :: ", this);
-    if (this.config.type == "pstn") {
+
+    if (this.config && this.config.type == "pstn") {
         this.pstnHangup();
     }
     this.end();

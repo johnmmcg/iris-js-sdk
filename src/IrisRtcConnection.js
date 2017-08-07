@@ -337,6 +337,7 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
             if (userdata)
                 config.userdata = userdata;
 
+            logger.log(logger.level.INFO, "IrisRtcConnection", "Notification payload " + JSON.stringify(config));
             self.onNotification(config);
 
         });
