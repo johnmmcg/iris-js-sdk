@@ -205,7 +205,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
         // Set the state to CONNECTING
         self.state = IrisRtcSession.CONNECTING;
 
-        if (rtcConfig.json.useBridge || (self.config.type == "pstn")) {
+        if ((rtcConfig.json.useBridge || (self.config.type == "pstn")) && self.config.type != "chat") {
             if (rtcConfig.json.channelLastN)
                 sessionConfig.channelLastN = rtcConfig.json.channelLastN;
             // Send the allocate room request
