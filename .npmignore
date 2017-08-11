@@ -1,11 +1,6 @@
 npm-debug.log
 node_modules/
-modules/
 src/
-IrisRtcConnection.js
-IrisRtcSession.js
-IrisRtcStream.js
-IrisRtcSdk.js
 iris-js-sdk.js
 iris-js-sdk.js.map
 iris-js-sdk.min.js
