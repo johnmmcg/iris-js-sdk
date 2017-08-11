@@ -201,7 +201,7 @@ RtcXmpp.prototype.sendCreateRootEventWithRoomId = function sendCreateRootEventWi
         else if (config.type == "audio" || config.type == "pstn")
             eventType = "audiocall";
         else if (config.type = "chat")
-            eventType = "chat";
+            eventType = "groupchat";
 
         // JSON body 
         var jsonBody = {
@@ -837,6 +837,13 @@ RtcXmpp.prototype.sendHangup = function sendHangup(config) {
     var hangup = new xmppClient.Element(
             'iq', { to: roomJid + "/" + this.rayo_resourceid, "type": "set", id: this.index.toString() + ':sendIQ' })
         .c('hangup', { 'xmlns': 'urn:xmpp:rayo:1' }).up();
+
+    hangup = hangup.c('data', {
+        'xmlns': "urn:xmpp:comcast:info",
+        'traceid': config.traceId,
+        'host': this.server
+    }).up();
+
     this.index++;
     // send the rayo command
     this.client.send(hangup.tree());
@@ -857,6 +864,13 @@ RtcXmpp.prototype.sendHold = function sendHold(config) {
     var hold = new xmppClient.Element(
             'iq', { to: roomJid + "/" + this.rayo_resourceid, from: this.jid + '/' + this.xmppJid.resource, "type": "set", id: this.index.toString() + ':sendIQ' })
         .c('hold', { 'xmlns': 'urn:xmpp:rayo:1' }).up();
+
+    hold = hold.c('data', {
+        'xmlns': "urn:xmpp:comcast:info",
+        'traceid': config.traceId,
+        'host': this.server
+    }).up();
+
     this.index++;
     // send the rayo command
     this.client.send(hold.tree());
@@ -876,6 +890,13 @@ RtcXmpp.prototype.sendUnHold = function sendUnHold(config) {
     var unhold = new xmppClient.Element(
             'iq', { to: roomJid + "/" + this.rayo_resourceid, from: this.jid + '/' + this.xmppJid.resource, "type": "set", id: this.index.toString() + ':sendIQ' })
         .c('unhold', { 'xmlns': 'urn:xmpp:rayo:1' }).up();
+
+    unhold = unhold.c('data', {
+        'xmlns': "urn:xmpp:comcast:info",
+        'traceid': config.traceId,
+        'host': this.server
+    }).up();
+
     this.index++;
     // send the rayo command
     this.client.send(unhold.tree());
@@ -893,6 +914,12 @@ RtcXmpp.prototype.sendMerge = function sendMerge() {
     var merge = new xmppClient.Element(
             'iq', { to: this.rayo_resourceid, from: this.jid, "type": "set", id: this.index.toString() + ':sendIQ' })
         .c('merge', { 'xmlns': 'urn:xmpp:rayo:1' }).up();
+
+    merge = merge.c('data', {
+        'xmlns': "urn:xmpp:comcast:info",
+        'host': this.server
+    }).up();
+
     this.index++;
     // send the rayo command
     this.client.send(merge.tree());
@@ -1672,7 +1699,7 @@ RtcXmpp.prototype._onGroupChat = function(stanza) {
             var rootNodeId = data.attrs.rootnodeid;
             var childNodeId = data.attrs.childnodeid;
             var chatMsg = {
-                // id: id,
+                id: id,
                 roomId: roomId,
                 from: from,
                 message: message,
@@ -1707,7 +1734,6 @@ RtcXmpp.prototype.sendGroupChatMessage = function(config, id, message) {
 
 
 RtcXmpp.prototype.sendVideoMute = function(to, isMute) {
-
     this.index++;
     var mute = new xmppClient.Element(
             'message', {

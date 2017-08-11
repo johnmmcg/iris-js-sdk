@@ -32,6 +32,7 @@ function IrisRtcStream() {
  * @param {string} streamConfig.constraints.audio - Media constraints for audio
  * @param {string} streamConfig.constraints.video - Media constraints for video
  * @param {string} streamConfig.screenShare - True if it is a screen share call
+ * @public
  */
 IrisRtcStream.prototype.createStream = function(streamConfig) {
 
@@ -61,6 +62,10 @@ IrisRtcStream.prototype.createStream = function(streamConfig) {
             if (stream) {
                 // Mute the stream before it is being sent to client
                 if (streamConfig.startMutedStream) {
+
+                    logger.log(logger.level.INFO, "IrisRtcStream",
+                        " Stream is started with mute enabled ");
+
                     if (stream.getVideoTracks() && stream.getVideoTracks().length >= 1)
                         stream.getVideoTracks()[0].enabled = false;
                     if (stream.getAudioTracks() && stream.getAudioTracks().length >= 1)
@@ -79,7 +84,7 @@ IrisRtcStream.prototype.createStream = function(streamConfig) {
                 " getUserMedia :: Error :: ", error);
         });
     } catch (error) {
-        logger.log(logger.level.ERROR, "IrisRtcSession",
+        logger.log(logger.level.ERROR, "IrisRtcStream",
             " Failed to create a local stream ", error);
     }
 };
@@ -130,6 +135,12 @@ function getMediaConstraints(streamConfig) {
     }
 }
 
+/**
+ * 
+ * @param {json} streamConfig 
+ * @param {json} constraints 
+ * @private
+ */
 function setParamsToConstraints(streamConfig, constraints) {
 
     //Set the required resolution
@@ -174,6 +185,7 @@ function getUserMedia(constraints) {
 /**
  * Called when a local stream is created.
  * @param {object} stream - local stream 
+ * @public
  */
 IrisRtcStream.prototype.onLocalStream = function(stream) {
 
@@ -221,6 +233,7 @@ IrisRtcStream.prototype.irisAudioStreamStopped = function() {
 /**
  * This API stops the given media stream
  * @param {object} mediaStream - Stream to be stopped
+ * @public
  */
 IrisRtcStream.prototype.stopMediaStream = function(mediaStream) {
     try {
@@ -342,6 +355,7 @@ function _setFPS(constraints, fps) {
 
 /**
  * Get the media devices
+ * @public
  */
 IrisRtcStream.prototype.getMediaDevices = function() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
