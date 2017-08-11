@@ -27,7 +27,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   
   ```html
-  <script src="https://unpkg.com/iris-js-sdk@3.3.6/dist/iris-js-sdk.min.js"></script>
+  <script src="https://unpkg.com/iris-js-sdk@3.3.7/dist/iris-js-sdk.min.js"></script>
   ```
 
 
@@ -906,7 +906,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   
   ```html
-  <script src="https://unpkg.com/iris-js-sdk@3.3.6/dist/iris-js-sdk.min.js"></script>
+  <script src="https://unpkg.com/iris-js-sdk@3.3.7/dist/iris-js-sdk.min.js"></script>
   ```
   
 ### Example for Using API's
@@ -1019,6 +1019,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
         "resolution": "hd", //640, 320
     }
     // Set media constraints, this is optional if you are setting streamType above
+    // It is an optional parameter 
     var constraints = {
       video : { mandatory: {}, optional: [] },
       audio : { mandatory: {}, optional: [] }
@@ -1045,8 +1046,13 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
     irisRtcSession.createSession(userConfig, connection, stream);
 
     // Wait for irisRtcSession.onSessionCreated callback event 
-    irisRtcSession.onSessionCreated = function(roomName, sessionId, myJid) {
+    irisRtcSession.onSessionCreated = function(roomId) {
       // Session is created
+    }
+    
+    // Wait for irisRtcSession.onSessionJoined callback event 
+    irisRtcSession.onSessionJoined = function(roomName, sessionId, myJid) {
+      // User joined the session
     }
     
     // Wait for irisRtcSession.onSessionJoined callback event.
@@ -1083,7 +1089,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
     // To send chat message call sendChatMessage
     // message - text message to be sent
     // id - Unique Id for the message
-    irisRtcSession.sendChatMessage(id, message,);
+    irisRtcSession.sendChatMessage(id, message);
 
     // To receive chat message
     // Listen to onChatMessage on session object
