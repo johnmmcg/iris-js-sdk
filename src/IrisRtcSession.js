@@ -143,7 +143,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
     }
 
     // Create a DTMF Manager
-    if (self.peerconnection && self.localStream && self.localStream.getAudioTracks()) {
+    if (self.peerconnection && self.localStream && self.localStream.getAudioTracks() && self.config.useDTMF) {
         var audiotracks = self.localStream.getAudioTracks();
         if (audiotracks) {
             for (var i = 0; i < audiotracks.length; i++) {
@@ -3098,6 +3098,10 @@ IrisRtcSession.prototype.createSession = function(config, connection, stream) {
     } else if ((config.type == "video" || config.type == "audio") && !stream && config.stream != "recvonly") {
         logger.log(logger.level.ERROR, "IrisRtcSession",
             " local media stream cannot be null for video or audio call ");
+        return;
+    } else if (config.type == "pstn" && (!config.toTN || !config.fromTN || !config.toRoutingId)) {
+        logger.log(logger.level.ERROR, "IrisRtcSession",
+            " For pstn calls toTN, fromTN and toRoutingId are mandatory parameters ");
         return;
     } else {
 
