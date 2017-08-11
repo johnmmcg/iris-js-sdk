@@ -16,13 +16,13 @@ RtcConfig.json = {
         notificationManager: '',*/
 
         /*Stats Server*/
-        UEStatsServer: '',
+        // UEStatsServer: '',
     },
     pingInterval: 120000,
     presInterval: 10000,
+    presMonitorInterval: 30000,
     reconnectInterval: 10000,
     statsInterval: 10000,
-    useAutoAnswer: true,
     useBridge: true, // for p2p flow, set this to false
     useEmPrivateIQ: false, // whether to send private IQ or call event manager directly for createxmpprootevent
     logLevel: 2, // 0: Error, 1: Warning, 2: Info, 3: Verbose
@@ -31,7 +31,6 @@ RtcConfig.json = {
     /* PROD keys */
     appKey: '',
     appSecret: '',
-    audioForSessions: true,
     channelLastN: "-1",
     sdkVersion: '3.3.6'
 }
@@ -49,7 +48,7 @@ RtcConfig.updateConfig = function updateConfig(userConfig) {
     }
     console.log("Iris LogLevel : " + RtcConfig.json.logLevel);
 
-    console.log("RtcConfig :: Updated RTC config is " + JSON.stringify(RtcConfig.json));
+    console.log("RtcConfig :: Updated RTC config is :: " + JSON.stringify(RtcConfig.json));
 }
 
 console.log("Iris JS SDK Version : " + RtcConfig.json.sdkVersion);
