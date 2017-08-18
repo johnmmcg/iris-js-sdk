@@ -30,7 +30,8 @@ var features = [
     "urn:xmpp:jingle:apps:rtp:audio",
     "urn:xmpp:jingle:apps:rtp:video",
     "urn:xmpp:jingle:transports:ice-udp:1",
-    "urn:xmpp:rayo:client:1"
+    "urn:xmpp:rayo:client:1",
+    "urn:xmpp:jingle:transports:dtls-sctp:1"
 ];
 // Constructor
 //
@@ -193,20 +194,10 @@ RtcXmpp.prototype.sendCreateRootEventWithRoomId = function sendCreateRootEventWi
                 "Trace-Id": config.traceId
             }
         };
-
-        // Set the event type
-        var eventType;
-        if (config.type == "video")
-            eventType = "videocall";
-        else if (config.type == "audio" || config.type == "pstn")
-            eventType = "audiocall";
-        else if (config.type = "chat")
-            eventType = "groupchat";
-
         // JSON body 
         var jsonBody = {
             "from": this.jid,
-            "event_type": eventType,
+            "event_type": config.eventType,
             "time_posted": Date.now(),
             "userdata": config.userData ? config.userData : ""
         };
@@ -386,7 +377,7 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
             'traceid': config.traceId,
             'childnodeid': config.childNodeId,
             'rootnodeid': config.rootNodeId,
-            'event': "eventTypeConnect",
+            'event': config.eventType,
             'host': this.server,
             'roomtoken': config.roomtoken,
             'roomtokenexpirytime': config.roomtokenexpirytime
@@ -435,9 +426,7 @@ RtcXmpp.prototype.sendPresenceAlive = function sendPresenceAlive(config) {
     pres.c('data', {
         'xmlns': "urn:xmpp:comcast:info",
         'traceid': config.traceId,
-        'childnodeid': config.childNodeId,
-        'rootnodeid': config.rootNodeId,
-        'event': "eventTypeConnect",
+        'event': config.eventType,
         'host': this.server,
         'type': 'periodic'
     }).up();
@@ -531,7 +520,7 @@ RtcXmpp.prototype.sendSessionAccept = function sendSessionAccept(data) {
         'traceid': data.traceId,
         'childnodeid': data.childNodeId,
         'rootnodeid': data.rootNodeId,
-        'event': "eventTypeConnect",
+        'event': data.eventType,
         'host': this.server
     }).up();
 
@@ -545,50 +534,57 @@ RtcXmpp.prototype.sendSessionAccept = function sendSessionAccept(data) {
 // @returns {retValue} 0 on success, negative value on error
 //
 RtcXmpp.prototype.sendSessionInitiate = function sendSessionInitiate(data) {
-        logger.log(logger.level.VERBOSE, "RtcXmpp",
-            " sendSessionInitiate, to " + data.to);
-        if (!this.sid) {
-            this.sid = sid();
-        }
-        var initiate = new xmppClient.Element(
-                'iq', {
-                    to: data.emRoomId + '@' + this.rtcServer.replace('xmpp', 'conference') + '/' +
-                        data.to,
-                    type: 'set',
-                    id: this.index.toString() + ':sendIQ'
-                })
-            .c('jingle', {
-                'xmlns': 'urn:xmpp:jingle:1',
-                action: 'session-initiate',
-                initiator: this.xmppJid.toString(),
-                responder: data.to,
-                sid: this.sid
-            });
-
-        this.index++;
-        // Create a variable for SDP
-        this.localSDP = new SDP(data.sdp);
-
-        // get the xmpp element
-        initiate = this.localSDP.toJingle(initiate, 'initiator');
-
-        initiate = initiate.c('data', {
-            'xmlns': "urn:xmpp:comcast:info",
-            'traceid': data.traceId,
-            'childnodeid': data.childNodeId,
-            'rootnodeid': data.rootNodeId,
-            'event': "eventTypeConnect",
-            'host': this.server
-        }).up();
-
-        // Send the session-initiate
-        this.client.send(initiate.tree());
+    logger.log(logger.level.VERBOSE, "RtcXmpp",
+        " sendSessionInitiate, to " + data.to);
+    if (!this.sid) {
+        this.sid = sid();
     }
-    // Method to send transport-info 
-    //
-    // @param {data} - Configuration 
-    // @returns {retValue} 0 on success, negative value on error
-    //
+    var initiate = new xmppClient.Element(
+            'iq', {
+                to: data.emRoomId + '@' + this.rtcServer.replace('xmpp', 'conference') + '/' +
+                    data.to,
+                type: 'set',
+                id: this.index.toString() + ':sendIQ'
+            })
+        .c('jingle', {
+            'xmlns': 'urn:xmpp:jingle:1',
+            action: 'session-initiate',
+            initiator: this.xmppJid.toString(),
+            responder: data.to,
+            sid: this.sid
+        });
+
+    this.index++;
+    // Create a variable for SDP
+    this.localSDP = new SDP(data.sdp);
+
+    // get the xmpp element
+    initiate = this.localSDP.toJingle(initiate, 'initiator');
+
+    initiate = initiate.c('data', {
+        'xmlns': "urn:xmpp:comcast:info",
+        'traceid': data.traceId,
+        'childnodeid': data.childNodeId,
+        'rootnodeid': data.rootNodeId,
+        'event': data.eventType,
+        'host': this.server
+    }).up();
+
+    // Send the session-initiate
+    this.client.send(initiate.tree());
+}
+
+RtcXmpp.prototype.sendSessionTerminate = function(data) {
+    logger.log(logger.level.VERBOSE, "RtcXmpp",
+        " sendSessionTerminate, to " + data.to);
+
+}
+
+// Method to send transport-info 
+//
+// @param {data} - Configuration 
+// @returns {retValue} 0 on success, negative value on error
+//
 RtcXmpp.prototype.sendTransportInfo = function sendTransportInfo(data) {
     logger.log(logger.level.VERBOSE, "RtcXmpp",
         " sendTransportInfo, to " + data.to);
@@ -646,7 +642,7 @@ RtcXmpp.prototype.sendTransportInfo = function sendTransportInfo(data) {
         'traceid': data.traceId,
         'childnodeid': data.childNodeId,
         'rootnodeid': data.rootNodeId,
-        'event': "eventTypeConnect",
+        'event': data.eventType,
         'host': this.server
     }).up();
 
@@ -685,7 +681,7 @@ RtcXmpp.prototype.sendCapabilities = function sendCapabilities(data) {
         'traceid': data.traceId,
         'childnodeid': data.childNodeId,
         'rootnodeid': data.rootNodeId,
-        'event': "eventTypeConnect",
+        'event': data.eventType,
         'host': this.server
     });
     this.client.send(discoResult.tree());
@@ -699,31 +695,32 @@ RtcXmpp.prototype.sendCapabilities = function sendCapabilities(data) {
 /** */
 RtcXmpp.prototype.requestCapabilities = function requestCapabilities(data) {
 
-        // If we received a correct disco request, lets respond
-        logger.log(logger.level.INFO, "RtcXmpp",
-            " requestCapabilities");
+    // If we received a correct disco request, lets respond
+    logger.log(logger.level.INFO, "RtcXmpp",
+        " requestCapabilities");
 
-        var caps = new xmppClient.Element(
-                'iq', { from: this.xmppJid.toString(), to: data.to, type: 'get', id: this.index.toString() + ':sendIQ' })
-            .c('query', { 'xmlns': 'http://jabber.org/protocol/disco#info' }).up();
-        this.index++;
+    var caps = new xmppClient.Element(
+            'iq', { from: this.xmppJid.toString(), to: data.to, type: 'get', id: this.index.toString() + ':sendIQ' })
+        .c('query', { 'xmlns': 'http://jabber.org/protocol/disco#info' }).up();
+    this.index++;
 
-        // Add data element
-        caps.c('data', {
-            'xmlns': "urn:xmpp:comcast:info",
-            'traceid': data.traceId,
-            'childnodeid': data.childNodeId,
-            'rootnodeid': data.rootNodeId,
-            'event': "eventTypeConnect",
-            'host': this.server
-        });
-        this.client.send(caps.tree());
-    }
-    // Method to send allocate request
-    //
-    // @param {data} - Configuration 
-    // @returns {retValue} 0 on success, negative value on error
-    //
+    // Add data element
+    caps.c('data', {
+        'xmlns': "urn:xmpp:comcast:info",
+        'traceid': data.traceId,
+        'childnodeid': data.childNodeId,
+        'rootnodeid': data.rootNodeId,
+        'event': data.eventType,
+        'host': this.server
+    });
+    this.client.send(caps.tree());
+}
+
+// Method to send allocate request
+//
+// @param {data} - Configuration 
+// @returns {retValue} 0 on success, negative value on error
+//
 RtcXmpp.prototype.sendAllocate = function sendAllocate(data) {
     logger.log(logger.level.VERBOSE, "RtcXmpp",
         " sendAllocate ");
@@ -733,7 +730,7 @@ RtcXmpp.prototype.sendAllocate = function sendAllocate(data) {
         "to": this.xmppJid.domain,
         'childnodeid': data.childNodeId,
         'rootnodeid': data.rootNodeId,
-        'event': "eventTypeConnect",
+        'event': data.eventType,
         'host': this.server,
         "traceid": data.traceId,
         "emRoomId": data.emRoomId,
@@ -741,11 +738,6 @@ RtcXmpp.prototype.sendAllocate = function sendAllocate(data) {
         "roomtokenexpirytime": data.roomtokenexpirytime
     };
     this.requestCapabilities(data_);
-
-    var evntType = "eventTypeConnect";
-    if (data.type == "pstn") {
-        evntType = "eventTypeConnect PSTN";
-    }
 
     // Join the room by sending the presence
     var allocate = new xmppClient.Element(
@@ -775,12 +767,63 @@ RtcXmpp.prototype.sendAllocate = function sendAllocate(data) {
         'traceid': data.traceId,
         'childnodeid': data.childNodeId,
         'rootnodeid': data.rootNodeId,
-        'event': evntType,
+        'event': data.eventType,
         'host': this.server,
+        'type': (data.eventType == 'groupchat') ? "deallocate" : "allocate",
         'roomtoken': data.roomtoken,
         'roomtokenexpirytime': data.roomtokenexpirytime
     });
     this.client.send(allocate.tree());
+}
+
+// <?xml version="1.0"?>
+// <iq id="lx4013" type="set" from="<jid>" to="pr-focus-as-b-001.rtc.sys.comcast.net">
+//     <query xmlns="jabber:iq:private" strict="false">
+//         <data xmlns="urn:xmpp:comcast:info" type="allocate" traceid="27d379e0-81f9-11e7-b806-c7fe3f946271" roomid="72420a0a-6c9a-11e7-b931-0242ac110002"  />
+//     </query>
+// </iq>
+
+
+// <?xml version="1.0"?>
+// <iq id="lx4013" type="set" from="<jid>" to="pr-focus-as-b-001.rtc.sys.comcast.net">
+//     <query xmlns="jabber:iq:private" strict="false">
+//         <data xmlns="urn:xmpp:comcast:info" type="deallocate" traceid="27d379e0-81f9-11e7-b806-c7fe3f946271" roomid="72420a0a-6c9a-11e7-b931-0242ac110002"    />
+//     </query>
+// </iq>
+/**
+ * 
+ */
+RtcXmpp.prototype.sendPrivateAllocate = function(data) {
+
+    logger.log(logger.level.INFO, "RtcXmpp",
+        " sendPrivateAllocate " + data);
+
+    var privateIq = new xmppClient.Element(
+            'iq', {
+                id: this.index.toString() + ':sendIQ',
+                to: this.rtcServer.replace('xmpp', 'focus'),
+                "type": "set",
+                from: this.jid + '/' + this.xmppJid.resource
+            })
+        .c('query', {
+            'xmlns': 'jabber:iq:private',
+            'strict': false,
+        }).up();
+
+    query = privateIq.getChild("query");
+
+    // Add data element
+    query.c('data', {
+        'xmlns': "urn:xmpp:comcast:info",
+        'type': "allocate",
+        'roomid': data.roomId,
+        'traceid': data.traceId,
+        'event': data.eventType,
+        'host': this.server,
+    });
+
+    this.client.send(privateIq.tree());
+
 }
 
 // Method to send rayo command
@@ -808,7 +851,7 @@ RtcXmpp.prototype.sendRayo = function sendRayo(data) {
         .c('header', { 'name': 'JvbRoomName', "value": data.emRoomId + '@' + this.rtcServer.replace('xmpp', 'conference') }).up().up();
     rayo.c('data', {
         xmlns: 'urn:xmpp:comcast:info',
-        event: 'eventTypeConnect PSTN',
+        event: data.eventType,
         traceid: data.traceId,
         rootnodeid: data.rootNodeId,
         childnodeid: data.childNodeId,
@@ -943,7 +986,7 @@ RtcXmpp.prototype.sendSourceAdd = function sendSourceAdd(sdpDiffer, data) {
             'traceid': data.traceId,
             'childnodeid': data.childNodeId,
             'rootnodeid': data.rootNodeId,
-            'event': "eventTypeConnect",
+            'event': data.eventType,
             'host': this.server
         }).up();
 
@@ -980,7 +1023,7 @@ RtcXmpp.prototype.sendSourceRemove = function sendSourceRemove(sdpDiffer, data) 
             'traceid': data.traceId,
             'childnodeid': data.childNodeId,
             'rootnodeid': data.rootNodeId,
-            'event': "eventTypeConnect",
+            'event': data.eventType,
             'host': this.server
         }).up();
 
@@ -998,7 +1041,6 @@ RtcXmpp.prototype.sendSourceRemove = function sendSourceRemove(sdpDiffer, data) 
     // Send the session-initiate
     this.client.send(remove.tree());
 }
-
 
 // Method to disconnect from websocket server
 //
