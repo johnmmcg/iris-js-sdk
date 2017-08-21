@@ -153,12 +153,17 @@ IrisRtcSession.prototype.create = function(config, connection) {
         }
     }
 
+    sessionConfig = this.config;
 
     // Dont send create room for join room call
     if (config.sessionType != "join") {
-        sessionConfig = this.config;
 
-        connection.xmpp.sendCreateRootEventWithRoomId(sessionConfig);
+        connection.xmpp.sendStartMucWithRoomId(sessionConfig);
+
+    } else if (config.sessionType == "join" && config.type == "chat" && !config.rtcServer) {
+
+        connection.xmpp.sendStartMucWithRoomId(sessionConfig);
+
     } else {
         // Send the presence directly
         // Get the EM room id
@@ -189,9 +194,56 @@ IrisRtcSession.prototype.create = function(config, connection) {
     }
 
     // Setup callbacks for create root event success
-    connection.xmpp.once(RtcEvents.CREATE_ROOT_EVENT_SUCCESS, function(response) {
-        // connection.xmpp.once('onCreateRootEventWithRoomIdSent', function(response) {
-        logger.log(logger.level.VERBOSE, "IrisRtcSession",
+    connection.xmpp.on(RtcEvents.CREATE_ROOM_SUCCESS, function(response) {
+        logger.log(logger.level.INFO, "IrisRtcSession",
+            " CREATE_ROOM_SUCCESS " + JSON.stringify(response));
+
+        if (self.state == IrisRtcSession.CONNECTING) return;
+
+        // Get the EM room id
+        self.emRoomId = response.eventdata.room_id;
+        self.config.rootNodeId = response.root_node_id;
+        self.config.childNodeId = response.child_node_id;
+        self.config.emRoomId = response.eventdata.room_id;
+        self.config.roomtoken = response.eventdata.room_token;
+        self.config.roomtokenexpirytime = response.eventdata.room_token_expiry_time;
+
+        if (rtcConfig.json.rtcServer) {
+            self.config.rtcServer = rtcConfig.json.rtcServer;
+            self.connection.xmpp.rtcServer = rtcConfig.json.rtcServer;
+        } else {
+            self.config.rtcServer = response.rtc_server;
+        }
+        if (rtcConfig.json.useBridge && (self.config.sessionType == "upgrade" || self.config.sessionType == "downgrade")) {
+            self.state = IrisRtcSession.INCOMING;
+        } else {
+            // Set the state to CONNECTING
+            self.state = IrisRtcSession.CONNECTING;
+        }
+
+        sessionConfig = self.config;
+
+        if ((rtcConfig.json.useBridge || self.config.type == "pstn" || self.config.sessionType == "downgrade" ||
+                self.config.sessionType == "upgrade") && (self.config.type != "chat")) {
+            if (rtcConfig.json.channelLastN)
+                sessionConfig.channelLastN = rtcConfig.json.channelLastN;
+            // Send the allocate room request
+            connection.xmpp.sendAllocate(sessionConfig);
+        } else {
+            // Send the presence if room is created
+            connection.xmpp.sendPresence(sessionConfig);
+        }
+
+        self.onCreated(response.eventdata.room_id);
+
+        // Send events
+        self.sendEvent(self.sessionId, "SDK_EventManagerResponse", JSON.stringify(response));
+
+    });
+
+    // Setup callbacks for create root event success
+    connection.xmpp.on(RtcEvents.CREATE_ROOT_EVENT_SUCCESS, function(response) {
+        logger.log(logger.level.INFO, "IrisRtcSession",
             " onCreateRootEventWithRoomIdSent " + JSON.stringify(response));
 
         if (self.state == IrisRtcSession.CONNECTING) return;
@@ -238,7 +290,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
     });
 
     // Setup callbacks for create root event error
-    connection.xmpp.once('onCreateRootEventWithRoomIdError', function(error) {
+    connection.xmpp.once(RtcEvents.CREATE_ROOT_EVENT_ERROR, function(error) {
         logger.log(logger.level.VERBOSE, "IrisRtcSession",
             " onCreateRootEventWithRoomIdError ", error);
         self.onError(error);
@@ -285,11 +337,9 @@ IrisRtcSession.prototype.create = function(config, connection) {
     });
     // Setup callbacks for Presence for self and other participants 
     connection.xmpp.on('onPresence', function(response) {
-        /*logger.log(logger.level.VERBOSE, "IrisRtcSession", 
-              " onPresence " + JSON.stringify(response)
-              + " config " + JSON.stringify(self.config) 
-              + " state " + self.state
-              );*/
+        logger.log(logger.level.VERBOSE, "IrisRtcSession",
+            " onPresence " + JSON.stringify(response));
+
         if (Object.keys(self.participants).length > 0) {
             if (self.participants[response.jid] != null) {
                 self.participants[response.jid].lastPresenceReceived = new Date();
@@ -461,6 +511,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
                         self.participants[response.jid] = { "jid": response.jid };
                         self.onParticipantJoined(response.roomName, self.sessionId, response.jid);
                         self.participants[response.jid].lastPresenceReceived = new Date();
+                        self.participants[response.jid].eventType = response.dataElement.event;
 
                         if (self.startPresenceMonitor) {
                             self.startPresenceMonitor = false;
@@ -499,6 +550,18 @@ IrisRtcSession.prototype.create = function(config, connection) {
                 if (response.status) {
                     self.onUserStatusChange(response.jid, response.status);
                 }
+
+                if (response.dataElement && response.dataElement.event) {
+                    if (self.participants[response.jid] && self.participants[response.jid].eventType != response.dataElement.event) {
+                        self.participants[response.jid].eventType = response.dataElement.event;
+                        logger.log(logger.level.INFO, "IrisRtcSession", "onPresence ::" +
+                            "onSessionTypeChange:: type : " + response.dataElement.event + " participant :: " + response.jid);
+                        if (self.config.eventType != response.dataElement.event) {
+                            self.onSessionTypeChange(response.jid, response.dataElement.event);
+                        }
+                    }
+                }
+
                 // Check the state
                 if (self.state == IrisRtcSession.CONNECTING) {
                     // We were the first ones to join so go with set remote description flow
@@ -730,6 +793,8 @@ IrisRtcSession.prototype.create = function(config, connection) {
         logger.log(logger.level.INFO, "IrisRtcSession",
             " onSourceRemove " + " roomName " + data.roomName + " config.emRoomId " + self.config.emRoomId);
 
+        this.onRemoveStream();
+
         // Check if this is the correct session
         if (data.roomName != self.config.emRoomId) return;
 
@@ -881,9 +946,11 @@ IrisRtcSession.prototype.muteParticipantAudio = function(jid, mute) {
  * This API is called to send a chat message.
  * @param {string} id - Unique Id for each message sent.
  * @param {string} message - Chat message to be sent
+ * @param {string} topic - Notification topic that user subscribed for chat 
+ *                         Format: appdomain/type, ex: abcd.comcast.com/chat
  * @public
  */
-IrisRtcSession.prototype.sendChatMessage = function(id, message) {
+IrisRtcSession.prototype.sendChatMessage = function(id, message, topic) {
 
     if (!message || !id || (typeof id != 'string') || (typeof message != 'string')) {
         logger.log(logger.level.ERROR, "IrisRtcSession", "Message and id can't be empty : message :" +
@@ -892,7 +959,7 @@ IrisRtcSession.prototype.sendChatMessage = function(id, message) {
     } else {
         logger.log(logger.level.INFO, "IrisRtcSession", "sendChatMessage :: message " + message);
         if (this.connection && this.connection.xmpp) {
-            this.connection.xmpp.sendGroupChatMessage(this.config, id, message);
+            this.connection.xmpp.sendGroupChatMessage(this.config, id, message, topic);
         } else {
             logger.log(logger.level.ERROR, "IrisRtcSession", "sendChatMessage :: Check if Session is created ");
         }
@@ -3086,17 +3153,17 @@ IrisRtcSession.prototype.sendDTMFTone = function(tones, duration, interToneGap) 
  * For incoming calls client should pass notification information in <code>config</code> with the 
  * required parameters to join session.
  * 
- * This method makes call to event manager APIs /events/createxmpprootevent to get required roomId to join session. 
+ * This method makes call to event manager APIs /v1/xmpp/startmuc to get required roomId to join session. 
  * IrisToken is must for calling any event manager APIs.
- * For anonymous call <code>/events/createxmpprootevent</code> is called with <code>roomName</code>, <code>irisToken</code>, <code>routingId</code> of caller.<br/>
- * For non-anonymous calls <code>/events/createxmpprootevent</code> is called with <code>irisToken</code>, <code>routingId</code> of caller
+ * For anonymous call <code>/v1/xmpp/startmuc</code> is called with <code>roomName</code>, <code>irisToken</code>, <code>routingId</code> of caller.<br/>
+ * For non-anonymous calls <code>/v1/xmpp/startmuc</code> is called with <code>irisToken</code>, <code>routingId</code> of caller
  * and array of routingId's of <code>participants</code>.
  *
- * Internally /events/createxmpprootevent of event manager is responsible for posting notifications to server.<br/>
+ * Internally /v1/xmpp/startmuc of event manager is responsible for posting notifications to server.<br/>
  *
- * @param {object} stream - Local media stream
  * @param {json} config - A json object having all parameters required to create a room
  * @param {object} connection - IrisRtcConnection object
+ * @param {object} stream - Local media stream
  * @public
  */
 IrisRtcSession.prototype.createSession = function(config, connection, stream) {
@@ -3259,10 +3326,12 @@ IrisRtcSession.prototype.joinChatSession = function(config, connection, notifica
     } else if (!connection) {
         logger.log(logger.level.ERROR, "IrisRtcSession",
             " Invalid rtc connection !! ");
-    } else if (!notificationPayload.roomId || !notificationPayload.roomtoken || !notificationPayload.roomtokenexpirytime) {
-        logger.log(logger.level.ERROR, "IrisRtcSession",
-            " RoomId, roomtoken and roomtokenexpirytime parameters are required");
-    } else {
+    }
+    // else if (!notificationPayload.roomId || !notificationPayload.roomtoken || !notificationPayload.roomtokenexpirytime) {
+    //     logger.log(logger.level.ERROR, "IrisRtcSession",
+    //         " RoomId, roomtoken and roomtokenexpirytime parameters are required");
+    // } 
+    else {
         config.roomId = notificationPayload.roomId;
         config.roomName = notificationPayload.roomId;
         config.roomtoken = notificationPayload.roomtoken;
@@ -3304,18 +3373,21 @@ IrisRtcSession.prototype.downgradeToChat = function(downgradeConfig, notificatio
             this.updateEventType();
 
             if (downgradeConfig.sessionType == "create") {
-                logger.log(logger.level.INFO, "IrisRtcSession", "downgradeToChat : Sending create root event");
+                logger.log(logger.level.INFO, "IrisRtcSession", "downgradeToChat : Sending deallocate for create");
                 this.config.sessionType = "downgrade";
-                this.connection.xmpp.sendCreateRootEventWithRoomId(this.config);
-            } else if (downgradeConfig.sessionType == "join" && notificationPayload) {
-                logger.log(logger.level.INFO, "IrisRtcSession", "downgradeToChat : Sending allocate for join");
-                this.config.roomId = notificationPayload.roomId;
-                this.config.roomName = notificationPayload.roomId;
-                this.config.roomtoken = notificationPayload.roomtoken;
-                this.config.roomtokenexpirytime = notificationPayload.roomtokenexpirytime;
-                this.config.traceId = notificationPayload.traceId;
-                this.traceId = notificationPayload.traceId;
                 this.connection.xmpp.sendAllocate(this.config);
+            } else if (downgradeConfig.sessionType == "join") {
+                logger.log(logger.level.INFO, "IrisRtcSession", "downgradeToChat : Sending deallocate for join");
+                this.config.sessionType = "downgrade";
+                // this.config.roomId = notificationPayload.roomId;
+                // this.config.roomName = notificationPayload.roomId;
+                // this.config.roomtoken = notificationPayload.roomtoken;
+                // this.config.roomtokenexpirytime = notificationPayload.roomtokenexpirytime;
+                // this.config.traceId = notificationPayload.traceId;
+                // this.traceId = notificationPayload.traceId;
+                // this.connection.xmpp.sendStartMucWithRoomId(this.config);
+                this.connection.xmpp.sendAllocate(this.config);
+
             } else {
                 logger.log(logger.level.INFO, "IrisRtcSession", "downgradeToChat : Sending allocate for default");
 
@@ -3336,29 +3408,38 @@ IrisRtcSession.prototype.downgradeToChat = function(downgradeConfig, notificatio
  */
 IrisRtcSession.prototype.upgradeToVideo = function(stream, upgradeConfig, notificationPayload) {
     try {
-        logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo : Moving form Chat session to Video session");
-        logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo : config : " + JSON.stringify(upgradeConfig));
+        logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo :: Moving form Chat session to Video session");
+        logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo :: config : " + JSON.stringify(upgradeConfig));
 
         if (!stream) {
-            logger.log(logger.level.ERROR, "IrisRtcSession", "stream is missing, Can't upgrade to video call ");
+            logger.log(logger.level.ERROR, "IrisRtcSession", "upgradeToVideo :: stream is missing, Can't upgrade to video call ");
             return;
         }
 
         this.localStream = stream;
 
         if (this.connection && this.connection.xmpp && this.config) {
+            // this.config.userData = upgradeConfig.userData;
             this.config.type = "video";
             this.state = IrisRtcSession.INCOMING;
             this.connection.xmpp.stopPresenceAlive();
             this.updateEventType();
             this.initWebRTC(this.connection.iceServerJson, this.config.type);
             this.addStream(this.localStream);
+
             if (upgradeConfig.sessionType == "create") {
+
+                logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo :: Sending root event");
+
                 this.config.sessionType = "upgrade";
-                logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo : Sending create root event");
-                this.connection.xmpp.sendCreateRootEventWithRoomId(this.config);
+
+                logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo :: Config : " + JSON.stringify(this.config));
+
+                this.connection.xmpp.sendRootEventWithRoomId(this.config);
+
             } else if (upgradeConfig.sessionType == "join" && notificationPayload) {
-                logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo : Sending allocate for join");
+
+                logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo :: Sending allocate for join");
 
                 this.config.roomId = notificationPayload.roomId;
                 this.config.roomName = notificationPayload.roomId;
@@ -3368,7 +3449,8 @@ IrisRtcSession.prototype.upgradeToVideo = function(stream, upgradeConfig, notifi
                 this.traceId = notificationPayload.traceId;
                 this.connection.xmpp.sendAllocate(this.config);
             } else {
-                logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo : Sending allocate for default");
+
+                logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo :: Sending allocate for anonymous case");
 
                 this.connection.xmpp.sendAllocate(this.config);
             }
@@ -3385,28 +3467,57 @@ IrisRtcSession.prototype.upgradeToVideo = function(stream, upgradeConfig, notifi
  * @param {object} stream = Local media stream - audio
  * @public
  */
-IrisRtcSession.prototype.upgradeToAudio = function(stream) {
+IrisRtcSession.prototype.upgradeToAudio = function(stream, upgradeConfig, notificationPayload) {
     try {
-        logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo : Moving form Chat session to Audio session");
+        logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToAudio :: Moving form Chat session to Audio session");
 
         if (!stream) {
-            logger.log(logger.level.ERROR, "IrisRtcSession", "stream is missing, Can't upgrade to video call ");
+            logger.log(logger.level.ERROR, "IrisRtcSession", "upgradeToAudio :: stream is missing, Can't upgrade to audio call ");
             return;
         }
         this.localStream = stream;
 
         if (this.connection && this.connection.xmpp && this.config) {
+            // this.config.userData = upgradeConfig.userData;
             this.config.type = "audio";
+            this.state = IrisRtcSession.INCOMING;
             this.connection.xmpp.stopPresenceAlive();
             this.updateEventType();
             this.initWebRTC(this.connection.iceServerJson, this.config.type);
             this.addStream(this.localStream);
-            this.connection.xmpp.sendAllocate(this.config);
+
+            if (upgradeConfig.sessionType == "create") {
+
+                logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToAudio : Sending root event");
+
+                this.config.sessionType = "upgrade";
+
+                logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToAudio : Config :: " + JSON.stringify(this.config));
+
+                this.connection.xmpp.sendRootEventWithRoomId(this.config);
+
+            } else if (upgradeConfig.sessionType == "join" && notificationPayload) {
+
+                logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToAudio : Sending allocate for join");
+
+                this.config.roomId = notificationPayload.roomId;
+                this.config.roomName = notificationPayload.roomId;
+                this.config.roomtoken = notificationPayload.roomtoken;
+                this.config.roomtokenexpirytime = notificationPayload.roomtokenexpirytime;
+                this.config.traceId = notificationPayload.traceId;
+                this.traceId = notificationPayload.traceId;
+                this.connection.xmpp.sendAllocate(this.config);
+            } else {
+
+                logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToAudio : Sending allocate for anonymous case");
+
+                this.connection.xmpp.sendAllocate(this.config);
+            }
         } else {
-            logger.log(logger.level.ERROR, "IrisRtcSession", "upgradeToVideo :: Failed, check for connection and config");
+            logger.log(logger.level.ERROR, "IrisRtcSession", "upgradeToAudio :: Failed, check for connection and config");
         }
     } catch (error) {
-        logger.log(logger.level.ERROR, "IrisRtcSession", "upgradeToVideo :: Failed ", error)
+        logger.log(logger.level.ERROR, "IrisRtcSession", "upgradeToAudio :: Failed ", error)
     }
 }
 
@@ -3434,6 +3545,7 @@ IrisRtcSession.prototype.updateEventType = function() {
                     //
             }
         }
+        logger.log(logger.level.INFO, "IrisRtcSession", "updateEventType :: eventType : " + this.config.eventType);
     } catch (error) {
         logger.log(logger.level.ERROR, "IrisRtcSession", "updateEventType :: Failed", error);
     }
@@ -3572,6 +3684,20 @@ IrisRtcSession.prototype.onDominantSpeakerChanged = function(dominantSpeakerId) 
 
 };
 
+
+/**
+ * This is called when a participant changes type of the call
+ * ex. From char > video or video > chat, callType will be 
+ * "videocall" for a video call
+ * "audiocall" for a audio call
+ * "groupchat" for a chat session
+ * @public
+ */
+IrisRtcSession.prototype.onSessionTypeChange = function(jid, type) {
+
+}
+
+
 /**
  * @private
  */
@@ -3593,7 +3719,6 @@ IrisRtcSession.prototype.lastNEndPointChanged = function(lastNEndpoints, endpoin
 IrisRtcSession.prototype.onDataChannelMessage = function(colibriClass, obj) {
 
 };
-
 
 /**
  * API to end the session 

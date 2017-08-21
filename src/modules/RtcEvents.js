@@ -14,9 +14,10 @@ RtcEvents = {
     CONNECTION_ERROR: "Connection.onError",
 
     CREATE_ROOT_EVENT_SUCCESS: "Session.onCreateRootEventWithRoomIdSent",
-
-
     CREATE_ROOT_EVENT_ERROR: "Session.onCreateRootEventWithRoomIdError",
+
+    CREATE_ROOM_SUCCESS: "Session.onCreateRoomWithRoomIdSent",
+    CREATE_ROOM_ERROR: "Session.onCreateRoomWithRoomIdError"
 
 
 }

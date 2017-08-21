@@ -170,6 +170,200 @@ RtcXmpp.prototype.disconnect = function disconnect() {
     this.presIQ = null;
 }
 
+/**
+ * Makes a call to EVM to get RTC server and roomtoken details
+ * @param {json} config - Config from session
+ */
+RtcXmpp.prototype.sendStartMucWithRoomId = function(config) {
+    try {
+
+        logger.log(logger.level.INFO, "RtcXmpp",
+            " sendStartMucWithRoomId called ");
+
+        var self = this;
+
+        var options = {
+            host: Rtcconfig.json.urls.eventManager,
+            path: '/v1/xmpp/startmuc/room/' + config.roomId,
+            method: 'PUT',
+            headers: {
+                "Authorization": this.token,
+                "Content-Type": "application/json",
+                "Trace-Id": config.traceId
+            }
+        };
+
+        var userData = (config.userData && config.eventType != "groupchat") ? config.userData : "";
+
+        logger.log(logger.level.VERBOSE, "RtcXmpp", "sendStartMucWithRoomId :: Ignore userData for groupchat calls");
+
+        // JSON body 
+        var jsonBody = {
+            "from": this.jid,
+            "event_type": config.eventType,
+            "time_posted": Date.now(),
+            "userdata": userData
+        };
+
+        logger.log(logger.level.INFO, "RtcXmpp",
+            " startmuc with roomid with options " + JSON.stringify(options) +
+            " & body " + JSON.stringify(jsonBody));
+
+        // Send the http request and wait for response
+        var req = https.request(options, function(response) {
+            var body = ''
+
+            // Callback for data
+            response.on('data', function(chunk) {
+                body += chunk;
+            });
+
+            // Callback when complete data is received
+            response.on('end', function() {
+                logger.log(logger.level.INFO, "RtcXmpp",
+                    " Received server response  " + body);
+
+                // check if the status code is correct
+                if (response.statusCode != 200) {
+                    logger.log(logger.level.ERROR, "RtcXmpp",
+                        " Start muc with roomid failed with status code  " +
+                        response.statusCode + " & response " + body);
+
+                    // emit the error event
+                    self.emit('onCreateRootEventWithRoomIdError', new Error("RtcXmpp",
+                        " Start muc with roomid failed with status code  " +
+                        response.statusCode + " & response " + body));
+
+                    return;
+                }
+
+                // Get the the response json
+                var resJson = JSON.parse(body);
+                resJson["sessionId"] = config.sessionId;
+                resJson["config"] = config;
+                self.rtcServer = resJson.eventdata.rtc_server;
+
+                // emit the error event
+                self.emit(RtcEvents.CREATE_ROOM_SUCCESS, resJson);
+            });
+        });
+
+        // Catch errors 
+        req.on('error', function(e) {
+            logger.log(logger.level.ERROR, "RtcXmpp",
+                " Create root event with roomid failed with error  " + e);
+
+            // emit the error event
+            self.emit('onCreateRootEventWithRoomIdError', e);
+        });
+
+        // write json
+        req.write(JSON.stringify(jsonBody));
+
+        // Write json
+        req.end();
+
+
+    } catch (e) {
+        logger.log(logger.level.ERROR, "RtcXmpp",
+            "sendStartMucWithRoomId :: xmpp create room failed with error  ", e);
+    }
+}
+
+/**
+ * Creates an event on evm
+ * @param {json} config - Config from session
+ */
+RtcXmpp.prototype.sendRootEventWithRoomId = function(config) {
+    try {
+        logger.log(logger.level.INFO, "RtcXmpp",
+            " sendRootEventWithRoomId called ");
+        var self = this;
+
+        var options = {
+            host: Rtcconfig.json.urls.eventManager,
+            path: '/v1/xmpp/rootevent/room/' + config.roomId,
+            method: 'PUT',
+            headers: {
+                "Authorization": this.token,
+                "Content-Type": "application/json",
+                "Trace-Id": config.traceId
+            }
+        };
+
+        // JSON body 
+        var jsonBody = {
+            "from": this.jid,
+            "event_type": config.eventType,
+            "time_posted": Date.now(),
+            "userdata": config.userData ? config.userData : ""
+        };
+
+        logger.log(logger.level.INFO, "RtcXmpp",
+            " root event with roomid with options " + JSON.stringify(options) +
+            " & body " + JSON.stringify(jsonBody));
+
+        // Send the http request and wait for response
+        var req = https.request(options, function(response) {
+            var body = ''
+
+            // Callback for data
+            response.on('data', function(chunk) {
+                body += chunk;
+            });
+
+            // Callback when complete data is received
+            response.on('end', function() {
+                logger.log(logger.level.INFO, "RtcXmpp",
+                    " Received server response  " + body);
+
+                // check if the status code is correct
+                if (response.statusCode != 200) {
+                    logger.log(logger.level.ERROR, "RtcXmpp",
+                        " Create room with roomid failed with status code  " +
+                        response.statusCode + " & response " + body);
+
+                    // emit the error event
+                    self.emit(RtcEvents.CREATE_ROOT_EVENT_ERROR, new Error("RtcXmpp",
+                        " Create room with roomid failed with status code  " +
+                        response.statusCode + " & response " + body));
+
+                    return;
+                }
+
+                // Get the the response json
+                var resJson = JSON.parse(body);
+                resJson["sessionId"] = config.sessionId;
+                resJson["config"] = config;
+                self.rtcServer = resJson.eventdata.rtc_server;
+
+                // emit the error event
+                self.emit(RtcEvents.CREATE_ROOT_EVENT_SUCCESS, resJson);
+            });
+        });
+
+        // Catch errors 
+        req.on('error', function(e) {
+            logger.log(logger.level.ERROR, "RtcXmpp",
+                " Create root event with roomid failed with error  " + e);
+
+            // emit the error event
+            self.emit('onCreateRootEventWithRoomIdError', e);
+        });
+
+        // write json
+        req.write(JSON.stringify(jsonBody));
+
+        // Write json
+        req.end();
+
+
+    } catch (e) {
+        logger.log(logger.level.ERROR, "RtcXmpp",
+            "sendRootEventWithRoomId :: xmpp root event failed with error  ", e);
+    }
+}
+
 // Method to create xmpp root event
 //
 // @param None
@@ -177,13 +371,12 @@ RtcXmpp.prototype.disconnect = function disconnect() {
 //
 RtcXmpp.prototype.sendCreateRootEventWithRoomId = function sendCreateRootEventWithRoomId(config) {
 
-    logger.log(logger.level.VERBOSE, "RtcXmpp",
+    logger.log(logger.level.INFO, "RtcXmpp",
         " sendCreateRootEventWithRoomId called ");
 
-    // Send a private IQ for createxmpprootevent
+    // Send a private IQ for createrootevent
     if (!Rtcconfig.json.useEmPrivateIQ) {
         // Call event manager directly
-        // Options for anonymous login request
         var options = {
             host: Rtcconfig.json.urls.eventManager,
             path: '/v1/xmpp/createrootevent/room/' + config.roomId,
@@ -202,8 +395,8 @@ RtcXmpp.prototype.sendCreateRootEventWithRoomId = function sendCreateRootEventWi
             "userdata": config.userData ? config.userData : ""
         };
 
-        logger.log(logger.level.VERBOSE, "RtcXmpp",
-            " Create root event with roomid with  options " + JSON.stringify(options) +
+        logger.log(logger.level.INFO, "RtcXmpp",
+            " Create root event with roomid with options " + JSON.stringify(options) +
             " & body " + JSON.stringify(jsonBody));
 
         var self = this;
@@ -1400,6 +1593,9 @@ RtcXmpp.prototype._onPresence = function _onPresence(stanza) {
         var x = stanza.getChild('x', 'http://jabber.org/protocol/muc#user');
         if (!x) { return; }
 
+        var dataElement = stanza.getChild('data');
+        dataElement = dataElement ? dataElement.attrs : dataElement;
+        logger.log(logger.level.INFO, "RtcXmpp.onMessage", "onPresence :: dataElement " + JSON.stringify(dataElement));
         // Retrieve item node
         var item = x.getChild('item');
 
@@ -1419,7 +1615,8 @@ RtcXmpp.prototype._onPresence = function _onPresence(stanza) {
                     "affiliation": item.attrs.affiliation,
                     "roomName": stanza.attrs.from.split('@')[0],
                     "type": stanza.attrs.type,
-                    "from": stanza.attrs.from
+                    "from": stanza.attrs.from,
+                    "dataElement": dataElement
                 };
 
                 // send the presence message
@@ -1450,7 +1647,8 @@ RtcXmpp.prototype._onPresence = function _onPresence(stanza) {
                     "videomuted": videomuted,
                     "audiomuted": audiomuted,
                     "nick": nick,
-                    "status": status
+                    "status": status,
+                    "dataElement": dataElement
 
                 };
 
@@ -1493,7 +1691,7 @@ RtcXmpp.prototype._onDiscoInfo = function _onDiscoInfo(stanza) {
 // @returns Nothing
 //
 RtcXmpp.prototype._onPrivateIQ = function _onPrivateIQ(stanza) {
-
+    logger.log(logger.level.VERBOSE, "RtcXmpp._onPrivateIQ", "Stanza " + stanza);
     var self = this;
 
     // Get the query node
@@ -1542,6 +1740,13 @@ RtcXmpp.prototype._onPrivateIQ = function _onPrivateIQ(stanza) {
             } else if (incomingConfig.type == 'cancel' && !self.rtcServer) {
                 // send the incoming message
                 self.emit('onIncoming', incomingConfig);
+            } else if (incomingConfig.type == 'chat' && !self.rtcServer) {
+                // notification type chat
+                self.emit('onIncoming', incomingConfig);
+            } else {
+                logger.log(logger.level.ERROR, "RtcXmpp._onPrivateIQ", "Notification type doesn' match " + incomingConfig.type)
+                    //                self.emit('onIncoming', incomingConfig);
+
             }
         } else {
             // send the incoming message
@@ -1756,8 +1961,18 @@ RtcXmpp.prototype._onGroupChat = function(stanza) {
     }
 }
 
-RtcXmpp.prototype.sendGroupChatMessage = function(config, id, message) {
+RtcXmpp.prototype.sendGroupChatMessage = function(config, id, message, topic) {
     this.index++;
+
+    var data = {
+        'xmlns': "urn:xmpp:comcast:info",
+        'traceid': config.traceId,
+        'host': this.server,
+    }
+
+    if (topic)
+        data.topic = topic;
+
     var msg = new xmppClient.Element(
             'message', {
                 id: id,
@@ -1766,11 +1981,8 @@ RtcXmpp.prototype.sendGroupChatMessage = function(config, id, message) {
                 type: 'groupchat',
             })
         .c('body').t(message).up()
-        .c('data', {
-            'xmlns': "urn:xmpp:comcast:info",
-            'traceid': config.traceId,
-            'host': this.server,
-        }).up();
+        .c('data', data).up();
+
     this.client.send(msg.tree());
 }
 
