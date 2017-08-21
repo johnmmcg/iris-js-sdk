@@ -636,7 +636,7 @@ RtcXmpp.prototype.sendPresenceAlive = function sendPresenceAlive(config) {
 // @returns {retValue} 0 on success, negative value on error
 //
 RtcXmpp.prototype.stopPresenceAlive = function stopPresenceAlive(roomid) {
-
+    logger.log(logger.level.INFO, "RtcXmpp", "stopPresenceAlive");
     if (!roomid) {
         for (var member in this.prestimer) {
             clearInterval(this.prestimer[member]);

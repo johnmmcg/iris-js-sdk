@@ -194,7 +194,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
     }
 
     // Setup callbacks for create root event success
-    connection.xmpp.on(RtcEvents.CREATE_ROOM_SUCCESS, function(response) {
+    connection.xmpp.once(RtcEvents.CREATE_ROOM_SUCCESS, function(response) {
         logger.log(logger.level.INFO, "IrisRtcSession",
             " CREATE_ROOM_SUCCESS " + JSON.stringify(response));
 
@@ -557,7 +557,13 @@ IrisRtcSession.prototype.create = function(config, connection) {
                         logger.log(logger.level.INFO, "IrisRtcSession", "onPresence ::" +
                             "onSessionTypeChange:: type : " + response.dataElement.event + " participant :: " + response.jid);
                         if (self.config.eventType != response.dataElement.event) {
-                            self.onSessionTypeChange(response.jid, response.dataElement.event);
+
+                            var sessionType = response.dataElement.event;
+
+                            sessionType = (sessionType == "groupchat") ? "chat" : (sessionType == "videocall") ? "video" :
+                                (sessionType == "audiocall") ? "audio" : (sessionType == "pstncall") ? "pstn" : "";
+
+                            self.onSessionTypeChange(response.jid, sessionType);
                         }
                     }
                 }
@@ -793,27 +799,23 @@ IrisRtcSession.prototype.create = function(config, connection) {
         logger.log(logger.level.INFO, "IrisRtcSession",
             " onSourceRemove " + " roomName " + data.roomName + " config.emRoomId " + self.config.emRoomId);
 
-        this.onRemoveStream();
-
         // Check if this is the correct session
         if (data.roomName != self.config.emRoomId) return;
 
         // Check if we were supposed to receive this
-        {
-            if (self.peerconnection != null) {
-                // Check the current state of peerconnection: TBD
-                logger.log(logger.level.INFO, "IrisRtcSession", " onSourceRemove :: Calling setRemoteDescription with  " + data.sdp +
-                    " peerconnection " + self.peerconnection.signalingState);
+        if (self.peerconnection != null) {
+            // Check the current state of peerconnection: TBD
+            logger.log(logger.level.INFO, "IrisRtcSession", " onSourceRemove :: Calling setRemoteDescription with  " + data.sdp +
+                " peerconnection " + self.peerconnection.signalingState);
 
-                var remoteDesc = new SDP(self.peerconnection.remoteDescription.sdp);
+            var remoteDesc = new SDP(self.peerconnection.remoteDescription.sdp);
 
-                var newRemoteDesc = SDPUtil.removeSources(data.jingle, remoteDesc);
+            var newRemoteDesc = SDPUtil.removeSources(data.jingle, remoteDesc);
 
-                self.setReOfferForSourceRemove(newRemoteDesc);
+            self.setReOfferForSourceRemove(newRemoteDesc);
 
-                // Send events
-                self.sendEvent(self.sessionId, "SDK_XMPPJingleSourceRemovedReceived", "");
-            }
+            // Send events
+            self.sendEvent(self.sessionId, "SDK_XMPPJingleSourceRemovedReceived", "");
         }
     });
 
@@ -3419,7 +3421,6 @@ IrisRtcSession.prototype.upgradeToVideo = function(stream, upgradeConfig, notifi
         this.localStream = stream;
 
         if (this.connection && this.connection.xmpp && this.config) {
-            // this.config.userData = upgradeConfig.userData;
             this.config.type = "video";
             this.state = IrisRtcSession.INCOMING;
             this.connection.xmpp.stopPresenceAlive();
@@ -3432,6 +3433,7 @@ IrisRtcSession.prototype.upgradeToVideo = function(stream, upgradeConfig, notifi
                 logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo :: Sending root event");
 
                 this.config.sessionType = "upgrade";
+                this.config.userData = upgradeConfig.userData ? upgradeConfig.userData : this.config.userData;
 
                 logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo :: Config : " + JSON.stringify(this.config));
 
@@ -3478,7 +3480,6 @@ IrisRtcSession.prototype.upgradeToAudio = function(stream, upgradeConfig, notifi
         this.localStream = stream;
 
         if (this.connection && this.connection.xmpp && this.config) {
-            // this.config.userData = upgradeConfig.userData;
             this.config.type = "audio";
             this.state = IrisRtcSession.INCOMING;
             this.connection.xmpp.stopPresenceAlive();
@@ -3491,6 +3492,7 @@ IrisRtcSession.prototype.upgradeToAudio = function(stream, upgradeConfig, notifi
                 logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToAudio : Sending root event");
 
                 this.config.sessionType = "upgrade";
+                this.config.userData = upgradeConfig.userData ? upgradeConfig.userData : this.config.userData;
 
                 logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToAudio : Config :: " + JSON.stringify(this.config));
 
