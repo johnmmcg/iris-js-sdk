@@ -7,7 +7,7 @@
 
 var RtcEvents = module.exports;
 
-RtcEvents = {
+RtcEvents.Events = {
 
     CONNECTION_OPEN: "Connection.onOpen",
     CONNECTION_CLOSE: "Connection.onClose",
@@ -16,8 +16,8 @@ RtcEvents = {
     CREATE_ROOT_EVENT_SUCCESS: "Session.onCreateRootEventWithRoomIdSent",
     CREATE_ROOT_EVENT_ERROR: "Session.onCreateRootEventWithRoomIdError",
 
-    CREATE_ROOM_SUCCESS: "Session.onCreateRoomWithRoomIdSent",
-    CREATE_ROOM_ERROR: "Session.onCreateRoomWithRoomIdError"
+    START_MUC_SUCCESS: "Session.onStartMucWithRoomIdSent",
+    START_MUC_ERROR: "Session.onStartMucWithRoomIdError"
 
 
 }

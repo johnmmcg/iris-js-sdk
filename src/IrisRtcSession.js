@@ -13,7 +13,7 @@ var logger = require('./modules/RtcLogger.js');
 var errors = require('./modules/RtcErrors.js');
 var rtcConfig = require('./modules/RtcConfig.js');
 var rtcStats = require('./modules/RtcStats.js');
-var RtcEvents = require("./modules/RtcEvents.js");
+var RtcEvents = require("./modules/RtcEvents.js").Events;
 var SDP = require('./modules/Utils/SDP.js');
 var SDPUtil = require("./modules/Utils/SDPUtil.js");
 var SDPDiffer = require('./modules/Utils/SDPDiffer.js');
@@ -194,9 +194,9 @@ IrisRtcSession.prototype.create = function(config, connection) {
     }
 
     // Setup callbacks for create root event success
-    connection.xmpp.once(RtcEvents.CREATE_ROOM_SUCCESS, function(response) {
+    connection.xmpp.once(RtcEvents.START_MUC_SUCCESS, function(response) {
         logger.log(logger.level.INFO, "IrisRtcSession",
-            " CREATE_ROOM_SUCCESS " + JSON.stringify(response));
+            " START_MUC_SUCCESS " + JSON.stringify(response));
 
         if (self.state == IrisRtcSession.CONNECTING) return;
 
@@ -558,12 +558,12 @@ IrisRtcSession.prototype.create = function(config, connection) {
                             "onSessionTypeChange:: type : " + response.dataElement.event + " participant :: " + response.jid);
                         if (self.config.eventType != response.dataElement.event) {
 
-                            var sessionType = response.dataElement.event;
+                            var eventType = response.dataElement.event;
 
-                            sessionType = (sessionType == "groupchat") ? "chat" : (sessionType == "videocall") ? "video" :
-                                (sessionType == "audiocall") ? "audio" : (sessionType == "pstncall") ? "pstn" : "";
+                            eventType = (eventType == "groupchat") ? "chat" : (eventType == "videocall") ? "video" :
+                                (eventType == "audiocall") ? "audio" : (eventType == "pstncall") ? "pstn" : "";
 
-                            self.onSessionTypeChange(response.jid, sessionType);
+                            self.onSessionTypeChange(response.jid, eventType);
                         }
                     }
                 }
@@ -3373,23 +3373,14 @@ IrisRtcSession.prototype.downgradeToChat = function(downgradeConfig, notificatio
             this.state = IrisRtcSession.INCOMING;
             this.connection.xmpp.stopPresenceAlive();
             this.updateEventType();
+            this.config.sessionType = "downgrade";
 
             if (downgradeConfig.sessionType == "create") {
                 logger.log(logger.level.INFO, "IrisRtcSession", "downgradeToChat : Sending deallocate for create");
-                this.config.sessionType = "downgrade";
                 this.connection.xmpp.sendAllocate(this.config);
             } else if (downgradeConfig.sessionType == "join") {
                 logger.log(logger.level.INFO, "IrisRtcSession", "downgradeToChat : Sending deallocate for join");
-                this.config.sessionType = "downgrade";
-                // this.config.roomId = notificationPayload.roomId;
-                // this.config.roomName = notificationPayload.roomId;
-                // this.config.roomtoken = notificationPayload.roomtoken;
-                // this.config.roomtokenexpirytime = notificationPayload.roomtokenexpirytime;
-                // this.config.traceId = notificationPayload.traceId;
-                // this.traceId = notificationPayload.traceId;
-                // this.connection.xmpp.sendStartMucWithRoomId(this.config);
                 this.connection.xmpp.sendAllocate(this.config);
-
             } else {
                 logger.log(logger.level.INFO, "IrisRtcSession", "downgradeToChat : Sending allocate for default");
 
@@ -3410,6 +3401,7 @@ IrisRtcSession.prototype.downgradeToChat = function(downgradeConfig, notificatio
  */
 IrisRtcSession.prototype.upgradeToVideo = function(stream, upgradeConfig, notificationPayload) {
     try {
+
         logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo :: Moving form Chat session to Video session");
         logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo :: config : " + JSON.stringify(upgradeConfig));
 
@@ -3427,12 +3419,12 @@ IrisRtcSession.prototype.upgradeToVideo = function(stream, upgradeConfig, notifi
             this.updateEventType();
             this.initWebRTC(this.connection.iceServerJson, this.config.type);
             this.addStream(this.localStream);
+            this.config.sessionType = "upgrade";
 
             if (upgradeConfig.sessionType == "create") {
 
                 logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo :: Sending root event");
 
-                this.config.sessionType = "upgrade";
                 this.config.userData = upgradeConfig.userData ? upgradeConfig.userData : this.config.userData;
 
                 logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo :: Config : " + JSON.stringify(this.config));
@@ -3450,9 +3442,10 @@ IrisRtcSession.prototype.upgradeToVideo = function(stream, upgradeConfig, notifi
                 this.config.traceId = notificationPayload.traceId;
                 this.traceId = notificationPayload.traceId;
                 this.connection.xmpp.sendAllocate(this.config);
+
             } else {
 
-                logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo :: Sending allocate for anonymous case");
+                logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo :: Sending allocate for anonymous call");
 
                 this.connection.xmpp.sendAllocate(this.config);
             }
@@ -3486,12 +3479,12 @@ IrisRtcSession.prototype.upgradeToAudio = function(stream, upgradeConfig, notifi
             this.updateEventType();
             this.initWebRTC(this.connection.iceServerJson, this.config.type);
             this.addStream(this.localStream);
+            this.config.sessionType = "upgrade";
 
             if (upgradeConfig.sessionType == "create") {
 
                 logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToAudio : Sending root event");
 
-                this.config.sessionType = "upgrade";
                 this.config.userData = upgradeConfig.userData ? upgradeConfig.userData : this.config.userData;
 
                 logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToAudio : Config :: " + JSON.stringify(this.config));
