@@ -16,7 +16,7 @@ var https = require('https');
 var SDPDiffer = require("./Utils/SDPDiffer.js");
 var SDPUtil = require("./Utils/SDPUtil.js");
 var SDP = require("./Utils/SDP.js");
-var RtcEvents = require("./RtcEvents.js");
+var RtcEvents = require("./RtcEvents.js").Events;
 var transform = require("sdp-transform");
 
 // Features for disco
@@ -239,12 +239,11 @@ RtcXmpp.prototype.sendStartMucWithRoomId = function(config) {
 
                 // Get the the response json
                 var resJson = JSON.parse(body);
-                resJson["sessionId"] = config.sessionId;
-                resJson["config"] = config;
+
                 self.rtcServer = resJson.eventdata.rtc_server;
 
                 // emit the error event
-                self.emit(RtcEvents.CREATE_ROOM_SUCCESS, resJson);
+                self.emit(RtcEvents.START_MUC_SUCCESS, resJson);
             });
         });
 
@@ -954,18 +953,29 @@ RtcXmpp.prototype.sendAllocate = function sendAllocate(data) {
     //conference.c('property', {"name": "enableFirefoxHacks", "value": "false"});
     conference.c('property', { "name": "simulcastMode", "value": "rewriting" });
 
-    // Add data element
-    allocate.c('data', {
+
+    var dataElem = {
         'xmlns': "urn:xmpp:comcast:info",
         'traceid': data.traceId,
         'childnodeid': data.childNodeId,
         'rootnodeid': data.rootNodeId,
         'event': data.eventType,
         'host': this.server,
-        'type': (data.eventType == 'groupchat') ? "deallocate" : "allocate",
         'roomtoken': data.roomtoken,
         'roomtokenexpirytime': data.roomtokenexpirytime
-    });
+    }
+
+    if (data.sessionType == "upgrade" || data.sessionType == "downgrade") {
+        if (data.eventType == 'groupchat') {
+            dataElem.type = "deallocate";
+        } else {
+            dataElem.type = "allocate";
+        }
+    }
+
+    // Add data element
+    allocate.c('data', dataElem);
+
     this.client.send(allocate.tree());
 }
 
@@ -1735,18 +1745,17 @@ RtcXmpp.prototype._onPrivateIQ = function _onPrivateIQ(stanza) {
 
         if (data.attrs.type) {
             if (incomingConfig.type == 'notify') {
-                // send the incoming message
+                // Send notification for incoming call
                 self.emit('onIncoming', incomingConfig);
             } else if (incomingConfig.type == 'cancel' && !self.rtcServer) {
-                // send the incoming message
+                // Send notification for canceling call
                 self.emit('onIncoming', incomingConfig);
             } else if (incomingConfig.type == 'chat' && !self.rtcServer) {
-                // notification type chat
+                // Send notification for a chat call
                 self.emit('onIncoming', incomingConfig);
             } else {
-                logger.log(logger.level.ERROR, "RtcXmpp._onPrivateIQ", "Notification type doesn' match " + incomingConfig.type)
-                    //                self.emit('onIncoming', incomingConfig);
-
+                logger.log(logger.level.INFO, "RtcXmpp._onPrivateIQ", "Notification type doesn't match " + incomingConfig.type)
+                    // self.emit('onIncoming', incomingConfig);
             }
         } else {
             // send the incoming message
