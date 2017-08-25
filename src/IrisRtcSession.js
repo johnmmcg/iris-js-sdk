@@ -116,7 +116,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
         this.traceId = this.getUUIDV1();
         this.config.traceId = this.traceId;
     } else if (this.config.traceId) {
-        this.traceId = this.traceId;
+        this.traceId = this.config.traceId;
     }
 
     this.config.sessionId = this.sessionId;
@@ -300,7 +300,8 @@ IrisRtcSession.prototype.create = function(config, connection) {
     connection.xmpp.on('onIQError', function(error) {
         logger.log(logger.level.VERBOSE, "IrisRtcSession",
             " onIQError ", error);
-        self.end();
+        self.onError(error);
+        // self.end();
     });
     // Setup callbacks for createroom event error
     connection.xmpp.removeAllListeners(["onAllocateSuccess"]);
@@ -400,7 +401,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
 
 
                 // Send events
-                self.sendEvent(self.sessionId, "SDK_XMPPJoined", response.roomName);
+                self.sendEvent(self.sessionId, "SDK_XMPPJoined", response.jid);
 
                 // for audio call, send the rayo command
                 if (self.config.type == "pstn" && self.config.sessionType != "join" && self.pstnState == IrisRtcSession.NONE) {
@@ -418,7 +419,8 @@ IrisRtcSession.prototype.create = function(config, connection) {
                     serviceId: self.sessionId,
                     UEStatsServer: rtcConfig.json.urls.UEStatsServer,
                     sdkVersion: rtcConfig.json.sdkVersion,
-                    UID: self.connection.publicId
+                    UID: self.connection.publicId ? self.connection.publicId : self.config.routingId,
+                    useBridge: rtcConfig.json.useBridge
                 };
 
                 self.sdkStats.options = statsOptions;
@@ -713,7 +715,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
                 self.readSsrcs(data);
 
                 // Send events
-                self.sendEvent(self.sessionId, "SDK_XMPPJingleSessionInitiateReceived", "");
+                self.sendEvent(self.sessionId, "SDK_XMPPJingleSessionInitiateReceived", self.ssrcOwners);
             }
         } else {
             logger.log(logger.level.ERROR, "IrisRtcSession",
@@ -789,7 +791,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
                 // }
 
                 // Send events
-                self.sendEvent(self.sessionId, "SDK_XMPPJingleSourceAddReceived", "");
+                self.sendEvent(self.sessionId, "SDK_XMPPJingleSourceAddReceived", self.ssrcOwners);
             }
         }
     });
@@ -995,6 +997,8 @@ IrisRtcSession.prototype.end = function() {
         // Send the presence if room is created
         this.connection.xmpp.sendPresence(this.config);
 
+        clearInterval(this.monitorIntervalValue);
+
         this.onSessionEnd(this.sessionId);
 
         // Set the presence state
@@ -1149,7 +1153,7 @@ IrisRtcSession.prototype.sendCandidates = function() {
     logger.log(logger.level.VERBOSE, "IrisRtcSession", "sendCandidates");
 
     // Check the current state whether the remote participant has joined the room
-    if ((Object.keys(this.participants).length != 0) && (this.localSdp || this.localAnswer)) {
+    if ((Object.keys(this.participants).length != 0) && (rtcConfig.json.useBridge || this.localSdp || this.localAnswer)) {
         var self = this;
         this.candidates.forEach(function(candidate) {
             var type;
@@ -2770,21 +2774,24 @@ IrisRtcSession.prototype.onUserProfileChange = function(jid, profileJson) {
 
 
 /**
- * Called when websocket has a error
+ * Called to report an SDK event or an error
  * @private
  */
 IrisRtcSession.prototype.sendEvent = function(sessionid, state, details) {
-    var eventdata = { "type": "session", "sessionid": sessionid, "state": state, "details": details };
+
+    var eventdata = {
+        "type": "session",
+        "sessionid": sessionid,
+        "state": state,
+        "roomId": (this.config && this.config.roomId) ? this.config.roomId : "NA",
+        "routingId": (this.config && this.config.routingId) ? this.config.routingId : "NA",
+        "traceId": (this.config && this.config.traceId) ? this.config.traceId : "NA",
+        "details": details
+    };
 
     this.onEvent(eventdata);
 
-    if (!this.config.routingId || !this.config.traceId) return;
-
-    var json = {
-        "routingId": this.config.routingId,
-        "traceId": this.config.traceId
-    };
-    this.sdkStats.eventLogs(state, json);
+    this.sdkStats.eventLogs(state, eventdata);
 };
 
 /**
