@@ -18,6 +18,7 @@ var SDPUtil = require("./Utils/SDPUtil.js");
 var SDP = require("./Utils/SDP.js");
 var RtcEvents = require("./RtcEvents.js").Events;
 var transform = require("sdp-transform");
+var clientjs = require('clientjs');
 
 // Features for disco
 var features = [
@@ -33,6 +34,7 @@ var features = [
     "urn:xmpp:rayo:client:1",
     "urn:xmpp:jingle:transports:dtls-sctp:1"
 ];
+
 // Constructor
 //
 // @param Nothing
@@ -59,6 +61,8 @@ function RtcXmpp() {
     this.rayo_resourceid = '';
     this.sessionInitiateSdp = null;
     this.presIQ = null;
+
+    this.clientjs = new ClientJS();
 }
 
 // Setup an event emitter
@@ -363,109 +367,6 @@ RtcXmpp.prototype.sendRootEventWithRoomId = function(config) {
     }
 }
 
-// Method to create xmpp root event
-//
-// @param None
-// @returns {retValue} 0 on success, negative value on error
-//
-RtcXmpp.prototype.sendCreateRootEventWithRoomId = function sendCreateRootEventWithRoomId(config) {
-
-    logger.log(logger.level.INFO, "RtcXmpp",
-        " sendCreateRootEventWithRoomId called ");
-
-    // Send a private IQ for createrootevent
-    if (!Rtcconfig.json.useEmPrivateIQ) {
-        // Call event manager directly
-        var options = {
-            host: Rtcconfig.json.urls.eventManager,
-            path: '/v1/xmpp/createrootevent/room/' + config.roomId,
-            method: 'PUT',
-            headers: {
-                "Authorization": this.token,
-                "Content-Type": "application/json",
-                "Trace-Id": config.traceId
-            }
-        };
-        // JSON body 
-        var jsonBody = {
-            "from": this.jid,
-            "event_type": config.eventType,
-            "time_posted": Date.now(),
-            "userdata": config.userData ? config.userData : ""
-        };
-
-        logger.log(logger.level.INFO, "RtcXmpp",
-            " Create root event with roomid with options " + JSON.stringify(options) +
-            " & body " + JSON.stringify(jsonBody));
-
-        var self = this;
-
-        // Create a try and catch block
-        try {
-            // Send the http request and wait for response
-            var req = https.request(options, function(response) {
-                var body = ''
-
-                // Callback for data
-                response.on('data', function(chunk) {
-                    body += chunk;
-                });
-
-                // Callback when complete data is received
-                response.on('end', function() {
-                    logger.log(logger.level.INFO, "RtcXmpp",
-                        " Received server response  " + body);
-
-                    // check if the status code is correct
-                    if (response.statusCode != 200) {
-                        logger.log(logger.level.ERROR, "RtcXmpp",
-                            " Create root event with roomid failed with status code  " +
-                            response.statusCode + " & response " + body);
-
-                        // emit the error event
-                        self.emit('onCreateRootEventWithRoomIdError', new Error("RtcXmpp",
-                            " Create root event with roomid failed with status code  " +
-                            response.statusCode + " & response " + body));
-
-                        return;
-                    }
-
-                    // Get the the response json
-                    var resJson = JSON.parse(body);
-                    resJson["sessionId"] = config.sessionId;
-                    resJson["config"] = config;
-                    self.rtcServer = resJson.eventdata.rtc_server;
-
-                    // emit the error event
-                    // self.emit('onCreateRootEventWithRoomIdSent', resJson);
-                    self.emit(RtcEvents.CREATE_ROOT_EVENT_SUCCESS, resJson);
-                });
-            });
-
-            // Catch errors 
-            req.on('error', function(e) {
-                logger.log(logger.level.ERROR, "RtcXmpp",
-                    " Create root event with roomid failed with error  " + e);
-
-                // emit the error event
-                self.emit('onCreateRootEventWithRoomIdError', e);
-            });
-
-            // write json
-            req.write(JSON.stringify(jsonBody));
-
-            // Write json
-            req.end();
-
-        } catch (e) {
-            logger.log(logger.level.ERROR, "RtcXmpp",
-                " Create xmpp root event failed with error  " + e);
-            self.errorCb(e);
-        }
-    }
-
-}
-
 /*
 SEND: <presence to='al5tv9kz-evkg-irof-uaa8-ifm3tc4lkl7y@st-conference-wcdcc-001.poc.sys.comcast.net/6b8acbc9' 
 xmlns='jabber:client'><x xmlns='http://jabber.org/protocol/muc'>
@@ -547,7 +448,7 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
           pres.c('video').t('true');
           pres = pres.up();
         }*/
-        pres.c('user-agent', { 'xmlns': 'http://jitsi.org/jitmeet/user-agent' }).t('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.86 Safari/537.36');
+        pres.c('user-agent', { 'xmlns': 'http://jitsi.org/jitmeet/user-agent' }).t(this.clientjs.getUserAgent());
         pres = pres.c('devices')
         pres.c('audio').t('true');
         pres.c('video').t('true');
@@ -1266,7 +1167,7 @@ RtcXmpp.prototype.onConnected = function onConnected() {}
 //
 RtcXmpp.prototype.onDisconnected = function onDisconnected(error) {}
 
-// Callback to to get the stanza from xmpp
+// Callback to get the stanza from xmpp
 //
 // @param {msg} stanza
 // @returns Nothing
@@ -1285,7 +1186,7 @@ RtcXmpp.prototype.onMessage = function onMessage(stanza) {
     }
 }
 
-// Callback to to parse XMPP IQ
+// Callback to parse XMPP IQ
 //
 // @param {msg} stanza
 // @returns Nothing
@@ -1316,7 +1217,7 @@ RtcXmpp.prototype._onIQ = function _onIQ(stanza) {
     }
 }
 
-// Callback to to parse XMPP IQ
+// Callback to parse XMPP IQ
 //
 // @param {msg} stanza
 // @returns Nothing
@@ -1334,7 +1235,7 @@ RtcXmpp.prototype._onConference = function _onConference(stanza) {
 
 }
 
-// Callback to to parse XMPP IQ
+// Callback to parse XMPP IQ
 //
 // @param {msg} stanza
 // @returns Nothing
@@ -1583,95 +1484,96 @@ function getVal(stanza, child) {
 }
 
 
-// Callback to to get the stanza from xmpp
+// Callback to get the stanza from xmpp
 //
 // @param {msg} stanza
 // @returns Nothing
 //
 RtcXmpp.prototype._onPresence = function _onPresence(stanza) {
-        var self = this;
+    var self = this;
 
-        // Check if there is an error in the presence
-        if (stanza.attrs && stanza.attrs.type && stanza.attrs.type == "error") {
-            logger.log(logger.level.ERROR, "RtcXmpp.onMessage",
-                " Received presence error");
-            self.emit('onPresenceError', stanza.children);
-            return;
-        }
+    // Check if there is an error in the presence
+    if (stanza.attrs && stanza.attrs.type && stanza.attrs.type == "error") {
+        logger.log(logger.level.ERROR, "RtcXmpp.onMessage",
+            " Received presence error");
+        self.emit('onPresenceError', stanza.children);
+        return;
+    }
 
-        // Get the x node
-        var x = stanza.getChild('x', 'http://jabber.org/protocol/muc#user');
-        if (!x) { return; }
+    // Get the x node
+    var x = stanza.getChild('x', 'http://jabber.org/protocol/muc#user');
+    if (!x) { return; }
 
-        var dataElement = stanza.getChild('data');
-        dataElement = dataElement ? dataElement.attrs : dataElement;
-        logger.log(logger.level.INFO, "RtcXmpp.onMessage", "onPresence :: dataElement " + JSON.stringify(dataElement));
-        // Retrieve item node
-        var item = x.getChild('item');
+    var dataElement = stanza.getChild('data');
+    dataElement = dataElement ? dataElement.attrs : dataElement;
+    logger.log(logger.level.INFO, "RtcXmpp.onMessage", "onPresence :: dataElement " + JSON.stringify(dataElement));
+    // Retrieve item node
+    var item = x.getChild('item');
 
-        // Check if the item
-        if (item) {
+    // Check if the item
+    if (item) {
 
-            logger.log(logger.level.INFO, "RtcXmpp.onMessage",
-                " item " + JSON.stringify(item.attrs));
+        logger.log(logger.level.INFO, "RtcXmpp.onMessage",
+            " item " + JSON.stringify(item.attrs));
 
-            // Check if someone is leaving the room
-            if (stanza.attrs && stanza.attrs.type && stanza.attrs.type) {
-                var fromField = stanza.attrs.from.substring(stanza.attrs.from.indexOf('/') + 1);
-                // Create the presence config
-                var presenceConfig = {
-                    "jid": fromField,
-                    "role": item.attrs.role,
-                    "affiliation": item.attrs.affiliation,
-                    "roomName": stanza.attrs.from.split('@')[0],
-                    "type": stanza.attrs.type,
-                    "from": stanza.attrs.from,
-                    "dataElement": dataElement
-                };
+        // Check if someone is leaving the room
+        if (stanza.attrs && stanza.attrs.type && stanza.attrs.type) {
+            var fromField = stanza.attrs.from.substring(stanza.attrs.from.indexOf('/') + 1);
+            // Create the presence config
+            var presenceConfig = {
+                "jid": fromField,
+                "role": item.attrs.role,
+                "affiliation": item.attrs.affiliation,
+                "roomName": stanza.attrs.from.split('@')[0],
+                "type": stanza.attrs.type,
+                "from": stanza.attrs.from,
+                "dataElement": dataElement
+            };
 
-                // send the presence message
-                self.emit('onPresence', presenceConfig);
+            // send the presence message
+            self.emit('onPresence', presenceConfig);
+        } else {
+            var jid;
+
+            // Special processing for focus
+            if ((stanza.attrs.from.indexOf('f0cus') > 0) || (stanza.attrs.from.indexOf('sp00f') > 0)) {
+                jid = stanza.attrs.from;
             } else {
-                var jid;
-
-                // Special processing for focus
-                if ((stanza.attrs.from.indexOf('f0cus') > 0) || (stanza.attrs.from.indexOf('sp00f') > 0)) {
-                    jid = stanza.attrs.from;
-                } else {
-                    jid = stanza.attrs.from.substring(stanza.attrs.from.indexOf('/') + 1);
-                }
-
-                var videomuted = getVal(stanza, 'videomuted');
-                var audiomuted = getVal(stanza, 'audiomuted');
-                var nick = getVal(stanza, 'nick');
-                var status = getVal(stanza, 'status');
-
-                // Create the presence config
-                var presenceConfig = {
-                    "jid": jid,
-                    "role": item.attrs.role,
-                    "affiliation": item.attrs.affiliation,
-                    "roomName": stanza.attrs.from.split('@')[0],
-                    "type": "join",
-                    "from": stanza.attrs.from,
-                    "videomuted": videomuted,
-                    "audiomuted": audiomuted,
-                    "nick": nick,
-                    "status": status,
-                    "dataElement": dataElement
-
-                };
-
-                // send the presence message
-                self.emit('onPresence', presenceConfig);
+                jid = stanza.attrs.from.substring(stanza.attrs.from.indexOf('/') + 1);
             }
+
+            var videomuted = getVal(stanza, 'videomuted');
+            var audiomuted = getVal(stanza, 'audiomuted');
+            var nick = getVal(stanza, 'nick');
+            var status = getVal(stanza, 'status');
+
+            // Create the presence config
+            var presenceConfig = {
+                "jid": jid,
+                "role": item.attrs.role,
+                "affiliation": item.attrs.affiliation,
+                "roomName": stanza.attrs.from.split('@')[0],
+                "type": "join",
+                "from": stanza.attrs.from,
+                "videomuted": videomuted,
+                "audiomuted": audiomuted,
+                "nick": nick,
+                "status": status,
+                "dataElement": dataElement
+
+            };
+
+            // send the presence message
+            self.emit('onPresence', presenceConfig);
         }
     }
-    // Callback to to parse XMPP PRIVATE IQ
-    //
-    // @param {msg} stanza
-    // @returns Nothing
-    //
+}
+
+// Callback to parse XMPP PRIVATE IQ
+//
+// @param {msg} stanza
+// @returns Nothing
+//
 RtcXmpp.prototype._onDiscoInfo = function _onDiscoInfo(stanza) {
 
     var self = this;
@@ -1695,7 +1597,7 @@ RtcXmpp.prototype._onDiscoInfo = function _onDiscoInfo(stanza) {
 }
 
 
-// Callback to to parse XMPP PRIVATE IQ
+// Callback to parse XMPP PRIVATE IQ
 //
 // @param {msg} stanza
 // @returns Nothing
@@ -1768,7 +1670,7 @@ RtcXmpp.prototype._onPrivateIQ = function _onPrivateIQ(stanza) {
     }
 }
 
-// Callback to to parse XMPP RAYO IQ RESULT
+// Callback to parse XMPP RAYO IQ RESULT
 //
 // @param {msg} stanza
 // @returns Nothing
@@ -1788,7 +1690,7 @@ RtcXmpp.prototype._onRayoIQ = function _onRayoIQ(stanza) {
 
 };
 
-// Callback to to parse XMPP chat messages
+// Callback to parse XMPP chat messages
 //
 // @param {stanza} stanza
 // @returns Nothing
@@ -1809,7 +1711,7 @@ RtcXmpp.prototype._onChatMessage = function(stanza) {
 };
 
 
-// Callback to to parse XMPP chat messages to mute/unmute video
+// Callback to parse XMPP chat messages to mute/unmute video
 //
 // @param {stanza} stanza
 // @returns Nothing
@@ -1856,7 +1758,7 @@ RtcXmpp.prototype._onChat = function(stanza) {
 }
 
 
-// Callback to to parse XMPP group chat messages
+// Callback to parse XMPP group chat messages
 //
 // @param {stanza} stanza
 // @returns Nothing

@@ -8,6 +8,7 @@ module.exports = RtcStats;
 
 var logger = require('./RtcLogger.js');
 var https = require('https');
+var clientjs = require('clientjs');
 var RtcBrowserType = require('./Utils/RtcBrowserType.js');
 /** 
  * @constructor
@@ -140,6 +141,7 @@ function RtcStats(options) {
     this.submitLevel = 0;
     this.statsInterval = 10000;
 
+    this.client = new ClientJS();
 };
 
 /**
@@ -303,7 +305,14 @@ RtcStats.prototype.submitStats = function() {
     }
     var statsPayload = {
         "meta": {
-            "sdkVersion": self.options.sdkVersion
+            "sdkVersion": "iris-js-sdk-v" + self.options.sdkVersion,
+            "fingerprint": self.client.getFingerprint(), // Calculate Device/Browser Fingerprint
+            "userAgent": self.client.getUserAgent(), // Get User Agent String
+            "browser": self.client.getBrowser(), // Get Browser
+            "browserVersion": self.client.getBrowserVersion(), // Get Browser Version
+            "OS": self.client.getOS(), // Get OS Version
+            "osVersion": self.client.getOSVersion(), // Get OS Version
+            "timeZone": self.client.getTimeZone(), // Get Time Zone
         },
         "streaminfo": {
             "UID": self.options.UID,
