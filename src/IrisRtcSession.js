@@ -237,7 +237,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
         self.onCreated(response.eventdata.room_id);
 
         // Send events
-        self.sendEvent(self.sessionId, "SDK_EventManagerResponse", JSON.stringify(response));
+        self.sendEvent(self.sessionId, "SDK_StartMucResponse", JSON.stringify(response));
 
     });
 
@@ -285,7 +285,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
         self.onCreated(response.eventdata.room_id);
 
         // Send events
-        self.sendEvent(self.sessionId, "SDK_EventManagerResponse", JSON.stringify(response));
+        self.sendEvent(self.sessionId, "SDK_RootEventResponse", JSON.stringify(response));
 
     });
 
@@ -293,6 +293,8 @@ IrisRtcSession.prototype.create = function(config, connection) {
     connection.xmpp.once(RtcEvents.CREATE_ROOT_EVENT_ERROR, function(error) {
         logger.log(logger.level.VERBOSE, "IrisRtcSession",
             " onCreateRootEventWithRoomIdError ", error);
+
+        self.sendEvent(self.sessionId, "SDK_RootEventFailed", "");
         self.onError(error);
     });
 
@@ -300,8 +302,9 @@ IrisRtcSession.prototype.create = function(config, connection) {
     connection.xmpp.on('onIQError', function(error) {
         logger.log(logger.level.VERBOSE, "IrisRtcSession",
             " onIQError ", error);
+        self.sendEvent(self.sessionId, "SDK_IQError", error);
+
         self.onError(error);
-        // self.end();
     });
     // Setup callbacks for createroom event error
     connection.xmpp.removeAllListeners(["onAllocateSuccess"]);
@@ -424,7 +427,8 @@ IrisRtcSession.prototype.create = function(config, connection) {
                 };
 
                 self.sdkStats.options = statsOptions;
-                self.sdkStats.getPeerStats(self.peerconnection, rtcConfig.json.statsInterval);
+                self.sdkStats.localStatInterval = 2000;
+                self.sdkStats.getPeerStats(self.peerconnection, rtcConfig.json.statsInterval, true);
                 /* Stats Init End*/
 
                 // Check the state
@@ -634,6 +638,9 @@ IrisRtcSession.prototype.create = function(config, connection) {
     connection.xmpp.on('onPresenceError', function(error) {
         logger.log(logger.level.VERBOSE, "IrisRtcSession",
             " onPresenceError " + error);
+
+        self.sendEvent(self.sessionId, "SDK_PresenceError", error);
+
         self.onError(error);
     });
     // Setup callbacks for session initiate 
@@ -715,7 +722,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
                 self.readSsrcs(data);
 
                 // Send events
-                self.sendEvent(self.sessionId, "SDK_XMPPJingleSessionInitiateReceived", self.ssrcOwners);
+                self.sendEvent(self.sessionId, "SDK_XMPPJingleSessionInitiateReceived", { "ssrc": self.ssrcOwners });
             }
         } else {
             logger.log(logger.level.ERROR, "IrisRtcSession",
@@ -729,6 +736,9 @@ IrisRtcSession.prototype.create = function(config, connection) {
 
         logger.log(logger.level.VERBOSE, "IrisRtcSession",
             " onSourceAdd " + " roomName " + data.roomName + " config.emRoomId " + self.config.emRoomId);
+
+        self.sendEvent(self.sessionId, "SDK_XMPPJingleSourceAddReceived", "");
+
 
         // Check if this is the correct session
         if (data.roomName != self.config.emRoomId) return;
@@ -789,9 +799,6 @@ IrisRtcSession.prototype.create = function(config, connection) {
                 //     logger.log(logger.level.VERBOSE, "IrisRtcSession", "Not setting ReOffer");
                 //     return;
                 // }
-
-                // Send events
-                self.sendEvent(self.sessionId, "SDK_XMPPJingleSourceAddReceived", self.ssrcOwners);
             }
         }
     });
@@ -800,6 +807,9 @@ IrisRtcSession.prototype.create = function(config, connection) {
     this.connection.xmpp.on('onSourceRemove', function(data) {
         logger.log(logger.level.INFO, "IrisRtcSession",
             " onSourceRemove " + " roomName " + data.roomName + " config.emRoomId " + self.config.emRoomId);
+
+        self.sendEvent(self.sessionId, "SDK_XMPPJingleSourceRemovedReceived", "");
+
 
         // Check if this is the correct session
         if (data.roomName != self.config.emRoomId) return;
@@ -815,9 +825,6 @@ IrisRtcSession.prototype.create = function(config, connection) {
             var newRemoteDesc = SDPUtil.removeSources(data.jingle, remoteDesc);
 
             self.setReOfferForSourceRemove(newRemoteDesc);
-
-            // Send events
-            self.sendEvent(self.sessionId, "SDK_XMPPJingleSourceRemovedReceived", "");
         }
     });
 
@@ -923,7 +930,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
 IrisRtcSession.prototype.muteParticipantVideo = function(jid, mute) {
     try {
         if (jid && this.connection && this.connection.xmpp) {
-            this.connection.xmpp.sendVideoMute(jid, mute);
+            this.connection.xmpp.sendVideoMute(jid, mute, this.config);
         }
     } catch (error) {
         logger.log(logger.level.ERROR, "IrisRtcSession", "muteParticipantVideo error ", error);
@@ -939,7 +946,7 @@ IrisRtcSession.prototype.muteParticipantVideo = function(jid, mute) {
 IrisRtcSession.prototype.muteParticipantAudio = function(jid, mute) {
     try {
         if (jid && this.connection && this.connection.xmpp) {
-            this.connection.xmpp.sendAudioMute(jid, mute);
+            this.connection.xmpp.sendAudioMute(jid, mute, this.config);
         }
     } catch (error) {
         logger.log(logger.level.ERROR, "IrisRtcSession", "muteParticipantAudio error ", error);
@@ -1282,6 +1289,9 @@ IrisRtcSession.prototype.onDataChannel = function(event) {
 
         dataChannel.onopen = function() {
             logger.log(logger.level.VERBOSE, "IrisRtcSession", "Data Channel is opened ", dataChannel);
+
+            self.sendEvent(self.sessionId, "SDK_DataChannelOpened", dataChannel);
+
         };
 
         dataChannel.onmessage = function(event) {
@@ -1401,6 +1411,7 @@ IrisRtcSession.prototype.selectParticipant = function(participantId) {
                 selectedEndpoint: participantId || null
             };
             logger.log(logger.level.INFO, "IrisRtcSession", "selectParticipant :: Sending SelectedEndpointChangedEvent : " + JSON.stringify(jsonObject));
+            this.sendEvent(this.sessionId, "SDK_SelectParticipant", jsonObject);
             this.dataChannel.send(JSON.stringify(jsonObject));
         }
 
@@ -1427,7 +1438,7 @@ IrisRtcSession.prototype.pinParticipant = function(participantId) {
             };
 
             logger.log(logger.level.INFO, "IrisRtcSession", "pinParticipant :: Sending PinnedEndpointChangedEvent : " + JSON.stringify(jsonObject));
-
+            this.sendEvent(this.sessionId, "SDK_PinParticipant", jsonObject);
             this.dataChannel.send(JSON.stringify(jsonObject));
 
         } else {
@@ -1466,6 +1477,8 @@ IrisRtcSession.prototype.setLastN = function(value) {
             lastN: n
         };
         logger.log(logger.level.INFO, "IrisRtcSession", "Sending LastNChangedEvent : " + JSON.stringify(jsonObject));
+
+        this.sendEvent(this.sessionId, "SDK_SetLastN", jsonObject);
 
         this.dataChannel.send(JSON.stringify(jsonObject));
 
@@ -1716,8 +1729,11 @@ IrisRtcSession.prototype.setOffer = function(desc, from) {
                         "traceid": this.traceId,
                         "eventType": self.config.eventType
                     };
+
                     // Send session-accept
                     self.connection.xmpp.sendSessionAccept(data);
+
+                    self.sendEvent(self.sessionId, "SDK_XMPPJingleSessionAcceptSent", data);
 
                     //If it is p2p call send candidates after offer is set 
                     //and answer is sent 
@@ -2124,6 +2140,8 @@ IrisRtcSession.prototype.sendSourceAdd = function() {
                         "emRoomId": self.config.emRoomId,
                         "eventType": self.config.eventType
                     };
+                    self.sendEvent(self.sessionId, "SDK_SendSourceAdd", data);
+
                     self.connection.xmpp.sendSourceAdd(sdpDiffer, data);
 
                 }, function(error) {
@@ -2188,6 +2206,7 @@ IrisRtcSession.prototype.sendSourceRemove = function() {
                         "emRoomId": self.config.emRoomId,
                         "eventType": self.config.eventType
                     };
+                    self.sendEvent(self.sessionId, "SDK_SendSourceAdd", data);
                     self.connection.xmpp.sendSourceRemove(sdpDiffer, data);
 
 
@@ -2320,6 +2339,7 @@ IrisRtcSession.prototype.switchStream = function(irisRtcStream, streamConfig) {
                                 logger.log(logger.level.VERBOSE, "IrisRtcSession", "Audio Track is received ", audioTrack);
                                 stream.addTrack(audioTrack);
                                 self.addStream(stream);
+                                self.sendEvent(self.sessionId, "SDK_SwitchStream", { "streamConfig": streamConfig });
                                 self.sendSwitchStreamAdd();
                             }
                         }
@@ -2366,8 +2386,10 @@ IrisRtcSession.prototype.sendSwitchStreamAdd = function() {
                 "traceid": this.traceId,
                 "eventType": self.config.eventType
             };
+
             // Send session-accept
             self.connection.xmpp.sendSessionAccept(data);
+            self.sendEvent(self.sessionId, "SDK_XMPPJingleSessionAcceptSentForSwitchStream", data);
 
             //save the local sdp
             self.localSdp = answer.sdp;
@@ -2409,6 +2431,7 @@ IrisRtcSession.prototype.videoMuteToggle = function() {
             this.isVideoMuted = this.localStream.getVideoTracks()[0].enabled;
             logger.log(logger.level.INFO, "IrisRtcSession", "videoMuteToggle : Video Mute : " + !this.isVideoMuted);
             if (this.connection && this.connection.xmpp) {
+                this.sendEvent(this.sessionId, "SDK_VideoMuteToggle", { "isVideoMuted": this.isVideoMuted });
                 this.connection.xmpp.stopPresenceAlive();
                 this.connection.xmpp.sendPresence(this.config);
                 this.connection.xmpp.sendPresenceAlive(this.config);
@@ -2442,6 +2465,7 @@ IrisRtcSession.prototype.audioMuteToggle = function() {
             else
                 this.localStream.getAudioTracks()[0].enabled = true;
             if (this.connection && this.connection.xmpp) {
+                this.sendEvent(this.sessionId, "SDK_AudioMuteToggle", { "isAudioMuted": this.isAudioMuted });
                 this.connection.xmpp.stopPresenceAlive();
                 this.connection.xmpp.sendPresence(this.config);
                 this.connection.xmpp.sendPresenceAlive(this.config);
@@ -3126,6 +3150,8 @@ IrisRtcSession.prototype.checkPresenceElapsedTime = function() {
                 logger.log(logger.level.INFO, "IrisRtcSession", 'checkPresenceElapsedTime :: lastPresenceReceived :: ' + self.participants[jid].lastPresenceReceived);
                 logger.log(logger.level.INFO, "IrisRtcSession", 'checkPresenceElapsedTime :: presenceReceivedTimeDiff :: ' + presenceReceivedTimeDiff);
 
+                self.sendEvent(self.sessionId, "SDK_ParticipantNotResponding", { "presenceReceivedTimeDiff": presenceReceivedTimeDiff, "jid": jid });
+
                 // Throw an event to client with the particpantJid who is not sending presence
                 self.onParticipantNotResponding(jid);
             } else {
@@ -3222,6 +3248,8 @@ IrisRtcSession.prototype.createSession = function(config, connection, stream) {
 
         config.sessionType = "create";
 
+        self.sendEvent(self.sessionId, "SDK_CreateSession", { "Config": config });
+
         self.localStream = stream;
         self.create(config, connection);
     }
@@ -3273,6 +3301,8 @@ IrisRtcSession.prototype.joinSession = function(config, connection, stream, noti
 
         config.sessionType = "join";
 
+        self.sendEvent(self.sessionId, "SDK_JoinSession", { "notificationPayload": notificationPayload, "Config": config });
+
         self.localStream = stream;
         self.create(config, connection);
     }
@@ -3306,6 +3336,8 @@ IrisRtcSession.prototype.createChatSession = function(config, connection) {
             " Check the missing parameters " + JSON.stringify(config));
     } else {
         config.sessionType = "create";
+
+        self.sendEvent(self.sessionId, "SDK_CreateChatSession", { "Config": config });
 
         self.create(config, connection);
     }
@@ -3356,6 +3388,7 @@ IrisRtcSession.prototype.joinChatSession = function(config, connection, notifica
             config.rtcServer = notificationPayload.rtcserver;
             connection.xmpp.rtcServer = notificationPayload.rtcserver;
         }
+        self.sendEvent(self.sessionId, "SDK_JoinChatSession", { "notificationPayload": notificationPayload, "Config": config });
 
         self.create(config, connection);
     }
@@ -3385,16 +3418,21 @@ IrisRtcSession.prototype.downgradeToChat = function(downgradeConfig, notificatio
 
             if (downgradeConfig.sessionType == "create") {
                 logger.log(logger.level.INFO, "IrisRtcSession", "downgradeToChat : Sending deallocate for create");
+                this.sendEvent(this.sessionId, "SDK_DowngradeToChat", { "userData": this.config.userData });
+
                 this.config.sessionType = "downgrade";
                 this.connection.xmpp.sendAllocate(this.config);
             } else if (downgradeConfig.sessionType == "join") {
                 logger.log(logger.level.INFO, "IrisRtcSession", "downgradeToChat : Sending deallocate for join");
+                this.sendEvent(this.sessionId, "SDK_DowngradeToChat", { "notificationPayload": notificationPayload });
+
                 this.config.sessionType = "downgrade";
                 this.connection.xmpp.sendAllocate(this.config);
             } else {
                 logger.log(logger.level.INFO, "IrisRtcSession", "downgradeToChat : Sending allocate for default");
                 this.config.sessionType = "downgrade";
                 this.connection.xmpp.sendAllocate(this.config);
+                this.sendEvent(this.sessionId, "SDK_DowngradeToChat", "Anonymous");
             }
         } else {
             logger.log(logger.level.ERROR, "IrisRtcSession", "downgradeToChat :: Connection or config is missing ");
@@ -3435,9 +3473,13 @@ IrisRtcSession.prototype.upgradeToVideo = function(stream, upgradeConfig, notifi
             if (upgradeConfig.sessionType == "create") {
 
                 logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo :: Sending root event");
+
                 this.config.sessionType = "upgrade";
                 this.config.userData = upgradeConfig.userData ? upgradeConfig.userData : this.config.userData;
+
                 logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo :: Config : " + JSON.stringify(this.config));
+
+                this.sendEvent(this.sessionId, "SDK_UpgradeToVideo", { "userData": this.config.userData });
                 this.connection.xmpp.sendRootEventWithRoomId(this.config);
 
             } else if (upgradeConfig.sessionType == "join" && notificationPayload) {
@@ -3450,12 +3492,15 @@ IrisRtcSession.prototype.upgradeToVideo = function(stream, upgradeConfig, notifi
                 this.config.roomtokenexpirytime = notificationPayload.roomtokenexpirytime;
                 this.config.traceId = notificationPayload.traceId;
                 this.traceId = notificationPayload.traceId;
-                this.connection.xmpp.sendAllocate(this.config);
 
+                this.sendEvent(this.sessionId, "SDK_UpgradeToVideo", { "notificationPayload": notificationPayload });
+
+                this.connection.xmpp.sendAllocate(this.config);
             } else {
                 logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo :: Sending allocate for anonymous call");
                 this.config.sessionType = "upgrade";
                 this.connection.xmpp.sendAllocate(this.config);
+                this.sendEvent(this.sessionId, "SDK_UpgradeToVideo", "Anonymous call");
             }
         } else {
             logger.log(logger.level.ERROR, "IrisRtcSession", "upgradeToVideo :: Failed, check for connection and config");
@@ -3494,6 +3539,7 @@ IrisRtcSession.prototype.upgradeToAudio = function(stream, upgradeConfig, notifi
                 this.config.sessionType = "upgrade";
                 this.config.userData = upgradeConfig.userData ? upgradeConfig.userData : this.config.userData;
                 logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToAudio : Config :: " + JSON.stringify(this.config));
+                this.sendEvent(this.sessionId, "SDK_UpgradeToAudio", { "userData": this.config.userData });
                 this.connection.xmpp.sendRootEventWithRoomId(this.config);
 
             } else if (upgradeConfig.sessionType == "join" && notificationPayload) {
@@ -3506,10 +3552,12 @@ IrisRtcSession.prototype.upgradeToAudio = function(stream, upgradeConfig, notifi
                 this.config.roomtokenexpirytime = notificationPayload.roomtokenexpirytime;
                 this.config.traceId = notificationPayload.traceId;
                 this.traceId = notificationPayload.traceId;
+                this.sendEvent(this.sessionId, "SDK_UpgradeToAudio", { "notificationPayload": notificationPayload });
                 this.connection.xmpp.sendAllocate(this.config);
             } else {
                 logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToAudio : Sending allocate for anonymous case");
                 this.config.sessionType = "upgrade";
+                this.sendEvent(this.sessionId, "SDK_UpgradeToAudio", "Anonymous call");
                 this.connection.xmpp.sendAllocate(this.config);
             }
         } else {
@@ -3519,6 +3567,24 @@ IrisRtcSession.prototype.upgradeToAudio = function(stream, upgradeConfig, notifi
         logger.log(logger.level.ERROR, "IrisRtcSession", "upgradeToAudio :: Failed ", error)
     }
 }
+
+
+/**
+ * This API gets real time media stats
+ * @public
+ */
+IrisRtcSession.prototype.getRealTimeStats = function() {
+    try {
+        if (this && this.sdkStats && this.peerconnection) {
+            var realtimestats = this.sdkStats.getPeerStats(this.peerconnection, rtcConfig.json.statsInterval, false);
+            return realtimestats;
+        } else {
+            logger.log(logger.level.ERROR, "IrisRtcSession", "getRealTimeStats :: Failed : Check for RtcStats and peerconnection initialization");
+        }
+    } catch (error) {
+        logger.log(logger.level.ERROR, "IrisRtcSession", "getRealTimeStats :: Failed", error);
+    }
+};
 
 /**
  * Update eventType based on type of the call
@@ -3549,22 +3615,6 @@ IrisRtcSession.prototype.updateEventType = function() {
         logger.log(logger.level.ERROR, "IrisRtcSession", "updateEventType :: Failed", error);
     }
 }
-
-/**
- * @private
- */
-IrisRtcSession.prototype.setLocalTracks = function() {
-    var self = this;
-    // Add stream to peerconnection
-    if (self.peerconnection != null && self.localStream) {
-        self.localStream.getTracks().forEach(function(track) {
-            self.peerconnection.addTrack(track, self.localStream);
-        });
-    } else {
-        logger.log(logger.level.ERROR, "IrisRtcSession",
-            " Peerconnection is null !! ");
-    }
-};
 
 /**
  * Callback for succeffully created session

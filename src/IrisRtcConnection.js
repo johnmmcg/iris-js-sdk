@@ -333,7 +333,6 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
             }
             config = response;
             config.sessionType = "join";
-            config.anonymous = false;
             if (userdata)
                 config.userdata = userdata;
 
