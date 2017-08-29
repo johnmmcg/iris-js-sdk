@@ -305,7 +305,8 @@ RtcStats.prototype.submitStats = function() {
     }
     var statsPayload = {
         "meta": {
-            "sdkVersion": "iris-js-sdk-v" + self.options.sdkVersion,
+            "sdkVersion": self.options.sdkVersion,
+            "sdkType": "iris-js-sdk",
             "fingerprint": self.client.getFingerprint(), // Calculate Device/Browser Fingerprint
             "userAgent": self.client.getUserAgent(), // Get User Agent String
             "browser": self.client.getBrowser(), // Get Browser
@@ -360,7 +361,7 @@ function getStats(peerconnection, callback, errback) {
  * @param conn - connection object
  * @param statsInterval - stats interval
  */
-RtcStats.prototype.getPeerStats = function(conn, statsInterval) {
+RtcStats.prototype.getPeerStats = function(conn, statsInterval, timerFlag) {
 
     logger.log(logger.level.INFO, "IrisRtcStats",
         "inside getPeerStats", conn);
@@ -709,7 +710,16 @@ RtcStats.prototype.getPeerStats = function(conn, statsInterval) {
         self.callStartTime = new Date();
         var arrayIndex = 0;
         logger.log(logger.level.INFO, "IrisRtcStats", "self.callStartTime  >>>> " + self.callStartTime.toString());
-        statsTimer = setInterval(function() {
+
+        if (timerFlag) {
+            statsTimer = setInterval(callStatsTimer, self.localStatInterval);
+        } else {
+            var timeserieResult = null;
+            timeserieResult = callStatsTimer();
+        }
+
+        function callStatsTimer() {
+
             self.RxVideoStatsFlag = false;
             self.RxAudioStatsFlag = false;
             self.TxVideoStatsFlag = false;
@@ -904,10 +914,26 @@ RtcStats.prototype.getPeerStats = function(conn, statsInterval) {
                 //Print the stats 
                 logger.log(logger.level.VERBOSE, "RtcStats", "Stats ", self.timeseries);
             });
-        }, self.statsInterval);
+
+            if (timerFlag) {
+                // Collect Stats for every 2 seconds till 30 seconds and the use interval from config
+                if (0 < self.localStatInterval && self.localStatInterval < 20000) {
+                    self.localStatInterval = self.localStatInterval + 2000;
+                } else if (self.localStatInterval == 20000) {
+                    //Clear interval and set the localStatInterval to zero
+                    self.localStatInterval = 0;
+                    clearInterval(statsTimer);
+
+                    //Start stats interval with value from config
+                    statsTimer = setInterval(callStatsTimer, self.statsInterval);
+                }
+            }
+        }
 
     }
-
+    if (!timerFlag) {
+        return self.timeseries;
+    }
 };
 
 /**

@@ -953,6 +953,7 @@ RtcXmpp.prototype.sendRayo = function sendRayo(data) {
             'from': data.fromTN
         })
         .c('header', { 'name': 'JvbRoomName', "value": data.emRoomId + '@' + this.rtcServer.replace('xmpp', 'conference') }).up().up();
+
     rayo.c('data', {
         xmlns: 'urn:xmpp:comcast:info',
         event: data.eventType,
@@ -1085,14 +1086,16 @@ RtcXmpp.prototype.sendSourceAdd = function sendSourceAdd(sdpDiffer, data) {
             initiator: data.to,
             responder: this.xmppJid.toString(),
             sid: this.sid
-        }).c('data', {
-            'xmlns': "urn:xmpp:comcast:info",
-            'traceid': data.traceId,
-            'childnodeid': data.childNodeId,
-            'rootnodeid': data.rootNodeId,
-            'event': data.eventType,
-            'host': this.server
         }).up();
+
+    add = add.c('data', {
+        'xmlns': "urn:xmpp:comcast:info",
+        'traceid': data.traceId,
+        'childnodeid': data.childNodeId,
+        'rootnodeid': data.rootNodeId,
+        'event': data.eventType,
+        'host': this.server
+    }).up();
 
     // get the xmpp element
     sdpDiffer.toJingle(add);
@@ -1122,14 +1125,16 @@ RtcXmpp.prototype.sendSourceRemove = function sendSourceRemove(sdpDiffer, data) 
             initiator: data.to,
             responder: this.xmppJid.toString(),
             sid: this.sid
-        }).c('data', {
-            'xmlns': "urn:xmpp:comcast:info",
-            'traceid': data.traceId,
-            'childnodeid': data.childNodeId,
-            'rootnodeid': data.rootNodeId,
-            'event': data.eventType,
-            'host': this.server
         }).up();
+
+    remove = remove.c('data', {
+        'xmlns': "urn:xmpp:comcast:info",
+        'traceid': data.traceId,
+        'childnodeid': data.childNodeId,
+        'rootnodeid': data.rootNodeId,
+        'event': data.eventType,
+        'host': this.server
+    }).up();
 
     // get the xmpp element
     sdpDiffer.toJingle(remove);
@@ -1898,7 +1903,7 @@ RtcXmpp.prototype.sendGroupChatMessage = function(config, id, message, topic) {
 }
 
 
-RtcXmpp.prototype.sendVideoMute = function(to, isMute) {
+RtcXmpp.prototype.sendVideoMute = function(to, isMute, config) {
     this.index++;
     var mute = new xmppClient.Element(
             'message', {
@@ -1908,12 +1913,19 @@ RtcXmpp.prototype.sendVideoMute = function(to, isMute) {
                 type: 'chat',
             })
         .c('body').t(isMute ? "mute" : "unmute").up();
+
+    mute = mute.c('data', {
+        'xmlns': "urn:xmpp:comcast:info",
+        'traceid': config.traceId,
+        'host': this.server,
+    }).up();
+
     // send the mute/unmute private message
     this.client.send(mute.tree());
 
 }
 
-RtcXmpp.prototype.sendAudioMute = function(to, isMute) {
+RtcXmpp.prototype.sendAudioMute = function(to, isMute, config) {
 
     this.index++;
     var mute = new xmppClient.Element(
@@ -1924,6 +1936,12 @@ RtcXmpp.prototype.sendAudioMute = function(to, isMute) {
                 type: 'chat',
             })
         .c('body').t(isMute ? "audioMute" : "audioUnmute").up();
+
+    mute = mute.c('data', {
+        'xmlns': "urn:xmpp:comcast:info",
+        'traceid': config.traceId,
+        'host': this.server,
+    }).up();
 
     // send the mute/unmute private message
     this.client.send(mute.tree());
