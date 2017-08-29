@@ -2331,7 +2331,9 @@ IrisRtcSession.prototype.switchStream = function(irisRtcStream, streamConfig) {
         // Create a new stream with new config
         irisRtcStream.createStream(streamConfig).then(function(stream) {
             if (stream) {
+                self.localStream = stream;
                 if (streamConfig.screenShare) {
+                    logger.log(logger.level.INFO, "IrisRtcSession", "switchStream : Sharing the screen");
                     irisRtcStream.createStream({ streamType: "audio" }).then(function(audioStream) {
                         if (audioStream) {
                             var audioTrack = audioStream.getAudioTracks()[0];
@@ -2345,9 +2347,10 @@ IrisRtcSession.prototype.switchStream = function(irisRtcStream, streamConfig) {
                         }
                     });
                 } else {
+                    logger.log(logger.level.INFO, "IrisRtcSession", "switchStream : Swicthing to local media stream");
+                    self.addStream(stream);
                     self.sendSwitchStreamAdd();
                 }
-                self.localStream = stream;
             }
         }).catch(function(error) {
             logger.log(logger.level.ERROR, "IrisRtcSession",
