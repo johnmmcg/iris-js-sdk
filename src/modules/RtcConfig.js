@@ -20,7 +20,7 @@ RtcConfig.json = {
     },
     pingInterval: 120000,
     presInterval: 10000,
-    presMonitorInterval: 30000,
+    presMonitorInterval: 10000,
     reconnectInterval: 10000,
     statsInterval: 10000,
     useBridge: true, // for p2p flow, set this to false

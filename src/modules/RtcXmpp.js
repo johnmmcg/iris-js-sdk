@@ -12,13 +12,9 @@ var util = require("util");
 var xmppClient = require('./node-xmpp-client')
 var Stanza = xmppClient.Stanza
 var Rtcconfig = require('./RtcConfig.js');
-var https = require('https');
-var SDPDiffer = require("./Utils/SDPDiffer.js");
 var SDPUtil = require("./Utils/SDPUtil.js");
 var SDP = require("./Utils/SDP.js");
 var RtcEvents = require("./RtcEvents.js").Events;
-var transform = require("sdp-transform");
-var clientjs = require('clientjs');
 
 // Features for disco
 var features = [
@@ -50,19 +46,13 @@ function RtcXmpp() {
     this.prestimer = [];
     this.token = null;
     this.jid = null;
-    this.successCb = null;
-    this.errorCb = null;
     this.server = null; // Used for wss connection
-    this.rtcServer = null; // Used for room
     this.xmppJid = null;
     this.sid = null;
     this.localSDP = null;
     this.index = 1;
     this.rayo_resourceid = '';
-    this.sessionInitiateSdp = null;
-    this.presIQ = null;
-
-    this.clientjs = new ClientJS();
+    this.userAgent = (navigator && navigator.userAgent) ? navigator.userAgent : "Iris JS SDK -v" + Rtcconfig.json.sdkVersion;
 }
 
 // Setup an event emitter
@@ -138,6 +128,7 @@ RtcXmpp.prototype.connect = function connect(server, path, jid, traceId, token) 
         // Stop the ping timer
         //clearTimeout(self.timer);
         self.stopPing();
+        self.stopPresenceAlive();
 
         this.client = null;
 
@@ -164,234 +155,11 @@ RtcXmpp.prototype.disconnect = function disconnect() {
     this.prestimer = [];
     this.token = null;
     this.jid = null;
-    this.successCb = null;
-    this.errorCb = null;
     this.server = null;
-    this.rtcServer = null;
     this.xmppJid = null;
     this.sid = null;
     this.localSDP = null;
-    this.presIQ = null;
 }
-
-/**
- * Makes a call to EVM to get RTC server and roomtoken details
- * @param {json} config - Config from session
- */
-RtcXmpp.prototype.sendStartMucWithRoomId = function(config) {
-    try {
-
-        logger.log(logger.level.INFO, "RtcXmpp",
-            " sendStartMucWithRoomId called ");
-
-        var self = this;
-
-        var options = {
-            host: Rtcconfig.json.urls.eventManager,
-            path: '/v1/xmpp/startmuc/room/' + config.roomId,
-            method: 'PUT',
-            headers: {
-                "Authorization": this.token,
-                "Content-Type": "application/json",
-                "Trace-Id": config.traceId
-            }
-        };
-
-        var userData = (config.userData && config.eventType != "groupchat") ? config.userData : "";
-
-        logger.log(logger.level.VERBOSE, "RtcXmpp", "sendStartMucWithRoomId :: Ignore userData for groupchat calls");
-
-        // JSON body 
-        var jsonBody = {
-            "from": this.jid,
-            "event_type": config.eventType,
-            "time_posted": Date.now(),
-            "userdata": userData
-        };
-
-        logger.log(logger.level.INFO, "RtcXmpp",
-            " startmuc with roomid with options " + JSON.stringify(options) +
-            " & body " + JSON.stringify(jsonBody));
-
-        // Send the http request and wait for response
-        var req = https.request(options, function(response) {
-            var body = ''
-
-            // Callback for data
-            response.on('data', function(chunk) {
-                body += chunk;
-            });
-
-            // Callback when complete data is received
-            response.on('end', function() {
-                logger.log(logger.level.INFO, "RtcXmpp",
-                    " Received server response  " + body);
-
-                // check if the status code is correct
-                if (response.statusCode != 200) {
-                    logger.log(logger.level.ERROR, "RtcXmpp",
-                        " Start muc with roomid failed with status code  " +
-                        response.statusCode + " & response " + body);
-
-                    // emit the error event
-                    self.emit('onCreateRootEventWithRoomIdError', new Error("RtcXmpp",
-                        " Start muc with roomid failed with status code  " +
-                        response.statusCode + " & response " + body));
-
-                    return;
-                }
-
-                // Get the the response json
-                var resJson = JSON.parse(body);
-
-                self.rtcServer = resJson.eventdata.rtc_server;
-
-                // emit the error event
-                self.emit(RtcEvents.START_MUC_SUCCESS, resJson);
-            });
-        });
-
-        // Catch errors 
-        req.on('error', function(e) {
-            logger.log(logger.level.ERROR, "RtcXmpp",
-                " Create root event with roomid failed with error  " + e);
-
-            // emit the error event
-            self.emit('onCreateRootEventWithRoomIdError', e);
-        });
-
-        // write json
-        req.write(JSON.stringify(jsonBody));
-
-        // Write json
-        req.end();
-
-
-    } catch (e) {
-        logger.log(logger.level.ERROR, "RtcXmpp",
-            "sendStartMucWithRoomId :: xmpp create room failed with error  ", e);
-    }
-}
-
-/**
- * Creates an event on evm
- * @param {json} config - Config from session
- */
-RtcXmpp.prototype.sendRootEventWithRoomId = function(config) {
-    try {
-        logger.log(logger.level.INFO, "RtcXmpp",
-            " sendRootEventWithRoomId called ");
-        var self = this;
-
-        var options = {
-            host: Rtcconfig.json.urls.eventManager,
-            path: '/v1/xmpp/rootevent/room/' + config.roomId,
-            method: 'PUT',
-            headers: {
-                "Authorization": this.token,
-                "Content-Type": "application/json",
-                "Trace-Id": config.traceId
-            }
-        };
-
-        // JSON body 
-        var jsonBody = {
-            "from": this.jid,
-            "event_type": config.eventType,
-            "time_posted": Date.now(),
-            "userdata": config.userData ? config.userData : ""
-        };
-
-        logger.log(logger.level.INFO, "RtcXmpp",
-            " root event with roomid with options " + JSON.stringify(options) +
-            " & body " + JSON.stringify(jsonBody));
-
-        // Send the http request and wait for response
-        var req = https.request(options, function(response) {
-            var body = ''
-
-            // Callback for data
-            response.on('data', function(chunk) {
-                body += chunk;
-            });
-
-            // Callback when complete data is received
-            response.on('end', function() {
-                logger.log(logger.level.INFO, "RtcXmpp",
-                    " Received server response  " + body);
-
-                // check if the status code is correct
-                if (response.statusCode != 200) {
-                    logger.log(logger.level.ERROR, "RtcXmpp",
-                        " Create room with roomid failed with status code  " +
-                        response.statusCode + " & response " + body);
-
-                    // emit the error event
-                    self.emit(RtcEvents.CREATE_ROOT_EVENT_ERROR, new Error("RtcXmpp",
-                        " Create room with roomid failed with status code  " +
-                        response.statusCode + " & response " + body));
-
-                    return;
-                }
-
-                // Get the the response json
-                var resJson = JSON.parse(body);
-                resJson["sessionId"] = config.sessionId;
-                resJson["config"] = config;
-                self.rtcServer = resJson.eventdata.rtc_server;
-
-                // emit the error event
-                self.emit(RtcEvents.CREATE_ROOT_EVENT_SUCCESS, resJson);
-            });
-        });
-
-        // Catch errors 
-        req.on('error', function(e) {
-            logger.log(logger.level.ERROR, "RtcXmpp",
-                " Create root event with roomid failed with error  " + e);
-
-            // emit the error event
-            self.emit('onCreateRootEventWithRoomIdError', e);
-        });
-
-        // write json
-        req.write(JSON.stringify(jsonBody));
-
-        // Write json
-        req.end();
-
-
-    } catch (e) {
-        logger.log(logger.level.ERROR, "RtcXmpp",
-            "sendRootEventWithRoomId :: xmpp root event failed with error  ", e);
-    }
-}
-
-/*
-SEND: <presence to='al5tv9kz-evkg-irof-uaa8-ifm3tc4lkl7y@st-conference-wcdcc-001.poc.sys.comcast.net/6b8acbc9' 
-xmlns='jabber:client'><x xmlns='http://jabber.org/protocol/muc'>
-<nick xmlns='http://jabber.org/protocol/nick'>rdkcRaspberryPi</nick></x>
-
-<user-agent xmlns='http://jitsi.org/jitmeet/user-agent'>Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.86 Safari/537.36</user-agent>
-<devices><audio>true</audio><video>true</video></devices></presence>\
-
-<presence to='888bec74-a2c1-11e6-8541-fa163ece81a1@st-conference-asb-001.poc.sys.comcast.net/b9sodnff-utwm-misc-v7hj-2a2kra8oyzdr@irisconnect.comcast.com/c7438ef7-836b-4376-8111-d16b63f989b3' 
-xmlns='jabber:client'>
-			<x xmlns='http://jabber.org/protocol/muc'/>
-			<c xmlns='http://jabber.org/protocol/caps' hash='sha-1' node='http://jitsi.org/jitsimeet' ver='cvjWXufsg4xT62Ec2mlATkFZ9lk='/>
-			<user-agent xmlns='http://jitsi.org/jitmeet/user-agent'>Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36</user-agent>
-			<devices>
-			<audio>true</audio>
-			<video>true</video>
-			</devices>
-			<data xmlns='urn:xmpp:comcast:info' event='eventTypeConnect' traceid='dnyeyspi-4ts8-is12mjms' root_node_id='88904a54-a2c1-11e6-8542-fa163ece81a1' 
-      child_node_id='88904a69-a2c1-11e6-8543-fa163ece81a1' host='st-xmpp-asb-001.poc.sys.comcast.net' maxparticipants='10'/>
-			<audiomuted audions='http://jitsi.org/jitmeet/audio'>false</audiomuted>
-			<videoType xmlns='http://jitsi.org/jitmeet/video'>camera</videoType>
-			<videomuted videons='http://jitsi.org/jitmeet/video'>false</videomuted>
-			</presence>
-
-*/
 
 // Method to send presence to a room
 //
@@ -405,7 +173,7 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
         // Join the room by sending the presence
         var pres = new xmppClient.Element(
             'presence', {
-                to: config.emRoomId + '@' + this.rtcServer.replace('xmpp', 'conference') + '/' +
+                to: config.roomId + '@' + config.rtcServer.replace('xmpp', 'conference') + '/' +
                     this.jid + '/' + this.xmppJid.resource,
                 type: "unavailable"
             });
@@ -418,8 +186,8 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
 
         this.client.send(pres.tree());
 
-        this.stopPresenceAlive(config.emRoomId);
-        delete this.prestimer[config.emRoomId];
+        this.stopPresenceAlive(config.roomId);
+        delete this.prestimer[config.roomId];
 
         var elem = 0;
         for (e in this.prestimer) { elem++; }
@@ -430,7 +198,7 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
         // Join the room by sending the presence
         var pres = new xmppClient.Element(
                 'presence', {
-                    to: config.emRoomId + '@' + this.rtcServer.replace('xmpp', 'conference') + '/' +
+                    to: config.roomId + '@' + config.rtcServer.replace('xmpp', 'conference') + '/' +
                         this.jid + '/' + this.xmppJid.resource
                 })
             .c('x', { 'xmlns': 'http://jabber.org/protocol/muc' }).up()
@@ -448,7 +216,7 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
           pres.c('video').t('true');
           pres = pres.up();
         }*/
-        pres.c('user-agent', { 'xmlns': 'http://jitsi.org/jitmeet/user-agent' }).t(this.clientjs.getUserAgent());
+        pres.c('user-agent', { 'xmlns': 'http://jitsi.org/jitmeet/user-agent' }).t(this.userAgent);
         pres = pres.c('devices')
         pres.c('audio').t('true');
         pres.c('video').t('true');
@@ -474,11 +242,8 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
             'host': this.server,
             'roomtoken': config.roomtoken,
             'roomtokenexpirytime': config.roomtokenexpirytime
-                /*'initiator': "true"*/
         }).up();
 
-        // Store the presence IQ
-        this.presIQ = pres;
         this.client.send(pres.tree());
         // Wait for a presence error or presence ack (self)
     }
@@ -499,7 +264,7 @@ RtcXmpp.prototype.sendPresenceAlive = function sendPresenceAlive(config) {
     // Join the room by sending the presence
     var pres = new xmppClient.Element(
         'presence', {
-            to: config.emRoomId + '@' + this.rtcServer.replace('xmpp', 'conference') + '/' +
+            to: config.roomId + '@' + config.rtcServer.replace('xmpp', 'conference') + '/' +
                 this.jid + '/' + this.xmppJid.resource,
             id: 'c2p1'
         });
@@ -515,7 +280,6 @@ RtcXmpp.prototype.sendPresenceAlive = function sendPresenceAlive(config) {
         pres.c('nick').t(config.name);
     }
 
-
     pres.c('data', {
         'xmlns': "urn:xmpp:comcast:info",
         'traceid': config.traceId,
@@ -525,7 +289,7 @@ RtcXmpp.prototype.sendPresenceAlive = function sendPresenceAlive(config) {
     }).up();
 
     // Start a timer to send presence at interval
-    this.prestimer[config.emRoomId] = setInterval(function() {
+    this.prestimer[config.roomId] = setInterval(function() {
         self.client.send(pres.tree());
     }, Rtcconfig.json.presInterval);
 }
@@ -601,19 +365,16 @@ RtcXmpp.prototype.sendSessionAccept = function sendSessionAccept(data) {
         });
 
     // Create a variable for SDP
-    this.localSDP = new SDP(data.sdp);
+    var localSDP = new SDP(data.sdp);
 
     this.index++;
 
     // get the xmpp element
-    accept = this.localSDP.toJingle(accept, 'responder');
+    accept = localSDP.toJingle(accept, 'responder');
 
     accept.c('data', {
         'xmlns': "urn:xmpp:comcast:info",
         'traceid': data.traceId,
-        'childnodeid': data.childNodeId,
-        'rootnodeid': data.rootNodeId,
-        'event': data.eventType,
         'host': this.server
     }).up();
 
@@ -634,7 +395,7 @@ RtcXmpp.prototype.sendSessionInitiate = function sendSessionInitiate(data) {
     }
     var initiate = new xmppClient.Element(
             'iq', {
-                to: data.emRoomId + '@' + this.rtcServer.replace('xmpp', 'conference') + '/' +
+                to: data.roomId + '@' + data.rtcServer.replace('xmpp', 'conference') + '/' +
                     data.to,
                 type: 'set',
                 id: this.index.toString() + ':sendIQ'
@@ -649,17 +410,14 @@ RtcXmpp.prototype.sendSessionInitiate = function sendSessionInitiate(data) {
 
     this.index++;
     // Create a variable for SDP
-    this.localSDP = new SDP(data.sdp);
+    var localSDP = new SDP(data.sdp);
 
     // get the xmpp element
-    initiate = this.localSDP.toJingle(initiate, 'initiator');
+    initiate = localSDP.toJingle(initiate, 'initiator');
 
     initiate = initiate.c('data', {
         'xmlns': "urn:xmpp:comcast:info",
         'traceid': data.traceId,
-        'childnodeid': data.childNodeId,
-        'rootnodeid': data.rootNodeId,
-        'event': data.eventType,
         'host': this.server
     }).up();
 
@@ -694,12 +452,14 @@ RtcXmpp.prototype.sendTransportInfo = function sendTransportInfo(data) {
 
     this.index++;
 
+    var localSDP = new SDP(data.sdp);
+
     // Create the transport element
-    for (var mid = 0; mid < this.localSDP.media.length; mid++) {
+    for (var mid = 0; mid < localSDP.media.length; mid++) {
         var cands = data.candidates.filter(function(el) { return el.sdpMLineIndex == mid; });
-        var mline = SDPUtil.parse_mline(this.localSDP.media[mid].split('\r\n')[0]);
+        var mline = SDPUtil.parse_mline(localSDP.media[mid].split('\r\n')[0]);
         if (cands.length > 0) {
-            var ice = SDPUtil.iceparams(this.localSDP.media[mid], this.localSDP.session);
+            var ice = SDPUtil.iceparams(localSDP.media[mid], localSDP.session);
             ice.xmlns = 'urn:xmpp:jingle:transports:ice-udp:1';
             transportinfo = transportinfo.c('content', {
                 "creator": data.type,
@@ -709,7 +469,7 @@ RtcXmpp.prototype.sendTransportInfo = function sendTransportInfo(data) {
                 transportinfo.c('candidate', SDPUtil.candidateToJingle(cands[i].candidate));
             }
             // add fingerprint
-            var fingerprint_line = SDPUtil.find_line(this.localSDP.media[mid], 'a=fingerprint:', this.localSDP.session);
+            var fingerprint_line = SDPUtil.find_line(localSDP.media[mid], 'a=fingerprint:', localSDP.session);
             if (fingerprint_line) {
                 var tmp = SDPUtil.parse_fingerprint(fingerprint_line);
                 tmp.required = true;
@@ -733,9 +493,6 @@ RtcXmpp.prototype.sendTransportInfo = function sendTransportInfo(data) {
     transportinfo = transportinfo.c('data', {
         'xmlns': "urn:xmpp:comcast:info",
         'traceid': data.traceId,
-        'childnodeid': data.childNodeId,
-        'rootnodeid': data.rootNodeId,
-        'event': data.eventType,
         'host': this.server
     }).up();
 
@@ -772,9 +529,6 @@ RtcXmpp.prototype.sendCapabilities = function sendCapabilities(data) {
     discoResult.c('data', {
         'xmlns': "urn:xmpp:comcast:info",
         'traceid': data.traceId,
-        'childnodeid': data.childNodeId,
-        'rootnodeid': data.rootNodeId,
-        'event': data.eventType,
         'host': this.server
     });
     this.client.send(discoResult.tree());
@@ -801,9 +555,6 @@ RtcXmpp.prototype.requestCapabilities = function requestCapabilities(data) {
     caps.c('data', {
         'xmlns': "urn:xmpp:comcast:info",
         'traceid': data.traceId,
-        'childnodeid': data.childNodeId,
-        'rootnodeid': data.rootNodeId,
-        'event': data.eventType,
         'host': this.server
     });
     this.client.send(caps.tree());
@@ -826,7 +577,7 @@ RtcXmpp.prototype.sendAllocate = function sendAllocate(data) {
         'event': data.eventType,
         'host': this.server,
         "traceid": data.traceId,
-        "emRoomId": data.emRoomId,
+        "roomId": data.roomId,
         "roomtoken": data.roomtoken,
         "roomtokenexpirytime": data.roomtokenexpirytime
     };
@@ -834,10 +585,10 @@ RtcXmpp.prototype.sendAllocate = function sendAllocate(data) {
 
     // Join the room by sending the presence
     var allocate = new xmppClient.Element(
-            'iq', { to: this.rtcServer.replace('xmpp', 'focus'), "type": "set", id: this.index.toString() + ':sendIQ' })
+            'iq', { to: data.rtcServer.replace('xmpp', 'focus'), "type": "set", id: this.index.toString() + ':sendIQ' })
         .c('conference', {
             'xmlns': 'http://jitsi.org/protocol/focus',
-            'room': data.emRoomId + '@' + this.rtcServer.replace('xmpp', 'conference'),
+            'room': data.roomId + '@' + data.rtcServer.replace('xmpp', 'conference'),
             'machine-uid': sid()
         }).up();
     this.index++;
@@ -845,13 +596,13 @@ RtcXmpp.prototype.sendAllocate = function sendAllocate(data) {
     conference = allocate.getChild("conference");
 
     // Add properties
-    conference.c('property', { "name": "bridge", "value": "jitsi-videobridge." + this.rtcServer });
-    conference.c('property', { "name": "call_control", "value": this.rtcServer.replace('xmpp', 'callcontrol') });
+    conference.c('property', { "name": "bridge", "value": "jitsi-videobridge." + data.rtcServer });
+    conference.c('property', { "name": "call_control", "value": data.rtcServer.replace('xmpp', 'callcontrol') });
     conference.c('property', { "name": "channelLastN", "value": data.channelLastN ? data.channelLastN : "-1" });
     conference.c('property', { "name": "adaptiveLastN", "value": "false" });
     conference.c('property', { "name": "adaptiveSimulcast", "value": "false" });
     conference.c('property', { "name": "openSctp", "value": "true" });
-    //conference.c('property', {"name": "enableFirefoxHacks", "value": "false"});
+    conference.c('property', { "name": "enableFirefoxHacks", "value": "false" });
     conference.c('property', { "name": "simulcastMode", "value": "rewriting" });
 
 
@@ -905,7 +656,7 @@ RtcXmpp.prototype.sendPrivateAllocate = function(data) {
     var privateIq = new xmppClient.Element(
             'iq', {
                 id: this.index.toString() + ':sendIQ',
-                to: this.rtcServer.replace('xmpp', 'focus'),
+                to: data.rtcServer.replace('xmpp', 'focus'),
                 "type": "set",
                 from: this.jid + '/' + this.xmppJid.resource
             })
@@ -952,7 +703,7 @@ RtcXmpp.prototype.sendRayo = function sendRayo(data) {
             'to': data.toTN,
             'from': data.fromTN
         })
-        .c('header', { 'name': 'JvbRoomName', "value": data.emRoomId + '@' + this.rtcServer.replace('xmpp', 'conference') }).up().up();
+        .c('header', { 'name': 'JvbRoomName', "value": data.roomId + '@' + data.rtcServer.replace('xmpp', 'conference') }).up().up();
 
     rayo.c('data', {
         xmlns: 'urn:xmpp:comcast:info',
@@ -976,14 +727,14 @@ RtcXmpp.prototype.sendRayo = function sendRayo(data) {
 // @param {data} - Configuration
 // @returns {retValue} 0 on success, negative value on error
 //
-RtcXmpp.prototype.sendHangup = function sendHangup(config) {
+RtcXmpp.prototype.sendHangup = function sendHangup(participantJid, config) {
     logger.log(logger.level.VERBOSE, "RtcXmpp",
         " sendHangup");
-    var roomJid = config.emRoomId + '@' + this.rtcServer.replace('xmpp', 'callcontrol');
+    var roomJid = config.roomId + '@' + config.rtcServer.replace('xmpp', 'callcontrol');
 
     // Join the room by sending the presence
     var hangup = new xmppClient.Element(
-            'iq', { to: roomJid + "/" + this.rayo_resourceid, "type": "set", id: this.index.toString() + ':sendIQ' })
+            'iq', { to: roomJid + "/" + participantJid, "type": "set", id: this.index.toString() + ':sendIQ' })
         .c('hangup', { 'xmlns': 'urn:xmpp:rayo:1' }).up();
 
     hangup = hangup.c('data', {
@@ -1002,15 +753,15 @@ RtcXmpp.prototype.sendHangup = function sendHangup(config) {
 // @param {data} - Configuration
 // @returns {retValue} 0 on success, negative value on error
 //
-RtcXmpp.prototype.sendHold = function sendHold(config) {
+RtcXmpp.prototype.sendHold = function sendHold(participantJid, config) {
     logger.log(logger.level.VERBOSE, "RtcXmpp",
         " sendHold");
 
-    var roomJid = config.emRoomId + '@' + this.rtcServer.replace('xmpp', 'callcontrol');
+    var roomJid = config.roomId + '@' + config.rtcServer.replace('xmpp', 'callcontrol');
 
     // Join the room by sending the presence
     var hold = new xmppClient.Element(
-            'iq', { to: roomJid + "/" + this.rayo_resourceid, from: this.jid + '/' + this.xmppJid.resource, "type": "set", id: this.index.toString() + ':sendIQ' })
+            'iq', { to: roomJid + "/" + participantJid, from: this.jid + '/' + this.xmppJid.resource, "type": "set", id: this.index.toString() + ':sendIQ' })
         .c('hold', { 'xmlns': 'urn:xmpp:rayo:1' }).up();
 
     hold = hold.c('data', {
@@ -1029,14 +780,14 @@ RtcXmpp.prototype.sendHold = function sendHold(config) {
 // @param {data} - Configuration
 // @returns {retValue} 0 on success, negative value on error
 //
-RtcXmpp.prototype.sendUnHold = function sendUnHold(config) {
+RtcXmpp.prototype.sendUnHold = function sendUnHold(participantJid, config) {
     logger.log(logger.level.VERBOSE, "RtcXmpp",
         " sendUnHold");
-    var roomJid = config.emRoomId + '@' + this.rtcServer.replace('xmpp', 'callcontrol');
+    var roomJid = config.roomId + '@' + config.rtcServer.replace('xmpp', 'callcontrol');
 
     // Join the room by sending the presence
     var unhold = new xmppClient.Element(
-            'iq', { to: roomJid + "/" + this.rayo_resourceid, from: this.jid + '/' + this.xmppJid.resource, "type": "set", id: this.index.toString() + ':sendIQ' })
+            'iq', { to: roomJid + "/" + participantJid, from: this.jid + '/' + this.xmppJid.resource, "type": "set", id: this.index.toString() + ':sendIQ' })
         .c('unhold', { 'xmlns': 'urn:xmpp:rayo:1' }).up();
 
     unhold = unhold.c('data', {
@@ -1055,12 +806,13 @@ RtcXmpp.prototype.sendUnHold = function sendUnHold(config) {
 // @param {data} - Configuration
 // @returns {retValue} 0 on success, negative value on error
 //
-RtcXmpp.prototype.sendMerge = function sendMerge() {
+RtcXmpp.prototype.sendMerge = function sendMerge(participantJid, config) {
     logger.log(logger.level.VERBOSE, "RtcXmpp",
         " sendMerge");
+    var roomJid = config.roomId + '@' + config.rtcServer.replace('xmpp', 'callcontrol');
 
     var merge = new xmppClient.Element(
-            'iq', { to: this.rayo_resourceid, from: this.jid, "type": "set", id: this.index.toString() + ':sendIQ' })
+            'iq', { to: roomJid + "/" + participantJid, from: this.jid, "type": "set", id: this.index.toString() + ':sendIQ' })
         .c('merge', { 'xmlns': 'urn:xmpp:rayo:1' }).up();
 
     merge = merge.c('data', {
@@ -1091,9 +843,6 @@ RtcXmpp.prototype.sendSourceAdd = function sendSourceAdd(sdpDiffer, data) {
     add = add.c('data', {
         'xmlns': "urn:xmpp:comcast:info",
         'traceid': data.traceId,
-        'childnodeid': data.childNodeId,
-        'rootnodeid': data.rootNodeId,
-        'event': data.eventType,
         'host': this.server
     }).up();
 
@@ -1130,9 +879,6 @@ RtcXmpp.prototype.sendSourceRemove = function sendSourceRemove(sdpDiffer, data) 
     remove = remove.c('data', {
         'xmlns': "urn:xmpp:comcast:info",
         'traceid': data.traceId,
-        'childnodeid': data.childNodeId,
-        'rootnodeid': data.rootNodeId,
-        'event': data.eventType,
         'host': this.server
     }).up();
 
@@ -1218,7 +964,15 @@ RtcXmpp.prototype._onIQ = function _onIQ(stanza) {
 
     // Check if this is ack from focus
     if (stanza.attrs && stanza.attrs.type == "error") {
-        this.emit('onIQError', "");
+        var discoCheck = JSON.stringify(stanza);
+        if (discoCheck.search("disco#info") == -1) {
+            var error = stanza.getChild('error');
+            if (error && error.getChild('text') && error.getChild('text').getText()) {
+                var errorText = error.getChild('text').getText();
+                this.emit('onIQError', errorText);
+            }
+            this.emit('onIQError', "Error in IQ");
+        }
     }
 }
 
@@ -1234,8 +988,11 @@ RtcXmpp.prototype._onConference = function _onConference(stanza) {
 
     // Get focus jid
     if (conf.attrs.focusjid) {
-        var data = { "focusJid": conf.attrs.focusjid };
-        this.emit('onAllocateSuccess', data);
+        var roomId = conf.attrs.room.split("@")[0];
+
+        var data = { "focusJid": conf.attrs.focusjid, "roomId": roomId };
+
+        this.emit(roomId, 'onAllocateSuccess', data);
     }
 
 }
@@ -1256,6 +1013,8 @@ RtcXmpp.prototype._onJingle = function _onJingle(stanza) {
     this.sid = jingle.attrs.sid;
     var action = jingle.attrs.action;
     var fromJid = stanza.attrs.from;
+    var roomId = "";
+    roomId = stanza.attrs.from ? stanza.attrs.from.split('@')[0] : "NA";
 
     logger.log(logger.level.VERBOSE, "RtcXmpp.onMessage",
         " Jingle action " + jingle.attrs.action);
@@ -1285,19 +1044,17 @@ RtcXmpp.prototype._onJingle = function _onJingle(stanza) {
         // Convert to SDP
         remoteSDP.fromJingle(stanza);
 
-        // Assign it for next timer
-        this.sessionInitiateSdp = remoteSDP;
-
         // Create the json for session
         var data = {
+            "remoteSDP": remoteSDP,
             "jingle": jingle,
             "sdp": remoteSDP.raw,
-            "roomName": stanza.attrs.from.split('@')[0],
+            "roomId": roomId,
             "from": fromJid
         };
 
         // send the presence message
-        this.emit('onSessionInitiate', data);
+        this.emit(roomId, 'onSessionInitiate', data);
     } else if (jingle.attrs.action === "session-accept") {
         // Parse session-initiate and convert it to sdp
         // Send ack first
@@ -1326,13 +1083,13 @@ RtcXmpp.prototype._onJingle = function _onJingle(stanza) {
         var data = {
             "jingle": jingle,
             "sdp": this.remoteSDP.raw,
-            "roomName": stanza.attrs.from.split('@')[0],
+            "roomId": roomId,
             "from": stanza.attrs.from
         };
         var self = this;
         process.nextTick(function() {
             // send the presence message
-            self.emit('onSessionAccept', data);
+            self.emit(roomId, 'onSessionAccept', data);
         });
     } else if (jingle.attrs.action === "source-add") {
         // Send ack first
@@ -1351,25 +1108,16 @@ RtcXmpp.prototype._onJingle = function _onJingle(stanza) {
         // send ack
         this.client.send(ack.tree());
 
-        // Create a variable for SDP
-        if (this.sessionInitiateSdp == null) {
-            return;
-        }
-
-        // Convert to SDP
-        console.log("***return value " + this.sessionInitiateSdp.addSources(jingle));
-
         // Create the json for session
         var data = {
             "jingle": jingle,
-            "sdp": this.sessionInitiateSdp.raw,
-            "roomName": stanza.attrs.from.split('@')[0],
+            "roomId": roomId,
             "from": stanza.attrs.from
         };
         var self = this;
         process.nextTick(function() {
             // send the presence message
-            self.emit('onSourceAdd', data);
+            self.emit(roomId, 'onSourceAdd', data);
         });
     } else if (jingle.attrs.action === "transport-info") {
         // Get the transport element
@@ -1413,13 +1161,13 @@ RtcXmpp.prototype._onJingle = function _onJingle(stanza) {
                     "sdpMLineIndex": 0,
                     "sdpMid": content.attrs.name,
                     "line": line,
-                    "roomName": stanza.attrs.from.split('@')[0],
+                    "roomId": roomId,
                     "from": stanza.attrs.from
                 };
 
                 process.nextTick(function() {
                     // send the candidate message
-                    self.emit('onCandidate', data);
+                    self.emit(roomId, 'onCandidate', data);
                 });
 
             });
@@ -1442,44 +1190,20 @@ RtcXmpp.prototype._onJingle = function _onJingle(stanza) {
         // send ack
         this.client.send(ack.tree());
 
-        // Create a variable for SDP
-        if (this.sessionInitiateSdp == null) {
-            return;
-        }
-
-        // Convert to SDP
-        // console.log("***return value " + this.sessionInitiateSdp.removeSources(jingle));
-
         // Create the json for session
         var data = {
             "jingle": jingle,
-            "sdp": this.sessionInitiateSdp.raw,
-            "roomName": stanza.attrs.from.split('@')[0],
+            "roomId": roomId,
             "from": stanza.attrs.from
         };
         var self = this;
         process.nextTick(function() {
             // send the presence message
-            self.emit('onSourceRemove', data);
+            self.emit(roomId, 'onSourceRemove', data);
         });
-
-    } else if (jingle.attrs.action === "source-add") {
-        var ack = new xmppClient.Element('iq', {
-            type: 'result',
-            to: fromJid,
-            id: stanza.id
-        });
-
-        ack.c('data', {
-            'xmlns': "urn:xmpp:comcast:info",
-            'host': this.server,
-        }).up();
-
-        // send ack
-        this.client.send(ack.tree());
+    } else {
+        logger.log(logger.level.INFO, "RtcXmpp.onMessage", "New action item found in jingle: " + jingle.attrs.action);
     }
-
-
 }
 
 function getVal(stanza, child) {
@@ -1495,13 +1219,17 @@ function getVal(stanza, child) {
 // @returns Nothing
 //
 RtcXmpp.prototype._onPresence = function _onPresence(stanza) {
+
     var self = this;
 
     // Check if there is an error in the presence
     if (stanza.attrs && stanza.attrs.type && stanza.attrs.type == "error") {
         logger.log(logger.level.ERROR, "RtcXmpp.onMessage",
             " Received presence error");
-        self.emit('onPresenceError', stanza.children);
+
+        var roomId = stanza.attrs.from.split('@')[0];
+
+        self.emit(roomId, 'onPresenceError', stanza.children);
         return;
     }
 
@@ -1511,32 +1239,37 @@ RtcXmpp.prototype._onPresence = function _onPresence(stanza) {
 
     var dataElement = stanza.getChild('data');
     dataElement = dataElement ? dataElement.attrs : dataElement;
-    logger.log(logger.level.INFO, "RtcXmpp.onMessage", "onPresence :: dataElement " + JSON.stringify(dataElement));
+
+    logger.log(logger.level.VERBOSE, "RtcXmpp.onMessage", "onPresence :: dataElement " + JSON.stringify(dataElement));
+
     // Retrieve item node
     var item = x.getChild('item');
 
     // Check if the item
     if (item) {
 
-        logger.log(logger.level.INFO, "RtcXmpp.onMessage",
+        logger.log(logger.level.VERBOSE, "RtcXmpp.onMessage",
             " item " + JSON.stringify(item.attrs));
 
+        var roomId = stanza.attrs.from.split('@')[0];
         // Check if someone is leaving the room
         if (stanza.attrs && stanza.attrs.type && stanza.attrs.type) {
             var fromField = stanza.attrs.from.substring(stanza.attrs.from.indexOf('/') + 1);
+
             // Create the presence config
             var presenceConfig = {
                 "jid": fromField,
                 "role": item.attrs.role,
                 "affiliation": item.attrs.affiliation,
-                "roomName": stanza.attrs.from.split('@')[0],
+                "roomId": roomId,
                 "type": stanza.attrs.type,
                 "from": stanza.attrs.from,
                 "dataElement": dataElement
             };
 
             // send the presence message
-            self.emit('onPresence', presenceConfig);
+            self.emit(roomId, 'onPresence', presenceConfig);
+
         } else {
             var jid;
 
@@ -1557,7 +1290,7 @@ RtcXmpp.prototype._onPresence = function _onPresence(stanza) {
                 "jid": jid,
                 "role": item.attrs.role,
                 "affiliation": item.attrs.affiliation,
-                "roomName": stanza.attrs.from.split('@')[0],
+                "roomId": roomId,
                 "type": "join",
                 "from": stanza.attrs.from,
                 "videomuted": videomuted,
@@ -1567,9 +1300,8 @@ RtcXmpp.prototype._onPresence = function _onPresence(stanza) {
                 "dataElement": dataElement
 
             };
-
             // send the presence message
-            self.emit('onPresence', presenceConfig);
+            self.emit(roomId, 'onPresence', presenceConfig);
         }
     }
 }
@@ -1585,16 +1317,25 @@ RtcXmpp.prototype._onDiscoInfo = function _onDiscoInfo(stanza) {
 
     // Check if the query is for us
     if (stanza && stanza.attrs && stanza.attrs.to && (stanza.attrs.to == this.xmppJid.toString())) {
+
         // Check if the jid matches
         if (stanza.attrs.type == "get") {
-            var data = { from: stanza.attrs.from, id: stanza.attrs.id };
+
+            var roomId = stanza.attrs.from.split('@')[0];
+
+            var data = {
+                from: stanza.attrs.from,
+                id: stanza.attrs.id,
+                roomId: roomId
+            };
+
             // send the presence message
-            self.emit('onCapabilityRequest', data);
+            self.emit(roomId, 'onCapabilityRequest', data);
+
         } else if (stanza.attrs.type == "result") {
             logger.log(logger.level.INFO, "RtcXmpp._onDiscoInfo",
                 " Received capabilities, not doing anything with it");
         }
-
     } else {
         logger.log(logger.level.ERROR, "RtcXmpp._onDiscoInfo",
             " Received disco info error");
@@ -1628,22 +1369,12 @@ RtcXmpp.prototype._onPrivateIQ = function _onPrivateIQ(stanza) {
             return;
         }
 
-        // Collect traceid from notification
-        var nTraceid;
-        if (!data.attrs.traceid) {
-            logger.log(logger.level.ERROR, "RtcXmpp._onPrivateIQ",
-                "No traceId so genearating one");
-            nTraceid = "";
-        } else {
-            nTraceid = data.attrs.traceid;
-        }
-
         var incomingConfig = {
             "roomId": data.attrs.roomid,
             "action": data.attrs.action,
             "routingId": data.attrs.routingid,
             "rtcserver": data.attrs.rtcserver,
-            "traceId": nTraceid,
+            "traceId": data.attrs.traceid,
             "userdata": data.attrs.userdata,
             "roomtoken": data.attrs.roomtoken,
             "roomtokenexpirytime": data.attrs.roomtokenexpirytime,
@@ -1651,19 +1382,30 @@ RtcXmpp.prototype._onPrivateIQ = function _onPrivateIQ(stanza) {
         };
 
         if (data.attrs.type) {
-            if (incomingConfig.type == 'notify') {
-                // Send notification for incoming call
-                self.emit('onIncoming', incomingConfig);
-            } else if (incomingConfig.type == 'cancel' && !self.rtcServer) {
-                // Send notification for canceling call
-                self.emit('onIncoming', incomingConfig);
-            } else if (incomingConfig.type == 'chat' && !self.rtcServer) {
-                // Send notification for a chat call
+
+            var roomIdListenerCount = self.listenerCount(incomingConfig.roomId);
+
+            if ((incomingConfig.type == 'notify') ||
+                ((incomingConfig.type == 'cancel' || incomingConfig.type == 'chat') && roomIdListenerCount == 0)) {
                 self.emit('onIncoming', incomingConfig);
             } else {
                 logger.log(logger.level.INFO, "RtcXmpp._onPrivateIQ", "Notification type doesn't match " + incomingConfig.type)
-                    // self.emit('onIncoming', incomingConfig);
             }
+
+            // if (incomingConfig.type == 'notify') {
+            //     // Send notification for incoming call
+            //     self.emit('onIncoming', incomingConfig);
+            // } else if (incomingConfig.type == 'cancel' && roomIdListenerCount == 0) {
+            //     // Send notification for canceling call
+            //     self.emit('onIncoming', incomingConfig);
+            // } else if (incomingConfig.type == 'chat' && roomIdListenerCount == 0) {
+            //     // Send notification for a chat call
+            //     self.emit('onIncoming', incomingConfig);
+            // } else {
+            //     logger.log(logger.level.INFO, "RtcXmpp._onPrivateIQ", "Notification type doesn't match " + incomingConfig.type)
+            //         // self.emit('onIncoming', incomingConfig);
+            // }
+
         } else {
             // send the incoming message
             self.emit('onIncoming', incomingConfig);
@@ -1731,7 +1473,7 @@ RtcXmpp.prototype._onChat = function(stanza) {
     var roomId = "";
     if (stanza.attrs.from.includes('conference')) {
         from = stanza.attrs.from.substring(stanza.attrs.from.indexOf('/') + 1);
-        roomId = stanza.attrs.from.split('/')[0].split('@')[0];
+        roomId = stanza.attrs.from.split('@')[0];
     } else {
         from = stanza.attrs.from;
     }
@@ -1747,13 +1489,13 @@ RtcXmpp.prototype._onChat = function(stanza) {
             //Handle mute/unmute of the particpant
             // if (id && id == "mute") {
             if (message == 'mute') {
-                self.emit('onVideoMute', true);
+                self.emit(roomId, 'onVideoMute', { "mute": true, "roomId": roomId });
             } else if (message == 'unmute') {
-                self.emit('onVideoMute', false);
+                self.emit(roomId, 'onVideoMute', { "mute": false, "roomId": roomId });
             } else if (message == 'audioMute') {
-                self.emit('onAudioMute', true);
+                self.emit(roomId, 'onAudioMute', { "mute": true, "roomId": roomId });
             } else if (message == 'audioUnmute') {
-                self.emit('onAudioMute', false);
+                self.emit(roomId, 'onAudioMute', { "mute": false, "roomId": roomId });
             }
             // } else {
             // For handling chat messages
@@ -1779,7 +1521,7 @@ RtcXmpp.prototype._onGroupChat = function(stanza) {
     var roomId = "";
     if (stanza.attrs.from.includes('conference')) {
         from = stanza.attrs.from.substring(stanza.attrs.from.indexOf('/') + 1);
-        roomId = stanza.attrs.from.split('/')[0].split('@')[0];
+        roomId = stanza.attrs.from.split('@')[0];
     } else {
         from = stanza.attrs.from;
     }
@@ -1851,7 +1593,7 @@ RtcXmpp.prototype._onGroupChat = function(stanza) {
                     statusMessage: "Error"
                 }
             }
-            self.emit("onChatAck", chatAckJson);
+            self.emit(roomId, "onChatAck", chatAckJson);
 
         } else {
             //Handle messages from other participants
@@ -1871,7 +1613,7 @@ RtcXmpp.prototype._onGroupChat = function(stanza) {
             }
 
             if (chatMsg) {
-                self.emit('onGroupChatMessage', chatMsg);
+                self.emit(roomId, 'onGroupChatMessage', chatMsg);
             }
         }
     }
@@ -1893,7 +1635,7 @@ RtcXmpp.prototype.sendGroupChatMessage = function(config, id, message, topic) {
             'message', {
                 id: id,
                 from: this.jid,
-                to: config.emRoomId + '@' + this.rtcServer.replace('xmpp', 'conference'),
+                to: config.roomId + '@' + config.rtcServer.replace('xmpp', 'conference'),
                 type: 'groupchat',
             })
         .c('body').t(message).up()
@@ -1901,7 +1643,6 @@ RtcXmpp.prototype.sendGroupChatMessage = function(config, id, message, topic) {
 
     this.client.send(msg.tree());
 }
-
 
 RtcXmpp.prototype.sendVideoMute = function(to, isMute, config) {
     this.index++;

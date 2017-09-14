@@ -357,7 +357,7 @@ function _setFPS(constraints, fps) {
  * Get the media devices
  * @public
  */
-IrisRtcStream.prototype.getMediaDevices = function() {
+IrisRtcStream.getMediaDevices = function() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
         console.log("enumerateDevices() not supported.");
         return;
@@ -370,6 +370,8 @@ IrisRtcStream.prototype.getMediaDevices = function() {
     })
 
 };
+
+IrisRtcStream.prototype.getMediaDevices = IrisRtcStream.getMediaDevices;
 
 // Defining the API module
 

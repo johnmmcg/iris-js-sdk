@@ -65,12 +65,11 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   Property                  Type            Description
   -----------------------------------------------------------------------------
   routingId                 string          (MANDATORY) Unique Id of the user
+  irisToken                 string          (MANDATORY) iris JWT token
   domain                    string          (MANDATORY) Domain name e.g. "iris.comcast.com"
   type                      string          (MANDATORY) Call type e.g. "video", "audio", "pstn" or "chat"
   sessionType               string          (MANDATORY) Session type "create" or "join"
-  roomName                  string          (MANDATORY) Room name in case of anonymous call
   roomId                    string          (MANDATORY) Unique room identifier received from EVM.
-  anonymous                 boolean         (MANDATORY) If call is anonymous "true" else "false"
   useBridge                 boolean         (MANDATORY) For videobridge call "true" for peer to peer call "false" 
   stream                    string          (OPTIONAL)  By default call is "sendrecv". User can set "sendonly" or "recvonly"
   fromTN                    TN              (MANDATORY) Caller telephone number mandatory for PSTN calls only
@@ -81,6 +80,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   urls.UEStatsServer        string          (MANDATORY) "StatsServerUrl"
   logLevel                  integer         (OPTIONAL)  Log level required by user
   name                      string          (OPTIONAL)  Name of the participant
+  publicId                  string          (OPTIONAL) Public Id of the participant
   ```
  
 * **Example**  <br />
@@ -116,14 +116,14 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   irisToken               string          (MANDATORY) Authorization token
   routingId               string          (MANDATORY) Unique participant id. 
                                                       e.g. "routingId@appdomain.com"
-
+  eventManagerUrl         string          (MANDATORY) Event Manager url to make iris connection                                                    
   ```
 
 * **Example** <br />
 
   ```javascript
     var irisRtcConnection = new IrisRtcConnection();
-    irisRtcConnection.connect(irisToken, routingId);
+    irisRtcConnection.connect(irisToken, routingId, eventManagerUrl);
   ```
 
   * Initialize Iris Rtc Connection object
@@ -200,7 +200,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   Property                Type              Description
   -----------------------------------------------------------------------------
   userConfig              json              (MANDATORY) Same as the userConfig defined above should have 
-                                                        type and userData.
+                                                        type, irisToken, routingId and userData
                                                         type is call type like "video" or "audio"
                                                         roomId - Room id received from create room call
                                                         userData - Data and Notification payload to be sent to the createrootevent API
@@ -244,7 +244,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   Property                Type              Description
   -----------------------------------------------------------------------------
   userConfig              json              (MANDATORY) Same as the userConfig defined above should have 
-                                                        type and userData.
+                                                        type, irisToken and userData.
                                                         type is call type like "video" or "audio"
                                                         roomId - Room id received from create room call
                                                         userData - Data and Notification payload to be sent to the createrootevent API
@@ -372,6 +372,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   -----------------------------------------------------------------------------
   Property                Type            Description
   -----------------------------------------------------------------------------
+  roomId                  string          (MANDATORY) Unique id of the room
   message                 String          (MANDATORY) Message to be sent
   id                      string          (MANDATORY) Unique id for the message
   ```
@@ -379,7 +380,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 * **Example** <br />
 
   ```javascript
-    irisRtcSession.sendChatMessage(id, message)
+    irisRtcSession.sendChatMessage(roomId, id, message)
   ```
   * Call sendChatMessage API of Iris Rtc Session to send messages.
 
@@ -396,7 +397,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   ```
 
 * **Parameters** <br />
-  Parameter in onChatMessage api call is chatMsgJson which will have:
+  Parameter in onChatMessage api call are roomId and chatMsgJson which will have:
 
   ```sh
   -----------------------------------------------------------------------------
@@ -411,7 +412,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 * **Example** <br />
 
   ```javascript
-    irisRtcSession.onChatMessage = function(message, from){}
+    irisRtcSession.onChatMessage = function(roomId, chatMsgJson){}
   ```
   * Call onChatMessage API of Iris Rtc Session to receive messages.
 
@@ -428,7 +429,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   ```
 
 * **Parameters** <br />
-  Parameter in onChatAck api call is chatAckJson which will have :
+  Parameter in onChatAck api call are roomId and chatAckJson which will have :
 
   ```sh
   -----------------------------------------------------------------------------
@@ -449,7 +450,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 * **Example** <br />
 
   ```javascript
-    irisRtcSession.onChatAck = function(chatAckJson){}
+    irisRtcSession.onChatAck = function(roomId, chatAckJson){}
   ```
   * Listen to onChatAck callback of Iris Rtc Session to receive ack messages.
 
@@ -466,7 +467,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 * **Example** <br />
 
   ```javascript
-    irisRtcSession.audioMuteToggle()
+    irisRtcSession.audioMuteToggle(roomId)
   ```
   * Call audioMuteToggle API of Iris Session when you want to mute audio.
 
@@ -483,7 +484,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 * **Example** <br />
 
   ```javascript
-    irisRtcSession.videoMuteToggle()
+    irisRtcSession.videoMuteToggle(roomId)
   ```  
   * Call videoMuteToggle API of Iris Session when you want to mute video
 
@@ -500,7 +501,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 * **Example** <br />
 
   ```javascript
-    irisRtcSession.muteParticipantAudio(jid, mute)
+    irisRtcSession.muteParticipantAudio(roomId, jid, mute)
   ```
   * Call muteParticipantAudio API of Iris Session when you want to mute participant audio.
 
@@ -517,7 +518,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 * **Example** <br />
 
   ```javascript
-    irisRtcSession.muteParticipantVideo(jid, mute)
+    irisRtcSession.muteParticipantVideo(roomId, jid, mute)
   ```  
   * Call muteParticipantVideo API of Iris Session when you want to mute participant video
 
@@ -535,7 +536,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 * **Example** <br />
 
   ```javascript
-    irisRtcSession.setDisplayName(name)
+    irisRtcSession.setDisplayName(roomId, name)
   ```  
   * Call setDisplayName API of Iris Session to set the display name
 
@@ -552,7 +553,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 * **Example:** <br />
 
   ```javascript
-    irisRtcSession.endSession();
+    irisRtcSession.endSession(roomId);
   ```
   * Call endSession API of Iris Session to end the call.
 
@@ -589,7 +590,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 * **Example** <br />
 
   ```javascript
-    irisRtcSession.pstnHold(true)
+    irisRtcSession.pstnHold(roomId, participnatJid, true)
   ```
   * Call pstnHold API of Iris session to put a call on hold.
 
@@ -605,7 +606,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 * **Example** <br />
 
   ```javascript
-    irisRtcSession.pstnHold(false)
+    irisRtcSession.pstnHold(roomId, participantJid, false)
   ```
   * Call pstnHold API of Iris session to come back to call again.
 
@@ -628,7 +629,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
       resolution : "hd",
       constraints : { video : false, audio: false }
     }
-    irisRtcSession.switchStream(irisRtcStream, streamConfig);
+    irisRtcSession.switchStream(roomId, irisRtcStream, streamConfig);
   ```
   * Call switchStream API of to change the stream user is streaming
 
@@ -710,7 +711,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 
   * **Usage:** <br />
     ```javascript
-      irisRtcSession.onRemoteStream = function(remoteStream) {
+      irisRtcSession.onRemoteStream = function(roomId, remoteStream) {
         // Remote particpants stream is received
       }
     ```
@@ -721,6 +722,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
       ---------------------------------------------------------------------------
       Property            Type                    Description
       ---------------------------------------------------------------------------
+      roomId              string                  (MANDATORY) Unique id of the room
       remoteStream        object                  (MANDATORY) An object with remote audio and video streams
     ```
 
@@ -735,10 +737,9 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   ```
   * **Usage:** <br />
     ```javascript
-      IrisRtcSession.onSessionCreated = function(roomName, sessionId) {
+      IrisRtcSession.onSessionCreated = function(roomID) {
         // Room is created and user has joined
-        // roomName - Name of the conference
-        // sessionId - Unique id for the session
+        // roomId - unique id of the room
       }
     ```
 
@@ -749,8 +750,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
       ---------------------------------------------------------------------------
       Property            Type            Description
       ---------------------------------------------------------------------------
-      roomName            string          roomName
-      sessionId           string          Unique id for the session
+      roomId              string          Unique id of the room
     ```
 
 **Session Connected**
@@ -767,7 +767,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   ```javascript
     // Listen on session object
-    irisRtcSession.onSessionConnected = function(sessionId) {
+    irisRtcSession.onSessionConnected = function(roomId) {
       // Connection is established between particpants
     }
   ```
@@ -778,7 +778,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
       ---------------------------------------------------------------------------
       Property            Type            Description
       ---------------------------------------------------------------------------
-      sessionId           string          Unique id for the session
+      roomId              string          Unique id for the room
     ```
 
 **Remote Participant Joined**
@@ -795,7 +795,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   ```javascript
     // Listen on session object
-    irisRtcSession.onSessionParticipantJoined = function(roomName, sessionId, participantJid) {
+    irisRtcSession.onSessionParticipantJoined = function(roomId, participantJid) {
       // Remote participant has joined the conference
     }
   ```
@@ -806,8 +806,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
       ---------------------------------------------------------------------------
       Property            Type            Description
       ---------------------------------------------------------------------------
-      roomName            string          Conference room name
-      sessionId           string          Unique Id of the session
+      roomId              string          Unique id of the room
       participantJid      string          Remote particpant's unique id
     ```
 
@@ -825,7 +824,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
     
   ```javascript
     // Listen on session object
-    irisRtcSession.onError = function(error) {
+    irisRtcSession.onError = function(roomId, error) {
       // Session creation is failed with an error
     }
   ```
@@ -844,7 +843,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
     
    ```javascript
       // Listen on session object
-      irisRtcSession.onSessionParticipantLeft = function(roomName, sessionId, participantJid, closeSession) {
+      irisRtcSession.onSessionParticipantLeft = function(roomId, participantJid, closeSession) {
         // Remote participant has left the room
       }
   ```
@@ -856,8 +855,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
       ---------------------------------------------------------------------------
       Property            Type            Description
       ---------------------------------------------------------------------------
-      roomName            string          Conference room name
-      sessionId           string          Unique Id of the session
+      roomId              string          Unique id for room
       participantJid      string          Remote particpant's unique id
       closeSession        boolean         This boolean is true when last particpant is left the room
     
@@ -876,7 +874,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   * **Usage:** <br />
     ```javascript
       // Listen to event on session object
-      irisRtcSession.onDominantSpeakerChanged = function(id) {
+      irisRtcSession.onDominantSpeakerChanged = function(roomId, id) {
         // Dominant speaker in conference is changed
       }
     ```
@@ -887,6 +885,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
       ---------------------------------------------------------------------------
       Property          Type            Description
       ---------------------------------------------------------------------------
+      roomId            string          Unique id of the room
       id                string          "id" of the dominant speaker 
     ```
 
@@ -926,6 +925,9 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
     
     // Unique routingId of the particpant
     config.routingId            =     ""
+    
+    // Iris JWT token
+    config.irisToken            =     ""
     
     // application is domain
     config.domain               =     "xxxxxxxx.xxxxxxx.com";
@@ -1051,22 +1053,22 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
     }
     
     // Wait for irisRtcSession.onSessionJoined callback event 
-    irisRtcSession.onSessionJoined = function(roomName, sessionId, myJid) {
+    irisRtcSession.onSessionJoined = function(roomId, myJid) {
       // User joined the session
     }
     
     // Wait for irisRtcSession.onSessionJoined callback event.
-    irisRtcSession.onSessionConnected = function(roomName) {
+    irisRtcSession.onSessionConnected = function(roomId) {
       // User joined the session
     }
     
     // Wait for irisRtcSession.onSessionParticipantJoined callback event
-    irisRtcSession.onSessionParticipantJoined = function(roomName, sessionId, participantJid) {
+    irisRtcSession.onSessionParticipantJoined = function(roomId, participantJid) {
       // Remote participant joined the session
     }
     
     // On remote stream received from remote participant
-    irisRtcSession.onRemoteStream = function(remoteStream) {
+    irisRtcSession.onRemoteStream = function(roomId, remoteStream) {
       // Render remote media tracks to user
     }
     
@@ -1074,7 +1076,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
       // Error while joining the session
     }
 
-    irisRtcSession.onSessionParticipantLeft = function(roomName, sessionId, participantJid, closeSession) {
+    irisRtcSession.onSessionParticipantLeft = function(roomId, participantJid, closeSession) {
       // Remote participant left the conference. 
       // Remove local tracks from conference
       // end the session
@@ -1082,23 +1084,23 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
         
     // To set display name
     // Call this API to set display name
-    irisRtcSession.setDisplayName(name);
+    irisRtcSession.setDisplayName(roomId, name);
     
 
     // To Send and Receive chat messages
     // To send chat message call sendChatMessage
     // message - text message to be sent
     // id - Unique Id for the message
-    irisRtcSession.sendChatMessage(id, message);
+    irisRtcSession.sendChatMessage(roomId, id, message);
 
     // To receive chat message
     // Listen to onChatMessage on session object
-    irisRtcSession.onChatMessage = function(message, from){
+    irisRtcSession.onChatMessage = function(roomId, chatMsgJson){
       // Text message is received from a participant
     }
     
     // Listen to this callback for Chat message acknowledgement
-    irisRtcSession.onChatAck = function(chatAckJson){
+    irisRtcSession.onChatAck = function(roomId, chatAckJson){
       // This event is recieved for every message sent out
       // chatAckJson will id, statusCode, statusMessage, rootNodeId
       // and childNodeId paramaeters
@@ -1115,20 +1117,20 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
     }
 
     // Call toggleAudioMute API of Iris Stream when you want to mute audio.
-    irisRtcSession.audioMuteToggle()
+    irisRtcSession.audioMuteToggle(roomId)
   
     // Call toggleVideoMute API of Iris Stream when you want to mute video.
-    irisRtcSession.videoMuteToggle()
+    irisRtcSession.videoMuteToggle(roomId)
 
     // Call muteParticipantAudio API of Iris Stream when you want to mute participant audio.
-    irisRtcSession.muteParticipantAudio(jid, mute)
+    irisRtcSession.muteParticipantAudio(roomId, jid, mute)
   
     // Call muteParticipantVideo API of Iris Stream when you want to mute participant video.
-    irisRtcSession.muteParticipantVideo(jid, mute)
+    irisRtcSession.muteParticipantVideo(roomId, jid, mute)
 
     // End Iris Rtc Session
     // Call endSession API of Iris Session to end the call
-    irisRtcSession.endSession();
+    irisRtcSession.endSession(roomId);
   
     // Disconnect rtc connection.
     irisRtcConnection.close();

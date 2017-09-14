@@ -8,7 +8,6 @@ module.exports = RtcStats;
 
 var logger = require('./RtcLogger.js');
 var https = require('https');
-var clientjs = require('clientjs');
 var RtcBrowserType = require('./Utils/RtcBrowserType.js');
 /** 
  * @constructor
@@ -140,8 +139,6 @@ function RtcStats(options) {
 
     this.submitLevel = 0;
     this.statsInterval = 10000;
-
-    this.client = new ClientJS();
 };
 
 /**
@@ -303,27 +300,26 @@ RtcStats.prototype.submitStats = function() {
         logger.log(logger.level.INFO, "IrisRtcStats",
             "AvgSignalLevel = " + self.AvgSignalOfCall);
     }
+
+    self.parseUserAgent();
+
     var statsPayload = {
         "meta": {
             "sdkVersion": self.options.sdkVersion,
             "sdkType": "iris-js-sdk",
-            "fingerprint": self.client.getFingerprint(), // Calculate Device/Browser Fingerprint
-            "userAgent": self.client.getUserAgent(), // Get User Agent String
-            "browser": self.client.getBrowser(), // Get Browser
-            "browserVersion": self.client.getBrowserVersion(), // Get Browser Version
-            "OS": self.client.getOS(), // Get OS Version
-            "osVersion": self.client.getOSVersion(), // Get OS Version
-            "timeZone": self.client.getTimeZone(), // Get Time Zone
+            "userAgent": self.userAgent,
+            "browser": self.browserName,
+            "browserVersion": self.browserVersion
         },
         "streaminfo": {
             "UID": self.options.UID,
-            "XMPPServer": self.options.XMPPServer,
+            "wsServer": self.options.wsServer,
+            "rtcServer": self.options.rtcServer,
             "turnIP": "",
             "turnUsed": "0",
             "roomId": self.options.roomId,
             "routingId": self.options.routingId,
             "traceId": self.options.traceId,
-            "serviceId": self.options.serviceId,
             "duration": callDuration,
             "startTime": self.callStartTime.toString(),
             "stopTime": self.callEndTime.toString()
@@ -347,11 +343,16 @@ RtcStats.prototype.submitStats = function() {
 
 function getStats(peerconnection, callback, errback) {
     if (RtcBrowserType.isFirefox()) {
+
         if (!errback)
             errback = function() {};
-        peerconnection.getStats(null, callback, errback);
+        if (peerconnection.getStats) {
+            peerconnection.getStats(null, callback, errback);
+        }
     } else {
-        peerconnection.getStats(callback);
+        if (peerconnection.getStats) {
+            peerconnection.getStats(callback);
+        }
     }
 };
 
@@ -994,3 +995,32 @@ function sendRequest(url, json) {
             "   Posting Stats to Server failed with error  " + e);
     }
 };
+
+RtcStats.prototype.parseUserAgent = function() {
+    try {
+        var userAgent = (navigator && navigator.userAgent) ? navigator.userAgent : "";
+
+        if (userAgent) {
+            this.userAgent = userAgent;
+            var tem;
+            var M = userAgent.match(/(opera|chrome|safari|firefox|msie|trident(?=\/))\/?\s*(\d+)/i) || [];
+            if (/trident/i.test(M[1])) {
+                tem = /\brv[ :]+(\d+)/g.exec(userAgent) || [];
+                return 'IE ' + (tem[1] || '');
+            }
+            if (M[1] === 'Chrome') {
+                tem = userAgent.match(/\b(OPR|Edge)\/(\d+)/);
+                if (tem != null) return tem.slice(1).join(' ').replace('OPR', 'Opera');
+            }
+            M = M[2] ? [M[1], M[2]] : [navigator.appName, navigator.appVersion, '-?'];
+            if ((tem = userAgent.match(/version\/(\d+)/i)) != null) M.splice(1, 1, tem[1]);
+            M.join(' ');
+
+            this.browserName = M[0];
+            this.browserVersion = M[1]
+
+        }
+    } catch (error) {
+        logger.log(logger.level.ERROR, "IrisRtcStats", "Failed to parse userAgent");
+    }
+}

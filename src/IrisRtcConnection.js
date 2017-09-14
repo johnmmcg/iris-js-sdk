@@ -42,7 +42,6 @@ function IrisRtcConnection() {
     this.traceId = null;
     this.state = IrisRtcConnection.DISCONNECTED;
     this.xmpp = null; // Variable to store instance of websocket connection
-    this.publicId = null;
     this.type = null;
     this.domain = null;
     this.iceServerJson = null;
@@ -116,7 +115,6 @@ IrisRtcConnection.prototype.close = function() {
     this.traceId = null;
     this.state = IrisRtcConnection.DISCONNECTED;
     this.xmpp = null; // Variable to store instance of websocket connection
-    this.publicId = null;
     this.type = null;
     this.domain = null;
     this.iceServerJson = null;
@@ -186,15 +184,9 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
 
                 // Get the the response json
                 var resJson = JSON.parse(body);
-                // workaround
-                if (!resJson.Rtc_server) {
-                    resJson.Rtc_server = resJson.websocket_server;
-                    resJson.Xmpp_token = resJson.websocket_server_token;
-                    resJson.Xmpp_token_expiry_time = resJson.websocket_server_token_expiry_time;
-                    resJson.Turn_credentials = resJson.turn_credentials;
-                }
+
                 // Check if we have all the data
-                if (!resJson.Rtc_server || !resJson.Xmpp_token || !resJson.Xmpp_token_expiry_time) {
+                if (!resJson.websocket_server || !resJson.websocket_server_token || !resJson.websocket_server_token_expiry_time) {
                     logger.log(logger.level.ERROR, "IrisRtcConnection",
                         " Getting xmpp server details failed as didnt receive all the parameters  ");
                     return errors.code.ERR_INVALID_STATE;
@@ -205,15 +197,15 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
                 if (config.json.wsServer) {
                     self.xmppServer = config.json.wsServer;
                 } else {
-                    self.xmppServer = resJson.Rtc_server;
+                    self.xmppServer = resJson.websocket_server;
                 }
-                self.xmpptoken = resJson.Xmpp_token;
-                self.xmpptokenExpiry = resJson.Xmpp_token_expiry_time;
+                self.xmpptoken = resJson.websocket_server_token;
+                self.xmpptokenExpiry = resJson.websocket_server_token_expiry_time;
 
                 logger.log(logger.level.VERBOSE, "IrisRtcConnection",
-                    " Ice server details are  " + resJson.Turn_credentials);
+                    " Ice server details are  " + resJson.turn_credentials);
 
-                self.iceServerJson = resJson.Turn_credentials;
+                self.iceServerJson = resJson.turn_credentials;
 
                 var json = JSON.parse(self.iceServerJson);
                 if (json && json.ttl) {
