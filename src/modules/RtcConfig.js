@@ -32,7 +32,7 @@ RtcConfig.json = {
     appKey: '',
     appSecret: '',
     channelLastN: "-1",
-    sdkVersion: '3.3.12'
+    sdkVersion: '3.4.0'
 }
 
 /**
