@@ -691,11 +691,6 @@ RtcXmpp.prototype.sendRayo = function sendRayo(data) {
         " sendRayo, to " + data.participants);
     // Join the room by sending the presence
 
-    // Remove +1 from callee number
-    if (data.toTN.includes('+1')) {
-        data.toTN = data.toTN.replace('+1', '');
-    }
-
     var rayo = new xmppClient.Element(
             'iq', { to: data.focusJid, "type": "set", id: this.index.toString() + ':sendIQ' })
         .c('dial', {
