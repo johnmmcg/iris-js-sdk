@@ -53,8 +53,6 @@ IrisRtcStream.prototype.createStream = function(streamConfig) {
             " getUserMedia with constraints ", JSON.stringify(constraints));
 
         // Call getusermedia
-
-        // return new Promise(function(resolve, reject) {
         return getUserMedia(constraints).then(function(stream) {
             logger.log(logger.level.INFO, "IrisRtcStream",
                 " getUserMedia Success with constraints " + JSON.stringify(constraints));
@@ -166,7 +164,7 @@ function setParamsToConstraints(streamConfig, constraints) {
  */
 function getUserMedia(constraints) {
     try {
-        logger.log(logger.level.INFO, "IrisRtcStream", " getUserMedia");
+        logger.log(logger.level.VERBOSE, "IrisRtcStream", " getUserMedia");
 
         return new Promise(function(resolve, reject) {
             WebRTC.getUserMedia(constraints, function(stream) {

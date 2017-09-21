@@ -248,7 +248,7 @@ RtcStats.prototype.updateReceiveBWLevel = function(recvBWValue) {
  */
 RtcStats.prototype.eventLogs = function(eventName, json) {
     var self = this;
-    this.events.push({ "n": eventName, "timestamp": new Date(), "attrs": json });
+    this.events.push({ "n": eventName, "timestamp": new Date(), "attr": json });
 };
 
 /**

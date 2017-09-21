@@ -170,6 +170,7 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
 
     // Check if we want to join or leave the room
     if (config.presenceType == "leave") {
+
         // Join the room by sending the presence
         var pres = new xmppClient.Element(
             'presence', {
@@ -216,6 +217,7 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
           pres.c('video').t('true');
           pres = pres.up();
         }*/
+
         pres.c('user-agent', { 'xmlns': 'http://jitsi.org/jitmeet/user-agent' }).t(this.userAgent);
         pres = pres.c('devices')
         pres.c('audio').t('true');
@@ -276,6 +278,7 @@ RtcXmpp.prototype.sendPresenceAlive = function sendPresenceAlive(config) {
     if (typeof config.videomuted !== 'undefined') {
         pres.c('videomuted').t(config.videomuted);
     }
+
     if (config.name) {
         pres.c('nick').t(config.name);
     }
@@ -591,7 +594,9 @@ RtcXmpp.prototype.sendAllocate = function sendAllocate(data) {
             'room': data.roomId + '@' + data.rtcServer.replace('xmpp', 'conference'),
             'machine-uid': sid()
         }).up();
+
     this.index++;
+
     // Go to child "conference"
     conference = allocate.getChild("conference");
 
@@ -604,7 +609,6 @@ RtcXmpp.prototype.sendAllocate = function sendAllocate(data) {
     conference.c('property', { "name": "openSctp", "value": "true" });
     conference.c('property', { "name": "enableFirefoxHacks", "value": "false" });
     conference.c('property', { "name": "simulcastMode", "value": "rewriting" });
-
 
     var dataElem = {
         'xmlns': "urn:xmpp:comcast:info",
@@ -634,19 +638,19 @@ RtcXmpp.prototype.sendAllocate = function sendAllocate(data) {
 // <?xml version="1.0"?>
 // <iq id="lx4013" type="set" from="<jid>" to="pr-focus-as-b-001.rtc.sys.comcast.net">
 //     <query xmlns="jabber:iq:private" strict="false">
-//         <data xmlns="urn:xmpp:comcast:info" type="allocate" traceid="27d379e0-81f9-11e7-b806-c7fe3f946271" roomid="72420a0a-6c9a-11e7-b931-0242ac110002"  />
+//         <data xmlns="urn:xmpp:comcast:info" type="allocate" traceid="<traceId>" roomid="<roomId>"  />
 //     </query>
 // </iq>
-
-
+//
 // <?xml version="1.0"?>
 // <iq id="lx4013" type="set" from="<jid>" to="pr-focus-as-b-001.rtc.sys.comcast.net">
 //     <query xmlns="jabber:iq:private" strict="false">
-//         <data xmlns="urn:xmpp:comcast:info" type="deallocate" traceid="27d379e0-81f9-11e7-b806-c7fe3f946271" roomid="72420a0a-6c9a-11e7-b931-0242ac110002"    />
+//         <data xmlns="urn:xmpp:comcast:info" type="deallocate" traceid="<traceId>" roomid="<roomId>"    />
 //     </query>
 // </iq>
 /**
- * 
+ * Example for sending private iq messages
+ * @private
  */
 RtcXmpp.prototype.sendPrivateAllocate = function(data) {
 
@@ -687,10 +691,11 @@ RtcXmpp.prototype.sendPrivateAllocate = function(data) {
 // @returns {retValue} 0 on success, negative value on error
 //
 RtcXmpp.prototype.sendRayo = function sendRayo(data) {
-    logger.log(logger.level.VERBOSE, "RtcXmpp",
-        " sendRayo, to " + data.participants);
-    // Join the room by sending the presence
 
+    logger.log(logger.level.VERBOSE, "RtcXmpp",
+        " sendRayo, to " + data.toTN);
+
+    // Join the room by sending the presence
     var rayo = new xmppClient.Element(
             'iq', { to: data.focusJid, "type": "set", id: this.index.toString() + ':sendIQ' })
         .c('dial', {
@@ -725,6 +730,7 @@ RtcXmpp.prototype.sendRayo = function sendRayo(data) {
 RtcXmpp.prototype.sendHangup = function sendHangup(participantJid, config) {
     logger.log(logger.level.VERBOSE, "RtcXmpp",
         " sendHangup");
+
     var roomJid = config.roomId + '@' + config.rtcServer.replace('xmpp', 'callcontrol');
 
     // Join the room by sending the presence
@@ -749,8 +755,7 @@ RtcXmpp.prototype.sendHangup = function sendHangup(participantJid, config) {
 // @returns {retValue} 0 on success, negative value on error
 //
 RtcXmpp.prototype.sendHold = function sendHold(participantJid, config) {
-    logger.log(logger.level.VERBOSE, "RtcXmpp",
-        " sendHold");
+    logger.log(logger.level.VERBOSE, "RtcXmpp", " sendHold");
 
     var roomJid = config.roomId + '@' + config.rtcServer.replace('xmpp', 'callcontrol');
 
@@ -776,8 +781,8 @@ RtcXmpp.prototype.sendHold = function sendHold(participantJid, config) {
 // @returns {retValue} 0 on success, negative value on error
 //
 RtcXmpp.prototype.sendUnHold = function sendUnHold(participantJid, config) {
-    logger.log(logger.level.VERBOSE, "RtcXmpp",
-        " sendUnHold");
+    logger.log(logger.level.VERBOSE, "RtcXmpp", " sendUnHold");
+
     var roomJid = config.roomId + '@' + config.rtcServer.replace('xmpp', 'callcontrol');
 
     // Join the room by sending the presence
@@ -799,19 +804,20 @@ RtcXmpp.prototype.sendUnHold = function sendUnHold(participantJid, config) {
 // Method to send merge command
 //
 // @param {data} - Configuration
-// @returns {retValue} 0 on success, negative value on error
 //
-RtcXmpp.prototype.sendMerge = function sendMerge(participantJid, config) {
-    logger.log(logger.level.VERBOSE, "RtcXmpp",
-        " sendMerge");
+RtcXmpp.prototype.sendMerge = function sendMerge(config, participantJid, participantJid2) {
+
+    logger.log(logger.level.VERBOSE, "RtcXmpp", " sendMerge");
+
     var roomJid = config.roomId + '@' + config.rtcServer.replace('xmpp', 'callcontrol');
 
     var merge = new xmppClient.Element(
-            'iq', { to: roomJid + "/" + participantJid, from: this.jid, "type": "set", id: this.index.toString() + ':sendIQ' })
+            'iq', { to: roomJid + "/" + participantJid, from: roomJid + '/' + participantJid2, "type": "set", id: this.index.toString() + ':sendIQ' })
         .c('merge', { 'xmlns': 'urn:xmpp:rayo:1' }).up();
 
     merge = merge.c('data', {
         'xmlns': "urn:xmpp:comcast:info",
+        'traceid': config.traceId,
         'host': this.server
     }).up();
 
@@ -844,14 +850,7 @@ RtcXmpp.prototype.sendSourceAdd = function sendSourceAdd(sdpDiffer, data) {
     // get the xmpp element
     sdpDiffer.toJingle(add);
 
-
-    // Create a variable for SDP
-    // this.localSDP = new SDP(data.sdp);
-
     this.index++;
-
-    // get the xmpp element
-    // add = this.localSDP.toJingle(add, 'initiator');
 
     // Send the session-initiate
     this.client.send(add.tree());
@@ -880,13 +879,7 @@ RtcXmpp.prototype.sendSourceRemove = function sendSourceRemove(sdpDiffer, data) 
     // get the xmpp element
     sdpDiffer.toJingle(remove);
 
-    // Create a variable for SDP
-    // this.localSDP = new SDP(data.sdp);
-
     this.index++;
-
-    // get the xmpp element
-    // accept = this.localSDP.toJingle(accept, 'initiator');
 
     // Send the session-initiate
     this.client.send(remove.tree());
@@ -897,7 +890,10 @@ RtcXmpp.prototype.sendSourceRemove = function sendSourceRemove(sdpDiffer, data) 
 // @param None
 // @returns {retValue} 0 on success, negative value on error
 //
-RtcXmpp.prototype.disconnect = function disconnect() {}
+RtcXmpp.prototype.disconnect = function disconnect() {
+    this.client.connection.websocket.close();
+    this.stopPing();
+}
 
 // Callback to inform that connection is successful
 //
@@ -1384,23 +1380,8 @@ RtcXmpp.prototype._onPrivateIQ = function _onPrivateIQ(stanza) {
                 ((incomingConfig.type == 'cancel' || incomingConfig.type == 'chat') && roomIdListenerCount == 0)) {
                 self.emit('onIncoming', incomingConfig);
             } else {
-                logger.log(logger.level.INFO, "RtcXmpp._onPrivateIQ", "Notification type doesn't match " + incomingConfig.type)
+                logger.log(logger.level.INFO, "RtcXmpp._onPrivateIQ", "Notification type is " + incomingConfig.type)
             }
-
-            // if (incomingConfig.type == 'notify') {
-            //     // Send notification for incoming call
-            //     self.emit('onIncoming', incomingConfig);
-            // } else if (incomingConfig.type == 'cancel' && roomIdListenerCount == 0) {
-            //     // Send notification for canceling call
-            //     self.emit('onIncoming', incomingConfig);
-            // } else if (incomingConfig.type == 'chat' && roomIdListenerCount == 0) {
-            //     // Send notification for a chat call
-            //     self.emit('onIncoming', incomingConfig);
-            // } else {
-            //     logger.log(logger.level.INFO, "RtcXmpp._onPrivateIQ", "Notification type doesn't match " + incomingConfig.type)
-            //         // self.emit('onIncoming', incomingConfig);
-            // }
-
         } else {
             // send the incoming message
             self.emit('onIncoming', incomingConfig);
@@ -1451,7 +1432,6 @@ RtcXmpp.prototype._onChatMessage = function(stanza) {
         }
     }
 };
-
 
 // Callback to parse XMPP chat messages to mute/unmute video
 //
