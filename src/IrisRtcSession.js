@@ -20,12 +20,7 @@ var SDPDiffer = require('./modules/Utils/SDPDiffer.js');
 var RtcBrowserType = require("./modules/Utils/RtcBrowserType.js");
 var SDPMangler = require('./modules/Utils/SDPMangler.js');
 var RestHelper = require('./modules/Utils/RtcRestHelper.js');
-
-// var WebRTC      = require('./modules/node-webrtc/webrtc.node');
 var WebRTC = require('./modules/RtcWebrtcAdapter.js');
-
-//Enable/disable webrtc.node debug mode
-setWebRTCDebug(rtcConfig.json.webrtcLogs);
 
 // States
 ["NONE", "CONNECTING", "OUTGOING", "INCOMING", "INPROGRESS", "CONNECTED",
@@ -146,14 +141,8 @@ IrisRtcSession.prototype.create = function(config, connection) {
         self.sendStartMucWithRoomId(self.config);
     } else {
         // Send the presence directly
-        // Get the EM room id
         self.config.rootNodeId = "00000"; //TBD
         self.config.childNodeId = "00000";
-
-        //PSTN caller info details
-        if ((self.config.type == "pstn") && config.userinfo) {
-            self.sendEvent("SDK_IncomingCall_UserInfo", { message: "PSTN caller" });
-        }
 
         // Set the state to CONNECTING
         self.state = IrisRtcSession.CONNECTING;
@@ -175,10 +164,10 @@ IrisRtcSession.prototype.create = function(config, connection) {
         logger.log(logger.level.INFO, "IrisRtcSession",
             " Room : " + self.config.roomId + " Event : " + event + " response : " + JSON.stringify(response));
 
-        // if (self.config.roomId != response.roomId) {
-        //     logger.log(logger.level.ERROR, "IrisRtcSession", "RoomId mismatch : Listening event to " + self.config.roomId + "Received event for " + response.roomId);
-        //     return;
-        // }
+        if (self.config.roomId != response.roomId) {
+            logger.log(logger.level.ERROR, "IrisRtcSession", "RoomId mismatch : Listening event to " + self.config.roomId + "Received event for " + response.roomId);
+            return;
+        }
 
         if (event === "onAllocateSuccess") {
 
@@ -203,11 +192,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
             var data = {
                 "to": response.from,
                 "id": response.id,
-                "rootNodeId": self.config.rootNodeId,
-                "childNodeId": self.config.childNodeId,
                 "traceId": self.config.traceId,
-                "roomId": self.config.roomId,
-                "eventType": self.config.eventType
             };
             // Call the session-initiate api
             connection.xmpp.sendCapabilities(data);
@@ -234,13 +219,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
 
                         // Check if we have become moderator
                         if (response.role == "moderator" && self.config.focusJid) {
-                            // for audio call, send the rayo command
-                            /*if (self.config.type == "audio" && self.pstnState ==IrisRtcSession.NONE)
-                            {
-                                self.pstnState = IrisRtcSession.INPROGRESS;
-                                // send the rayo command
-                                connection.xmpp.sendRayo(self.config);
-                            }*/
+                            // What to do?
                         }
                         if (response.videomuted) {
                             self.onVideoMuted(response.jid, response.videomuted);
@@ -264,7 +243,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
 
 
                     // Send events
-                    self.sendEvent("SDK_XMPPJoined", { jid: response.jid });
+                    self.sendEvent("SDK_XMPPJoined", { myJid: response.jid });
 
                     // for audio call, send the rayo command
                     if (self.config.type == "pstn" && self.config.sessionType != "join" && self.pstnState == IrisRtcSession.NONE) {
@@ -831,8 +810,11 @@ IrisRtcSession.prototype.sendRootEventWithRoomId = function(config) {
  */
 IrisRtcSession.prototype.muteParticipantVideo = function(roomId, jid, mute) {
     try {
-        if (this.config && roomId != this.config.roomId)
+        if (this.config && roomId != this.config.roomId) {
+            logger.log(logger.level.ERROR, "IrisRtcSession", "muteParticipantVideo :: Wrong roomId, this roomId : " +
+                this.config.roomId + " Received roomId : " + roomId);
             return;
+        }
 
         if (jid && this.connection && this.connection.xmpp) {
             this.connection.xmpp.sendVideoMute(jid, mute, this.config);
@@ -852,8 +834,11 @@ IrisRtcSession.prototype.muteParticipantVideo = function(roomId, jid, mute) {
 IrisRtcSession.prototype.muteParticipantAudio = function(roomId, jid, mute) {
     try {
 
-        if (this.config && roomId != this.config.roomId)
+        if (this.config && roomId != this.config.roomId) {
+            logger.log(logger.level.ERROR, "IrisRtcSession", "muteParticipantAudio :: Wrong roomId, this roomId : " +
+                this.config.roomId + " Received roomId : " + roomId);
             return;
+        }
 
         if (jid && this.connection && this.connection.xmpp) {
             this.connection.xmpp.sendAudioMute(jid, mute, this.config);
@@ -865,6 +850,7 @@ IrisRtcSession.prototype.muteParticipantAudio = function(roomId, jid, mute) {
 
 /**
  * This API is called to send a chat message.
+ * @param {string} roomId - Room ID
  * @param {string} id - Unique Id for each message sent.
  * @param {string} message - Chat message to be sent
  * @param {string} topic - Notification topic that user subscribed for chat 
@@ -873,8 +859,11 @@ IrisRtcSession.prototype.muteParticipantAudio = function(roomId, jid, mute) {
  */
 IrisRtcSession.prototype.sendChatMessage = function(roomId, id, message, topic) {
 
-    if (roomId != this.config.roomId)
+    if (roomId != this.config.roomId) {
+        logger.log(logger.level.ERROR, "IrisRtcSession", "sendChatMessage :: Wrong roomId, this roomId : " +
+            this.config.roomId + " Received roomId : " + roomId)
         return;
+    }
 
     if (!message || !id || (typeof id != 'string') || (typeof message != 'string')) {
         logger.log(logger.level.ERROR, "IrisRtcSession", "Message and id can't be empty : message :" +
@@ -932,6 +921,7 @@ IrisRtcSession.prototype.end = function() {
         // De-initialize
         if (this.config)
             this.config.traceId = null;
+        this.config = null;
         this.state = IrisRtcSession.NONE;
         //this.config = null;
         this.connection = null;
@@ -952,16 +942,6 @@ IrisRtcSession.prototype.end = function() {
         // Add the entry
         delete this; // Does this work?
     }
-};
-
-/**
- * Entry point for ending the old peerconnections
- * @private
- */
-IrisRtcSession.prototype.peerconnection_end = function() {
-    logger.log(logger.level.INFO, "IrisRtcSession",
-        " closing old peer connections ");
-    this.peerconnection.close();
 };
 
 /**
@@ -1139,10 +1119,14 @@ IrisRtcSession.prototype.onIceConnectionStateChange = function(event) {
             iceState = this.peerconnection.iceConnectionState ? this.peerconnection.iceConnectionState.toString() : "NA";
 
             if (this.peerconnection.iceConnectionState.toString() == "connected") {
+
                 this.state = IrisRtcSession.CONNECTED;
+
+                if (this.config.type == "pstn")
+                    this.pstnState = IrisRtcSession.CONNECTED;
+
                 this.onSessionConnected(this.config.roomId);
             }
-
         } else if (this.peerconnection.iceState) {
             logger.log(logger.level.INFO, "IrisRtcSession",
                 " onIceConnectionStateChange " + this.peerconnection.iceState);
@@ -1150,6 +1134,7 @@ IrisRtcSession.prototype.onIceConnectionStateChange = function(event) {
             iceState = this.peerconnection.iceState ? this.peerconnection.iceState.toString() : "NA";
 
             if (this.peerconnection.iceState.toString() == "connected") {
+                this.state = IrisRtcSession.CONNECTED;
                 this.onSessionConnected(this.config.roomId);
             }
         } else {
@@ -1181,7 +1166,6 @@ IrisRtcSession.prototype.onIceConnectionStateChange = function(event) {
                 break;
             default:
                 this.sendEvent("SDK_ICEConnectionState", { message: iceState });
-
         }
     }
 };
@@ -1201,7 +1185,7 @@ IrisRtcSession.prototype.onSignalingStateChange = function(event) {
 
         switch (signalState) {
             case "stable":
-                this.sendEvent("SDK_SignalingStable", { message: signalState });
+                this.sendEvent("SDK_SignalingStateStable", { message: signalState });
                 break;
             case "have-local-offer":
                 this.sendEvent("SDK_SignalingStateHaveLocalOffer", { message: signalState });
@@ -1387,7 +1371,8 @@ IrisRtcSession.prototype.onDataChannel = function(event) {
 /**
  * Elects the participant with the given id to be the selected participant in
  * order to receive higher video quality.
- * @param participantId the identifier of the participant
+ * @param {string} roomId - Room ID
+ * @param {string} participantId the identifier of the participant
  * @public
  */
 IrisRtcSession.prototype.selectParticipant = function(roomId, participantId) {
@@ -1448,6 +1433,7 @@ IrisRtcSession.prototype.pinParticipant = function(roomId, participantId) {
  * Selects a new value for "lastN". The requested amount of videos are going
  * to be delivered after the value is in effect. Set to -1 for unlimited or
  * all available videos.
+ * @param {string} roomId - Room ID
  * @param lastN the new number of videos the user would like to receive.
  * @public
  */
@@ -1489,17 +1475,18 @@ IrisRtcSession.prototype.setLastN = function(roomId, value) {
 
 /**
  * Sends a message through data channel
+ * @param {string} roomId - Room ID
  * @param {string} to - Participant jid
  * @param {string} msg - Message to be sent
  * @private
  */
-IrisRtcSession.prototype.sendChannelMessage = function(to, msg) {
+IrisRtcSession.prototype.sendChannelMessage = function(roomId, participantJid, msg) {
     try {
-        if (this.dataChannel && to && msg) {
+        if (this.dataChannel && participantJid && msg) {
             var jsonObject = {
                 colibriClass: 'EndpointMessage',
                 msgPayload: msg,
-                to: to
+                to: participantJid
             };
             logger.log(logger.level.INFO, "IrisRtcSession", "sendChannelMessage : " + JSON.stringify(jsonObject));
 
@@ -2196,7 +2183,7 @@ IrisRtcSession.prototype.sendSourceRemove = function() {
                         "traceId": self.config.traceId,
                     };
                     self.connection.xmpp.sendSourceRemove(sdpDiffer, data);
-                    self.sendEvent("SDK_SendSourceRemove", data);
+                    self.sendEvent("SDK_SendSourceRemove", { to: self.to });
 
                 }, function(error) {
                     logger.log(logger.level.ERROR, "IrisRtcSession", "Failed to setLocalDescription ", error);
@@ -2304,8 +2291,15 @@ IrisRtcSession.prototype.removeStream = function(locaStream) {
  */
 IrisRtcSession.prototype.switchStream = function(roomId, irisRtcStream, streamConfig) {
     try {
-        logger.log(logger.level.INFO, "IrisRtcSession", "Switch stream with new stream for config " + JSON.stringify(streamConfig));
         var self = this;
+
+        if (roomId != self.config.roomId) {
+            logger.log(logger.level.ERROR, "IrisRtcSession", "switchStream :: Wrong roomId, this roomId : " +
+                self.config.roomId + " Received roomId : " + roomId);
+            return;
+        }
+
+        logger.log(logger.level.INFO, "IrisRtcSession", "Switch stream with new stream for config " + JSON.stringify(streamConfig));
 
         if (streamConfig.screenShare) {
             logger.log(logger.level.INFO, "IrisRtcSession", "Switch stream for screen share " + JSON.stringify(streamConfig));
@@ -2313,7 +2307,10 @@ IrisRtcSession.prototype.switchStream = function(roomId, irisRtcStream, streamCo
 
         // Remove the present stream from the conference
         self.removeStream(self.localStream);
+
+        // Send source remove
         self.sendSourceRemove();
+
         // Stop the present stream
         irisRtcStream.stopMediaStream(self.localStream);
 
@@ -2409,9 +2406,11 @@ IrisRtcSession.prototype.videoMuteToggle = function(roomId) {
     try {
         var self = this;
 
-        if (roomId != self.config.roomId)
+        if (roomId != self.config.roomId) {
+            logger.log(logger.level.ERROR, "IrisRtcSession", "videoMuteToggle :: Wrong roomId, this roomId : " +
+                self.config.roomId + " Received roomId : " + roomId);
             return;
-
+        }
         if (self.localStream && self.localStream.getVideoTracks().length >= 1 && self.localStream.getVideoTracks()[0]) {
             this.isVideoMuted = this.localStream.getVideoTracks()[0].enabled;
             logger.log(logger.level.INFO, "IrisRtcSession", "videoMuteToggle : Video Mute : " + !this.isVideoMuted);
@@ -2451,8 +2450,11 @@ IrisRtcSession.prototype.audioMuteToggle = function(roomId) {
     try {
         var self = this;
 
-        if (roomId != self.config.roomId)
+        if (roomId != self.config.roomId) {
+            logger.log(logger.level.ERROR, "IrisRtcSession", "audioMuteToggle :: Wrong roomId, this roomId : " +
+                self.config.roomId + " Received roomId : " + roomId);
             return;
+        }
 
         if (self.localStream && self.localStream.getAudioTracks().length >= 1 && self.localStream.getAudioTracks()[0]) {
             this.isAudioMuted = this.localStream.getAudioTracks()[0].enabled;
@@ -2484,12 +2486,20 @@ IrisRtcSession.prototype.audioMuteToggle = function(roomId) {
 
 /**
  * API to set dispaly name for the user
+ * @param {string} roomId - Room ID
  * @param {string} name - Name for the user
  * @public
  */
 IrisRtcSession.prototype.setDisplayName = function(roomId, name) {
-    if (!name && (roomId != this.config.roomId)) {
-        logger.log(logger.level.ERROR, "IrisRtcSession", "setDisplayName : name is empty or roomId mismatch");
+
+    if (this.config && roomId != this.config.roomId) {
+        logger.log(logger.level.ERROR, "IrisRtcSession", "setDisplayName :: Wrong roomId, this roomId : " +
+            this.config.roomId + " Received roomId : " + roomId);
+        return;
+    }
+
+    if (!name) {
+        logger.log(logger.level.ERROR, "IrisRtcSession", "setDisplayName : name is empty");
         return;
     } else if (this.connection && this.connection.xmpp) {
         this.config.name = name;
@@ -2500,35 +2510,6 @@ IrisRtcSession.prototype.setDisplayName = function(roomId, name) {
         logger.log(logger.level.ERROR, "IrisRtcSession", "setDisplayName : Check if session is created");
     }
 };
-
-/**
- * Dial a PSTN number if you are already in a PSTN call
- * @param {string} roomId - Unique id for the room
- * @param {E.164} toTN - Telephone number of callee in e.164 format
- * @param {E.164} fromTN - Telephone number of caller
- * @param {string} toRoutingId - Routing id of the callee
- */
-IrisRtcSession.prototype.dialTN = function(roomId, toTN, fromTN, toRoutingId) {
-    try {
-        if (this.connection && this.config && this.state == IrisRtcSession.CONNECTED && this.config.roomId == roomId) {
-            var data = {
-                toTN: toTN,
-                fromTN: fromTN,
-                toRoutingId: toRoutingId,
-                focusJid: this.config.focusJid,
-                roomId: this.config.roomId,
-                rtcServer: this.config.rtcServer,
-                eventType: this.config.eventType,
-                traceId: this.config.traceId,
-            }
-            connection.xmpp.sendRayo(data);
-        } else {
-            logger.log(logger.level.ERROR, "IrisRtcSession", "dialTN : Failed to dial number " + toTN);
-        }
-    } catch (error) {
-        logger.log(logger.level.ERROR, "IrisRtcSession", "dialTN : Dial number failed with error ", error);
-    }
-}
 
 /**
  * Read the ssrc info and create a map of ssrc and their owners
@@ -2646,13 +2627,23 @@ IrisRtcSession.prototype.pstnUnHold = function(roomId, participantJid) {
  * This API allows user to merge two pstn calls
  * @private
  */
-IrisRtcSession.prototype.pstnMerge() = function() {
+IrisRtcSession.prototype.pstnMerge = function(roomId, participantJid, participantJid2) {
+    try {
+        logger.log(logger.level.INFO, "IrisRtcSession", "pstnMerge");
+        if (this.connection && this.connection.xmpp && this.config.roomId == roomId) {
+            this.connection.xmpp.sendMerge(this.config, participantJid, participantJid2);
+        } else {
+            logger.log(logger.level.ERROR, "IrisRtcSession", "pstnUnHold :: Session not created yet or roomId is different");
+        }
+    } catch (error) {
+        logger.log(logger.level.ERROR, "IrisRtcSession", "pstnMerge :: Session not created yet or roomId is different ", error);
 
+    }
 }
 
 /**
  * This API allows to user to hang up the PSTN call
- * @param {string} roomId - 
+ * @param {string} roomId - Room ID
  * @param {string} participantJid -  Jid of the pstn participant
  * @public
  */
@@ -2669,6 +2660,56 @@ IrisRtcSession.prototype.pstnHangup = function(roomId, participantJid) {
         logger.log(logger.level.ERROR, "IrisRtcSession", "pstnHangup :: Session not created yet or roomId is different ", error);
     }
 };
+
+/**
+ * Dial a PSTN number if you are already in a PSTN call
+ * @param {string} roomId - Unique id for the room
+ * @param {E.164} fromTN - Telephone number of caller
+ * @param {E.164} toTN - Telephone number of callee in e.164 format
+ * @param {string} toRoutingId - Routing id of the callee
+ */
+IrisRtcSession.prototype.addPSTNParticipant = function(roomId, fromTN, toTN, toRoutingId) {
+    try {
+
+        logger.log(logger.level.INFO, "IrisRtcSession", "addPSTNParticipant : roomId:" + roomId +
+            " toTN : " + toTN + " toRoutingId : " + toRoutingId);
+
+        if (this.config && roomId != this.config.roomId) {
+            logger.log(logger.level.ERROR, "IrisRtcSession", "addPSTNParticipant :: Wrong roomId, this roomId : " +
+                this.config.roomId + " Received roomId : " + roomId);
+            return;
+        }
+
+        if (!this.connection || this.state != IrisRtcSession.CONNECTED) {
+            logger.log(logger.level.ERROR, "IrisRtcSession", "addPSTNParticipant :: " +
+                "There is no currently active session to add participant ");
+            return;
+        }
+
+        if (this.connection && this.state == IrisRtcSession.CONNECTED) {
+            var data = {
+                toTN: toTN,
+                fromTN: fromTN,
+                toRoutingId: toRoutingId,
+                focusJid: this.config.focusJid,
+                roomId: this.config.roomId,
+                rtcServer: this.config.rtcServer,
+                eventType: this.config.eventType,
+                traceId: this.config.traceId,
+                roomtoken: this.config.roomtoken,
+                roomtokenexpirytime: this.config.roomtokenexpirytime,
+                rootNodeId: this.config.rootNodeId,
+                childNodeId: this.config.childNodeId
+            }
+            this.connection.xmpp.sendRayo(data);
+        } else {
+            logger.log(logger.level.ERROR, "IrisRtcSession", "addPSTNParticipant : Failed to dial number " + toTN);
+        }
+    } catch (error) {
+        logger.log(logger.level.ERROR, "IrisRtcSession", "addPSTNParticipant : Dial number failed with error ", error);
+    }
+}
+
 
 /**
  * onSessionCreated callback
@@ -2826,9 +2867,9 @@ IrisRtcSession.prototype.sendEvent = function(event, details) {
     var eventdata = {
         "type": "session",
         "event": event,
-        "roomId": (this.config && this.config.roomId) ? this.config.roomId : "NA",
-        "routingId": (this.config && this.config.routingId) ? this.config.routingId : "NA",
-        "traceId": (this.config && this.config.traceId) ? this.config.traceId : "NA",
+        "roomId": (this.config && this.config.roomId) ? this.config.roomId : details.roomId ? details.roomId : "NA",
+        "routingId": (this.config && this.config.routingId) ? this.config.routingId : details.routingId ? details.routingId : "NA",
+        "traceId": (this.config && this.config.traceId) ? this.config.traceId : details.traceId ? details.traceId : "NA",
         "details": details
     };
 
@@ -2839,29 +2880,13 @@ IrisRtcSession.prototype.sendEvent = function(event, details) {
 
 /**
  * Called when connection has an event
- * @param {object} event - SDK events
+ * @param {string} roomId - Room ID
+ * @param {json} event - SDK events
  * @private
  */
 IrisRtcSession.prototype.onEvent = function(roomId, event) {
     // 
 };
-
-
-// This is a special method to listen to incoming call events
-// Please note that this is not part of the object so 
-// should be invoked directly
-// @param {connection} a IRIS RTC Connection object to send messages
-// @returns {retValue} 0 on success, negative value on error
-// @api public
-//
-// Function to enable debug logs in webrtc.node
-//
-// @param Nothing
-// @returns Nothing
-//
-function setWebRTCDebug(flag) {
-    // WebRTC.setDebug(flag)
-}
 
 /**
  * Function to remove codec from sdp
@@ -3171,6 +3196,7 @@ IrisRtcSession.prototype.checkPresenceElapsedTime = function() {
 };
 
 /**
+ * @param {string} roomId - Room Id
  * @param {string} tones - DTMF tone
  * @param {string} duration - duration of the tone
  * @param {string} interToneGap - inter tone gap 
@@ -3227,7 +3253,8 @@ IrisRtcSession.prototype.createSession = function(sessionConfig, connection, str
     var self = this;
 
     // var config = Object.assign({}, sessionConfig);
-    var config = sessionConfig;
+    // var config = sessionConfig;
+    var config = JSON.parse(JSON.stringify(sessionConfig));
 
     logger.log(logger.level.INFO, "IrisRtcSession",
         " Create session with config " + JSON.stringify(config));
@@ -3280,7 +3307,7 @@ IrisRtcSession.prototype.createSession = function(sessionConfig, connection, str
 
         config.sessionType = "create";
 
-        self.sendEvent("SDK_CreateSession", { roomId: config.roomId, type: config.type });
+        self.sendEvent("SDK_CreateSession", { roomId: config.roomId, routingId: config.routingId, traceId: config.traceId, type: config.type });
 
         self.localStream = stream;
         self.create(config, connection);
@@ -3297,8 +3324,10 @@ IrisRtcSession.prototype.createSession = function(sessionConfig, connection, str
  * @param {json} notificationPayload - Notification payload having roomid, roomtoken and roomtokenexpirytime
  * @public
  */
-IrisRtcSession.prototype.joinSession = function(config, connection, stream, notificationPayload) {
+IrisRtcSession.prototype.joinSession = function(sessionConfig, connection, stream, notificationPayload) {
     var self = this;
+
+    var config = JSON.parse(JSON.stringify(sessionConfig));
 
     logger.log(logger.level.INFO, "IrisRtcSession",
         " Join session with config " + JSON.stringify(config));
@@ -3345,8 +3374,9 @@ IrisRtcSession.prototype.joinSession = function(config, connection, stream, noti
  * @param {object} connection - Rtc connection object
  * @public
  */
-IrisRtcSession.prototype.createChatSession = function(config, connection) {
+IrisRtcSession.prototype.createChatSession = function(sessionConfig, connection) {
     var self = this;
+    var config = JSON.parse(JSON.stringify(sessionConfig));
 
     logger.log(logger.level.INFO, "IrisRtcSession",
         " Create chat session with config " + JSON.stringify(config));
@@ -3367,14 +3397,14 @@ IrisRtcSession.prototype.createChatSession = function(config, connection) {
     } else {
         config.sessionType = "create";
 
-        self.sendEvent("SDK_CreateChatSession", { "roomId": config.roomId, type: config.type });
+        self.sendEvent("SDK_CreateChatSession", { roomId: config.roomId, routingId: config.routingId, traceId: config.traceId, type: config.type });
 
         self.create(config, connection);
     }
 };
 
 /**
- *  This API is called to join a Iris Rtc session incase of  non-anonymous chat call.
+ * This API is called to join a Iris Rtc session incase of  non-anonymous chat call.
  * For incoming calls client should pass notification information having required parameters to join session.<br/>
  * notification payload sent to this API must have <code>roomid</code>, <code>roomtoken</code> and <code>roomtokenexpirytime</code>.
  * @param {json} config - A json object having all parameters required to create a room
@@ -3382,8 +3412,9 @@ IrisRtcSession.prototype.createChatSession = function(config, connection) {
  * @param {json} notificationPayload - Notification payload having roomid, roomtoken and roomtokenexpirytime
  * @public
  */
-IrisRtcSession.prototype.joinChatSession = function(config, connection, notificationPayload) {
+IrisRtcSession.prototype.joinChatSession = function(sessionConfig, connection, notificationPayload) {
     var self = this;
+    var config = JSON.parse(JSON.stringify(sessionConfig));
 
     logger.log(logger.level.INFO, "IrisRtcSession",
         " Join chat session with config " + JSON.stringify(config));
@@ -3427,6 +3458,8 @@ IrisRtcSession.prototype.joinChatSession = function(config, connection, notifica
  */
 IrisRtcSession.prototype.downgradeToChat = function(downgradeConfig, notificationPayload) {
     try {
+        var downgradeConfig = JSON.parse(JSON.stringify(downgradeConfig));
+
         logger.log(logger.level.INFO, "IrisRtcSession", "downgradeToChat :: Moving Audio/Video session to Chat session");
         logger.log(logger.level.INFO, "IrisRtcSession", "downgradeToChat : config : " + JSON.stringify(downgradeConfig));
 
@@ -3476,6 +3509,7 @@ IrisRtcSession.prototype.downgradeToChat = function(downgradeConfig, notificatio
  */
 IrisRtcSession.prototype.upgradeToVideo = function(stream, upgradeConfig, notificationPayload) {
     try {
+        var upgradeConfig = JSON.parse(JSON.stringify(upgradeConfig));
 
         logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo :: Moving form Chat session to Video session");
         logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToVideo :: config : " + JSON.stringify(upgradeConfig));
@@ -3539,6 +3573,8 @@ IrisRtcSession.prototype.upgradeToVideo = function(stream, upgradeConfig, notifi
  */
 IrisRtcSession.prototype.upgradeToAudio = function(stream, upgradeConfig, notificationPayload) {
     try {
+        var upgradeConfig = JSON.parse(JSON.stringify(upgradeConfig));
+
         logger.log(logger.level.INFO, "IrisRtcSession", "upgradeToAudio :: Moving form Chat session to Audio session");
 
         if (!stream) {
@@ -3704,6 +3740,7 @@ IrisRtcSession.prototype.onSessionParticipantNotResponding = function(roomId, pa
 
 /**
  * Callback to inform about the session relarted errors
+ * @param {string} roomId - Room ID
  * @param {object} error - Error details from session
  * @public
  */
@@ -3802,9 +3839,11 @@ IrisRtcSession.prototype.onDataChannelMessage = function(colibriClass, obj) {
 
 /**
  * API to end the session 
+ * @param roomId - Room ID
  * @public
  */
 IrisRtcSession.prototype.endSession = function(roomId) {
+
     logger.log(logger.level.INFO, "IrisRtcSession",
         "endSession :: roomId " + roomId + " ", this);
 
@@ -3812,10 +3851,6 @@ IrisRtcSession.prototype.endSession = function(roomId) {
         logger.log(logger.level.ERROR, "IrisRtcSession",
             "endSession called with wrong roomId " + roomId);
         return;
-    }
-
-    if (this.config && this.config.type == "pstn") {
-        this.pstnHangup();
     }
     this.end();
 };

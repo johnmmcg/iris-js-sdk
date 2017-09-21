@@ -5,7 +5,6 @@
 //                        in the register API.
 //
 
-
 // Defining the API module 
 module.exports = IrisRtcConnection;
 
@@ -77,8 +76,8 @@ IrisRtcConnection.prototype.connect = function(irisToken, routingId, eventManage
         return;
     } else {
         logger.log(logger.level.INFO, "IrisRtcConnection",
-            " connect :: get xmpp details for routingId  " + routingId +
-            " token " + irisToken);
+            " connect :: routingId : " + routingId +
+            " irisToken : " + irisToken);
     }
 
     var self = this;
@@ -172,8 +171,8 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
                 // check if the status code is correct
                 if (response.statusCode != 200) {
                     logger.log(logger.level.ERROR, "IrisRtcConnection",
-                        " Getting xmpp server details failed with status code  " +
-                        response.statusCode + " & response " + body);
+                        " Getting xmpp server details failed with status code : " +
+                        response.statusCode + " & response : " + body);
 
                     if (response.statusCode == '503' || response.statusCode == '404') {
                         self._doreconnect();
@@ -213,8 +212,8 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
                     self.turnCredentialExpiry = currTime + json.ttl;
 
                     logger.log(logger.level.INFO, "IrisRtcConnection",
-                        " self.xmpptokenExpiry " + self.xmpptokenExpiry +
-                        " self.turnCredentialExpiry " + self.turnCredentialExpiry);
+                        " xmpptokenExpiry : " + self.xmpptokenExpiry +
+                        " turnCredentialExpiry : " + self.turnCredentialExpiry);
                 }
 
                 // XMPP token received, make a call to XMPP server and stay connected
@@ -252,7 +251,7 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
 
     logger.log(logger.level.INFO, "IrisRtcConnection",
         " Connecting to Xmpp server at  " + xmppServer +
-        " with token " + xmpptoken + " & RoutingId " + this.userID);
+        " with xmpptoken : " + xmpptoken + " & RoutingId : " + this.userID);
 
     // Parameter checking
     if (!xmpptoken ||
@@ -276,7 +275,7 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
             self.state = IrisRtcConnection.CONNECTED;
             self.myJid = jid.toString();
             self.onOpen();
-            self.sendEvent("SDK_XMPPServerConnected", "");
+            self.sendEvent("SDK_WebSocketServerConnected", { myJid: self.myJid });
         });
 
         // Monitor onclose method
@@ -285,7 +284,7 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
                 " onClosed");
             self.state = IrisRtcConnection.DISCONNECTED;
             self.onClose();
-            self.sendEvent("SDK_XMPPServerDisconnected", "");
+            self.sendEvent("SDK_WebSocketServerDisconnected", { message: "WS connection disconnected" });
 
             // do reconnect
             self._doreconnect();
@@ -324,11 +323,10 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
                 }
             }
             config = response;
-            config.sessionType = "join";
             if (userdata)
                 config.userdata = userdata;
 
-            logger.log(logger.level.INFO, "IrisRtcConnection", "Notification payload " + JSON.stringify(config));
+            logger.log(logger.level.INFO, "IrisRtcConnection", "Notification payload : " + JSON.stringify(config));
             self.onNotification(config);
 
         });

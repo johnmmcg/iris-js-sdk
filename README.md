@@ -27,7 +27,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   
   ```html
-  <script src="https://unpkg.com/iris-js-sdk@3.4.0/dist/iris-js-sdk.min.js"></script>
+  <script src="https://unpkg.com/iris-js-sdk@3.4.1/dist/iris-js-sdk.min.js"></script>
   ```
 
 
@@ -590,7 +590,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 * **Example** <br />
 
   ```javascript
-    irisRtcSession.pstnHold(roomId, participnatJid, true)
+    irisRtcSession.pstnHold(roomId, participnatJid)
   ```
   * Call pstnHold API of Iris session to put a call on hold.
 
@@ -601,14 +601,14 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 * **API Name** <br />
 
   ```javascript
-    IrisRtcSession.unhold
+    IrisRtcSession.pstnUnHold
   ```
 * **Example** <br />
 
   ```javascript
-    irisRtcSession.pstnHold(roomId, participantJid, false)
+    irisRtcSession.pstnUnHold(roomId, participantJid)
   ```
-  * Call pstnHold API of Iris session to come back to call again.
+  * Call pstnUnHold API of Iris session to come back to call again.
 
 **Switch Streams**
 ----
@@ -905,7 +905,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   
   ```html
-  <script src="https://unpkg.com/iris-js-sdk@3.4.0/dist/iris-js-sdk.min.js"></script>
+  <script src="https://unpkg.com/iris-js-sdk@3.4.1/dist/iris-js-sdk.min.js"></script>
   ```
   
 ### Example for Using API's
