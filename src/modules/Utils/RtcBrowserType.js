@@ -55,10 +55,13 @@ function detectChrome() {
     if (navigator.webkitGetUserMedia) {
         currentBrowser = RtcBrowserType.BROWSER_CHROME;
         var userAgent = navigator.userAgent.toLowerCase();
-        // We can assume that user agent is chrome, because it's
-        // enforced when 'ext' streaming method is set
-        // var ver = parseInt(userAgent.match(/chrome\/(\d+)\./)[1], 10);
-        var ver = 34;
+
+        var ver = ""
+        try {
+            ver = parseInt(userAgent.match(/chrome\/(\d+)\./)[1], 10);
+        } catch (error) {
+            ver = 34; //For X1 case
+        }
         return ver;
     }
     return null;
@@ -136,7 +139,7 @@ function detectBrowser() {
     for (var i = 0; i < detectors.length; i++) {
         version = detectors[i]();
         if (version) {
-            console.log("Browser : " + currentBrowser);
+            console.log("Browser : " + currentBrowser + " " + version);
             return version;
         }
     }

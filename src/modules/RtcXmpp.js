@@ -243,7 +243,8 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
             'event': config.eventType,
             'host': this.server,
             'roomtoken': config.roomtoken,
-            'roomtokenexpirytime': config.roomtokenexpirytime
+            'roomtokenexpirytime': config.roomtokenexpirytime,
+            'userdata': config.userData
         }).up();
 
         this.client.send(pres.tree());
@@ -618,7 +619,8 @@ RtcXmpp.prototype.sendAllocate = function sendAllocate(data) {
         'event': data.eventType,
         'host': this.server,
         'roomtoken': data.roomtoken,
-        'roomtokenexpirytime': data.roomtokenexpirytime
+        'roomtokenexpirytime': data.roomtokenexpirytime,
+        'userdata': data.userData
     }
 
     if (data.sessionType == "upgrade" || data.sessionType == "downgrade") {
@@ -727,7 +729,7 @@ RtcXmpp.prototype.sendRayo = function sendRayo(data) {
 // @param {data} - Configuration
 // @returns {retValue} 0 on success, negative value on error
 //
-RtcXmpp.prototype.sendHangup = function sendHangup(participantJid, config) {
+RtcXmpp.prototype.sendHangup = function sendHangup(config, participantJid) {
     logger.log(logger.level.VERBOSE, "RtcXmpp",
         " sendHangup");
 
@@ -754,7 +756,7 @@ RtcXmpp.prototype.sendHangup = function sendHangup(participantJid, config) {
 // @param {data} - Configuration
 // @returns {retValue} 0 on success, negative value on error
 //
-RtcXmpp.prototype.sendHold = function sendHold(participantJid, config) {
+RtcXmpp.prototype.sendHold = function sendHold(config, participantJid) {
     logger.log(logger.level.VERBOSE, "RtcXmpp", " sendHold");
 
     var roomJid = config.roomId + '@' + config.rtcServer.replace('xmpp', 'callcontrol');
@@ -780,7 +782,7 @@ RtcXmpp.prototype.sendHold = function sendHold(participantJid, config) {
 // @param {data} - Configuration
 // @returns {retValue} 0 on success, negative value on error
 //
-RtcXmpp.prototype.sendUnHold = function sendUnHold(participantJid, config) {
+RtcXmpp.prototype.sendUnHold = function sendUnHold(config, participantJid) {
     logger.log(logger.level.VERBOSE, "RtcXmpp", " sendUnHold");
 
     var roomJid = config.roomId + '@' + config.rtcServer.replace('xmpp', 'callcontrol');
@@ -805,15 +807,16 @@ RtcXmpp.prototype.sendUnHold = function sendUnHold(participantJid, config) {
 //
 // @param {data} - Configuration
 //
-RtcXmpp.prototype.sendMerge = function sendMerge(config, participantJid, participantJid2) {
+RtcXmpp.prototype.sendMerge = function sendMerge(config, firstParticipantJid, secondParticipantJid) {
 
     logger.log(logger.level.VERBOSE, "RtcXmpp", " sendMerge");
 
     var roomJid = config.roomId + '@' + config.rtcServer.replace('xmpp', 'callcontrol');
 
     var merge = new xmppClient.Element(
-            'iq', { to: roomJid + "/" + participantJid, from: roomJid + '/' + participantJid2, "type": "set", id: this.index.toString() + ':sendIQ' })
-        .c('merge', { 'xmlns': 'urn:xmpp:rayo:1' }).up();
+            'iq', { to: roomJid + "/" + firstParticipantJid, from: this.jid + '/' + this.xmppJid.resource, "type": "set", id: this.index.toString() + ':sendIQ' })
+        .c('merge', { 'xmlns': 'urn:xmpp:rayo:1' })
+        .c('header', { "name": "secondParticipant", "value": roomJid + '/' + secondParticipantJid }).up().up();
 
     merge = merge.c('data', {
         'xmlns': "urn:xmpp:comcast:info",
@@ -956,13 +959,16 @@ RtcXmpp.prototype._onIQ = function _onIQ(stanza) {
     // Check if this is ack from focus
     if (stanza.attrs && stanza.attrs.type == "error") {
         var discoCheck = JSON.stringify(stanza);
+
+        var roomId = stanza.attrs.from.split('@')[0];
+
         if (discoCheck.search("disco#info") == -1) {
             var error = stanza.getChild('error');
             if (error && error.getChild('text') && error.getChild('text').getText()) {
                 var errorText = error.getChild('text').getText();
-                this.emit('onIQError', errorText);
+                this.emit(roomId, 'onIQError', { "error": errorText, "roomId": roomId });
             }
-            this.emit('onIQError', "Error in IQ");
+            this.emit(roomId, 'onIQError', { "error": "Error in IQ", "roomId": roomId });
         }
     }
 }
@@ -1220,7 +1226,7 @@ RtcXmpp.prototype._onPresence = function _onPresence(stanza) {
 
         var roomId = stanza.attrs.from.split('@')[0];
 
-        self.emit(roomId, 'onPresenceError', stanza.children);
+        self.emit(roomId, 'onPresenceError', { "error": stanza.children, "roomId": roomId });
         return;
     }
 
@@ -1420,7 +1426,7 @@ RtcXmpp.prototype._onRayoIQ = function _onRayoIQ(stanza) {
 //
 RtcXmpp.prototype._onChatMessage = function(stanza) {
 
-    logger.log(logger.level.INFO, "RtcXmpp",
+    logger.log(logger.level.VERBOSE, "RtcXmpp",
         " _onChatMessage");
     var self = this;
 
@@ -1440,7 +1446,7 @@ RtcXmpp.prototype._onChatMessage = function(stanza) {
 //
 RtcXmpp.prototype._onChat = function(stanza) {
 
-    logger.log(logger.level.INFO, "RtcXmpp",
+    logger.log(logger.level.VERBOSE, "RtcXmpp",
         " _onChat");
 
     var self = this;
@@ -1487,7 +1493,7 @@ RtcXmpp.prototype._onChat = function(stanza) {
 //
 RtcXmpp.prototype._onGroupChat = function(stanza) {
 
-    logger.log(logger.level.INFO, "RtcXmpp",
+    logger.log(logger.level.VERBOSE, "RtcXmpp",
         " _onGroupChat");
 
     var self = this;
@@ -1571,8 +1577,8 @@ RtcXmpp.prototype._onGroupChat = function(stanza) {
             self.emit(roomId, "onChatAck", chatAckJson);
 
         } else {
-            //Handle messages from other participants
 
+            //Handle messages from other participants
             var message = body.getText();
             logger.log(logger.level.INFO, "RtcXmpp",
                 " _onGroupChat : message: " + message);
@@ -1590,11 +1596,50 @@ RtcXmpp.prototype._onGroupChat = function(stanza) {
             if (chatMsg) {
                 self.emit(roomId, 'onGroupChatMessage', chatMsg);
             }
+
+            var chatState = "";
+            if (stanza.getChild('active')) {
+                chatState = "active";
+            }
+
+            if (from != to && chatState) {
+                logger.log(logger.level.INFO, "RtcXmpp",
+                    " _onGroupChat :: from : " + from + " onChatState : " + chatState);
+
+                self.emit(roomId, 'onChatState', { from: from, chatState: chatState, roomId: roomId });
+            }
+        }
+    } else {
+        //Handle chat states notifications
+
+        var chatState = "";
+        if (stanza.getChild('active')) {
+            chatState = "active";
+        } else if (stanza.getChild('composing')) {
+            chatState = "composing";
+        } else if (stanza.getChild('paused')) {
+            chatState = "paused";
+        } else if (stanza.getChild('inactive')) {
+            chatState = "inactive";
+        } else if (stanza.getChild('gone')) {
+            chatState = "gone";
+        }
+
+        if (from != to) {
+
+            logger.log(logger.level.INFO, "RtcXmpp",
+                " _onGroupChat :: from : " + from + " onChatState : " + chatState);
+
+            self.emit(roomId, 'onChatState', { from: from, chatState: chatState, roomId: roomId });
         }
     }
 }
 
+/**
+ * Send Group chat message
+ */
 RtcXmpp.prototype.sendGroupChatMessage = function(config, id, message, topic) {
+
     this.index++;
 
     var data = {
@@ -1609,13 +1654,39 @@ RtcXmpp.prototype.sendGroupChatMessage = function(config, id, message, topic) {
     var msg = new xmppClient.Element(
             'message', {
                 id: id,
-                from: this.jid,
+                from: this.jid + '/' + this.xmppJid.resource,
                 to: config.roomId + '@' + config.rtcServer.replace('xmpp', 'conference'),
                 type: 'groupchat',
             })
         .c('body').t(message).up()
+        .c('active', { xmlns: 'http://jabber.org/protocol/chatstates' }).up()
         .c('data', data).up();
+    this.client.send(msg.tree());
+}
 
+/**
+ * Send chat state notifications
+ */
+RtcXmpp.prototype.sendChatState = function(config, chatState) {
+
+    this.index++;
+
+    var data = {
+        'xmlns': "urn:xmpp:comcast:info",
+        'traceid': config.traceId,
+        'host': this.server,
+    }
+
+    chatState = chatState == 'typing' ? 'composing' : chatState;
+
+    var msg = new xmppClient.Element(
+            'message', {
+                from: this.jid + '/' + this.xmppJid.resource,
+                to: config.roomId + '@' + config.rtcServer.replace('xmpp', 'conference'),
+                type: 'groupchat',
+            })
+        .c(chatState, { xmlns: 'http://jabber.org/protocol/chatstates' }).up()
+        .c('data', data).up();
     this.client.send(msg.tree());
 }
 
@@ -1624,7 +1695,7 @@ RtcXmpp.prototype.sendVideoMute = function(to, isMute, config) {
     var mute = new xmppClient.Element(
             'message', {
                 id: 'mute',
-                from: this.jid,
+                from: this.jid + '/' + this.xmppJid.resource,
                 to: to,
                 type: 'chat',
             })
@@ -1647,7 +1718,7 @@ RtcXmpp.prototype.sendAudioMute = function(to, isMute, config) {
     var mute = new xmppClient.Element(
             'message', {
                 id: 'mute',
-                from: this.jid,
+                from: this.jid + '/' + this.xmppJid.resource,
                 to: to,
                 type: 'chat',
             })
