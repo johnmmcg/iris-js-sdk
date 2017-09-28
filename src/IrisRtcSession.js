@@ -3313,22 +3313,42 @@ IrisRtcSession.prototype.checkPresenceElapsedTime = function() {
 
 /**
  * @param {string} roomId - Room Id
- * @param {string} tones - DTMF tone
+ * @param {string} tone - DTMF tone
  * @param {string} duration - duration of the tone
  * @param {string} interToneGap - inter tone gap 
  * @public
  */
-IrisRtcSession.prototype.sendDTMFTone = function(roomId, tones, duration, interToneGap) {
+IrisRtcSession.prototype.sendDTMFTone = function(roomId, tone, duration, interToneGap) {
     try {
+
+        if (this.config && roomId != this.config.roomId) {
+            logger.log(logger.level.ERROR, "IrisRtcSession", "sendDTMFTone :: Wrong roomId, this roomId : " +
+                this.config.roomId + " Received roomId : " + roomId);
+            return;
+        }
+
         if (this.dtmfSender) {
             logger.log(logger.level.INFO, "IrisRtcSession", 'sendDTMFTone :: sending DTMF tone :: tone ' +
                 tone + " duration " + duration + " interToneGap " + interToneGap);
-            this.dtmfSender.insertDTMF(tones, duration || 200, interToneGap || 200);
+
+            if (70 > duration || duration > 6000) {
+                logger.log(logger.level.INFO, "IrisRtcSession", "The duration provided (" + duration + ")" +
+                    " is outside the range (70, 6000). Setting duration to 70")
+                duration = 70;
+            }
+
+            if (interToneGap < 50) {
+                logger.log(logger.level.INFO, "IrisRtcSession", "The intertone gap provided (" + interToneGap + ")" +
+                    "is less than the minimum bound (50). Setting intertone gap to 50")
+                interToneGap = 50;
+            }
+
+            this.dtmfSender.insertDTMF(tone, duration, interToneGap);
         } else {
-            logger.log(logger.level.INFO, "IrisRtcSession", 'DTMFManager :: DTMF sender not initialized');
+            logger.log(logger.level.ERROR, "IrisRtcSession", 'DTMFManager :: DTMF sender not initialized');
         }
     } catch (error) {
-        logger.log(logger.level.INFO, "IrisRtcSession", 'DTMFManager :: DTMF sender not initialized : ', error);
+        logger.log(logger.level.ERROR, "IrisRtcSession", 'DTMFManager :: DTMF sender not initialized : ', error);
     }
 };
 
