@@ -172,11 +172,11 @@ function getUserMedia(constraints) {
                     resolve(stream);
                 }
             }, function(err) {
-                reject("Failed to get media streams");
+                reject("Failed to get media streams ", err);
             });
         });
     } catch (error) {
-        logger.log(logger.level.ERROR, "IrisRtcStream", " Failed to getUserMedia");
+        logger.log(logger.level.ERROR, "IrisRtcStream", " Failed to getUserMedia ", error);
     }
 };
 
