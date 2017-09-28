@@ -27,7 +27,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   
   ```html
-  <script src="https://unpkg.com/iris-js-sdk@3.4.1/dist/iris-js-sdk.min.js"></script>
+  <script src="https://unpkg.com/iris-js-sdk@3.4.2/dist/iris-js-sdk.min.js"></script>
   ```
 
 
@@ -610,6 +610,23 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   ```
   * Call pstnUnHold API of Iris session to come back to call again.
 
+**Merge PSTN Call**
+----
+  This API allows user to merge two pstn calls.
+
+* **API Name** <br />
+
+  ```javascript
+    IrisRtcSession.pstnMerge
+  ```
+* **Example** <br />
+
+  ```javascript
+    irisRtcSession.pstnMerge(roomId, firstParticipantJid, secondParticipantJid)
+  ```
+  * Call pstnMerge API of Iris session to merge two pstn calls
+
+
 **Switch Streams**
 ----
   This API allows user to switch streams between the cameras, can be used for screen share as well
@@ -905,7 +922,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   
   ```html
-  <script src="https://unpkg.com/iris-js-sdk@3.4.1/dist/iris-js-sdk.min.js"></script>
+  <script src="https://unpkg.com/iris-js-sdk@3.4.2/dist/iris-js-sdk.min.js"></script>
   ```
   
 ### Example for Using API's
