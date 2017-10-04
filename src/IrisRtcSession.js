@@ -62,6 +62,7 @@ function IrisRtcSession() {
     this.isVideoMuted = false;
     this.isAudioMuted = false;
     this.sessionInitiateSdp = null;
+    this.isPSTNOnHold = false;
     // Add the entry
     this.interop = new Interop();
     // Stats Init
@@ -134,8 +135,6 @@ IrisRtcSession.prototype.create = function(config, connection) {
         }
     }
 
-
-
     if (config.sessionType != "join" || (config.sessionType == "join" && config.type == "chat" && !config.rtcServer)) {
         self.sendEvent("SDK_StartMucRequest", { message: "Start Muc for create session or joining chat session" });
         self.sendStartMucWithRoomId(self.config);
@@ -156,6 +155,8 @@ IrisRtcSession.prototype.create = function(config, connection) {
         } else {
             // Send the presence if room is created
             connection.xmpp.sendPresence(self.config);
+            connection.xmpp.sendPresenceAlive(self.config);
+
         }
     }
 
@@ -760,12 +761,15 @@ IrisRtcSession.prototype.sendStartMucWithRoomId = function(config) {
             } else {
                 // Send the presence if room is created
                 self.connection.xmpp.sendPresence(self.config);
+                self.connection.xmpp.sendPresenceAlive(self.config);
+
             }
 
             self.onCreated(response.eventdata.room_id);
         },
         function(error) {
             logger.log(logger.level.INFO, "IrisRtcSession", "StartMuc Failed with error ", error);
+            return;
         });
 }
 
@@ -969,7 +973,7 @@ IrisRtcSession.prototype.end = function() {
         // Leave the room
         this.config.presenceType = "leave";
 
-        // Send the presence if room is created
+        // Send the presence unavailable if session is closed
         this.connection.xmpp.sendPresence(this.config);
 
         clearInterval(this.monitorIntervalValue);
@@ -1005,6 +1009,7 @@ IrisRtcSession.prototype.end = function() {
         this.dataChannels = [];
         this.dataChannel = null;
         this.chatState = null;
+        this.isPSTNOnHold = false;
 
         // Add the entry
         delete this; // Does this work?
@@ -2673,7 +2678,8 @@ IrisRtcSession.prototype.pstnHold = function(roomId, participantJid) {
         logger.log(logger.level.INFO, "IrisRtcSession", "pstnHold :: roomId : " + roomId +
             " participantJid : " + participantJid);
 
-        if (this.connection && this.connection.xmpp && this.config.roomId == roomId) {
+        if (this.connection && this.connection.xmpp && this.config.roomId == roomId && !this.isPSTNOnHold) {
+            this.isPSTNOnHold = true;
             this.connection.xmpp.sendHold(this.config, participantJid);
         } else {
             logger.log(logger.level.ERROR, "IrisRtcSession", "pstnHold :: Session not created yet or roomId is different");
@@ -2701,7 +2707,8 @@ IrisRtcSession.prototype.pstnUnHold = function(roomId, participantJid) {
         logger.log(logger.level.INFO, "IrisRtcSession", "pstnUnHold :: roomId : " + roomId +
             " participantJid : " + participantJid);
 
-        if (this.connection && this.connection.xmpp && this.config.roomId == roomId) {
+        if (this.connection && this.connection.xmpp && this.config.roomId == roomId && this.isPSTNOnHold) {
+            this.isPSTNOnHold = false;
             this.connection.xmpp.sendUnHold(this.config, participantJid);
         } else {
             logger.log(logger.level.ERROR, "IrisRtcSession", "pstnUnHold :: Session not created yet or roomId is different");
@@ -2715,10 +2722,11 @@ IrisRtcSession.prototype.pstnUnHold = function(roomId, participantJid) {
  * This API allows user to merge two pstn calls
  * @param {string} roomId - Room Id
  * @param {string} firstParticipantJid - Jid of the participant in first call
+ * @param {object} secondSession - IrisRtcSession of the second participant
  * @param {string} secondParticipantJid - Jid of the participant in second call
  * @public
  */
-IrisRtcSession.prototype.pstnMerge = function(roomId, firstParticipantJid, secondParticipantJid) {
+IrisRtcSession.prototype.pstnMerge = function(roomId, firstParticipantJid, secondSession, secondParticipantJid) {
     try {
 
         if (this.config && roomId != this.config.roomId) {
@@ -2727,12 +2735,30 @@ IrisRtcSession.prototype.pstnMerge = function(roomId, firstParticipantJid, secon
             return;
         }
 
+        if (!secondSession /*&& secondSession.state != IrisRtcSession.CONNECTED*/ ) {
+            logger.log(logger.level.ERROR, "IrisRtcSession", "pstnMerge :: Session to be merged is connected yet");
+            return;
+        }
+
+        var secondParticipantFullJid = "";
+
+        if (secondSession.config && secondSession.config.roomId && secondSession.config.rtcServer) {
+            secondParticipantFullJid = secondSession.config.roomId + '@' +
+                secondSession.config.rtcServer.replace('xmpp', 'callcontrol') + "/" + secondParticipantJid
+
+        } else {
+            logger.log(logger.level.ERROR, "IrisRtcSession", "pstnMerge :: secondSession roomId and rtc server are not available");
+            return;
+        }
+
+
+
         logger.log(logger.level.INFO, "IrisRtcSession", "pstnMerge :: roomId : " + roomId +
             " firstParticipantJid: " + firstParticipantJid +
             " secondParticipantJid : " + secondParticipantJid);
 
         if (this.connection && this.connection.xmpp && this.config.roomId == roomId) {
-            this.connection.xmpp.sendMerge(this.config, firstParticipantJid, secondParticipantJid);
+            this.connection.xmpp.sendMerge(this.config, firstParticipantJid, secondParticipantFullJid);
         } else {
             logger.log(logger.level.ERROR, "IrisRtcSession", "pstnMerge :: Session not created yet or roomId is different");
         }
@@ -2819,6 +2845,14 @@ IrisRtcSession.prototype.addPSTNParticipant = function(roomId, toTN, toRoutingId
     }
 }
 
+/**
+ * A boolean API to get PSTN hold status
+ * @returns {boolean} isPSTNonHold - true if PSTN is on hold or false
+ * @private
+ */
+IrisRtcSession.prototype.isPSTNOnHold = function() {
+    return this.isPSTNOnHold;
+}
 
 /**
  * onSessionCreated callback
@@ -2955,6 +2989,11 @@ IrisRtcSession.prototype.onUserStatusChange = function(id, status) {
     Object.keys(self.participants).forEach(function(jid) {
         if (jid == id) {
             self.participants[jid].status = status;
+
+            if (status == "Locally On Hold") {
+                self.isPSTNOnHold = true;
+            }
+
             self.onUserProfileChange(self.config.roomId, id, { "status": status });
         }
     });
@@ -3248,14 +3287,12 @@ function DTMFManager(self, audioTrack, peerconnection) {
                 "instead.");
             self.dtmfSender = pc.createDTMFSender(audioTrack);
         }
-        //dtmfSender.ontonechange = handleToneChangeEvent;
         logger.log(logger.level.INFO, "IrisRtcSession", 'DTMFManager :: Initialized DTMFSender');
 
     } catch (error) {
         logger.log(logger.level.ERROR, "IrisRtcSession", 'DTMFManager :: Failed to initialize DTMF sender');
 
     }
-
 }
 
 /**
@@ -3313,22 +3350,48 @@ IrisRtcSession.prototype.checkPresenceElapsedTime = function() {
 
 /**
  * @param {string} roomId - Room Id
- * @param {string} tones - DTMF tone
+ * @param {string} tone - DTMF tone
  * @param {string} duration - duration of the tone
  * @param {string} interToneGap - inter tone gap 
  * @public
  */
-IrisRtcSession.prototype.sendDTMFTone = function(roomId, tones, duration, interToneGap) {
+IrisRtcSession.prototype.sendDTMFTone = function(roomId, tone, duration, interToneGap) {
     try {
+
+        if (this.config && roomId != this.config.roomId) {
+            logger.log(logger.level.ERROR, "IrisRtcSession", "sendDTMFTone :: Wrong roomId, this roomId : " +
+                this.config.roomId + " Received roomId : " + roomId);
+            return;
+        }
+
         if (this.dtmfSender) {
             logger.log(logger.level.INFO, "IrisRtcSession", 'sendDTMFTone :: sending DTMF tone :: tone ' +
                 tone + " duration " + duration + " interToneGap " + interToneGap);
-            this.dtmfSender.insertDTMF(tones, duration || 200, interToneGap || 200);
+
+            if (70 > duration || duration > 6000) {
+                logger.log(logger.level.INFO, "IrisRtcSession", "The duration provided (" + duration + ")" +
+                    " is outside the range (70, 6000). Setting duration to 70")
+                duration = 70;
+            }
+
+            if (interToneGap < 50) {
+                logger.log(logger.level.INFO, "IrisRtcSession", "The intertone gap provided (" + interToneGap + ")" +
+                    "is less than the minimum bound (50). Setting intertone gap to 50")
+                interToneGap = 50;
+            }
+
+            this.dtmfSender.ontonechange = function(event) {
+                var tone = event.tone ? event.tone : "";
+                logger.log(logger.level.INFO, "IrisRtcSession", 'sendDTMFTone :: ontonechange :: DTMF tone sent : ' + tone);
+                logger.log(logger.level.VERBOSE, "IrisRtcSession", 'sendDTMFTone :: ontonechange : ', event);
+            }
+
+            this.dtmfSender.insertDTMF(tone, duration, interToneGap);
         } else {
-            logger.log(logger.level.INFO, "IrisRtcSession", 'DTMFManager :: DTMF sender not initialized');
+            logger.log(logger.level.ERROR, "IrisRtcSession", 'DTMFManager :: DTMF sender not initialized');
         }
     } catch (error) {
-        logger.log(logger.level.INFO, "IrisRtcSession", 'DTMFManager :: DTMF sender not initialized : ', error);
+        logger.log(logger.level.ERROR, "IrisRtcSession", 'DTMFManager :: DTMF sender not initialized : ', error);
     }
 };
 

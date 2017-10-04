@@ -1,6 +1,6 @@
 // Copyright 2016 Comcast Cable Communications Management, LLC
 
-// RtcErrors.js : Javascript code for errors
+// RtcRestHelper.js : Javascript code for making rest calls to backend
 
 var https = require('https');
 var Rtcconfig = require('../RtcConfig.js');
