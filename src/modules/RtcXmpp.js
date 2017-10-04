@@ -816,7 +816,7 @@ RtcXmpp.prototype.sendMerge = function sendMerge(config, firstParticipantJid, se
     var merge = new xmppClient.Element(
             'iq', { to: roomJid + "/" + firstParticipantJid, from: this.jid + '/' + this.xmppJid.resource, "type": "set", id: this.index.toString() + ':sendIQ' })
         .c('merge', { 'xmlns': 'urn:xmpp:rayo:1' })
-        .c('header', { "name": "secondParticipant", "value": roomJid + '/' + secondParticipantJid }).up().up();
+        .c('header', { "name": "secondParticipant", "value": secondParticipantJid }).up().up();
 
     merge = merge.c('data', {
         'xmlns': "urn:xmpp:comcast:info",
@@ -960,7 +960,10 @@ RtcXmpp.prototype._onIQ = function _onIQ(stanza) {
     if (stanza.attrs && stanza.attrs.type == "error") {
         var discoCheck = JSON.stringify(stanza);
 
-        var roomId = stanza.attrs.from.split('@')[0];
+        var roomId = "Error";
+        if (stanza.attrs && stanza.attrs.from) {
+            roomId = stanza.attrs.from.split('@')[0];
+        }
 
         if (discoCheck.search("disco#info") == -1) {
             var error = stanza.getChild('error');
