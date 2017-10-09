@@ -456,11 +456,11 @@ IrisRtcSession.prototype.create = function(config, connection) {
             }
         } else if (event === "onPresenceError") {
             logger.log(logger.level.VERBOSE, "IrisRtcSession",
-                " onPresenceError " + error);
+                " onPresenceError " + response.error);
 
             self.sendEvent("SDK_PresenceError", { message: "Error in presence message" });
 
-            self.onError(self.config.roomId, error);
+            self.onError(self.config.roomId, response.error);
         } else if (event === "onCandidate") {
 
             // Send events
@@ -974,7 +974,8 @@ IrisRtcSession.prototype.end = function() {
         this.config.presenceType = "leave";
 
         // Send the presence unavailable if session is closed
-        this.connection.xmpp.sendPresence(this.config);
+        if (this.config.roomId && this.config.rtcServer)
+            this.connection.xmpp.sendPresence(this.config);
 
         clearInterval(this.monitorIntervalValue);
 
@@ -3022,9 +3023,9 @@ IrisRtcSession.prototype.sendEvent = function(event, details) {
     var eventdata = {
         "type": "session",
         "event": event,
-        "roomId": (this.config && this.config.roomId) ? this.config.roomId : details.roomId ? details.roomId : "NA",
-        "routingId": (this.config && this.config.routingId) ? this.config.routingId : details.routingId ? details.routingId : "NA",
-        "traceId": (this.config && this.config.traceId) ? this.config.traceId : details.traceId ? details.traceId : "NA",
+        "roomId": (this.config && this.config.roomId) ? this.config.roomId : details.roomId ? details.roomId : "00",
+        "routingId": (this.config && this.config.routingId) ? this.config.routingId : details.routingId ? details.routingId : "00",
+        "traceId": (this.config && this.config.traceId) ? this.config.traceId : details.traceId ? details.traceId : "00",
         "details": details
     };
 
@@ -3290,7 +3291,7 @@ function DTMFManager(self, audioTrack, peerconnection) {
         logger.log(logger.level.INFO, "IrisRtcSession", 'DTMFManager :: Initialized DTMFSender');
 
     } catch (error) {
-        logger.log(logger.level.ERROR, "IrisRtcSession", 'DTMFManager :: Failed to initialize DTMF sender');
+        logger.log(logger.level.ERROR, "IrisRtcSession", 'DTMFManager :: Failed to initialize DTMF sender ', error);
 
     }
 }
@@ -3370,8 +3371,8 @@ IrisRtcSession.prototype.sendDTMFTone = function(roomId, tone, duration, interTo
 
             if (70 > duration || duration > 6000) {
                 logger.log(logger.level.INFO, "IrisRtcSession", "The duration provided (" + duration + ")" +
-                    " is outside the range (70, 6000). Setting duration to 70")
-                duration = 70;
+                    " is outside the range (70, 6000). Setting duration to 500")
+                duration = 500;
             }
 
             if (interToneGap < 50) {
@@ -3535,7 +3536,12 @@ IrisRtcSession.prototype.joinSession = function(sessionConfig, connection, strea
 
         config.sessionType = "join";
 
-        self.sendEvent("SDK_JoinSession", { "notificationPayload": notificationPayload });
+        self.sendEvent("SDK_JoinSession", {
+            "notificationPayload": notificationPayload,
+            "roomId": config.roomId,
+            "traceId": config.traceId,
+            "routingId": notificationPayload.routingId
+        });
 
         self.localStream = stream;
         self.create(config, connection);

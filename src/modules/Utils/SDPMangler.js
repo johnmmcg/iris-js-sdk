@@ -1,3 +1,6 @@
+// Copyright 2016 Comcast Cable Communications Management, LLC
+
+
 SDPMangler = function(sdp) {
     var mLines = {};
     var topLines = [];

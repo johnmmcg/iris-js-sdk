@@ -18,19 +18,13 @@ RtcConfig.json = {
         /*Stats Server*/
         // UEStatsServer: '',
     },
-    pingInterval: 120000,
+    pingInterval: 15000,
     presInterval: 10000,
     presMonitorInterval: 10000,
     reconnectInterval: 10000,
     statsInterval: 10000,
-    useBridge: true, // for p2p flow, set this to false
-    useEmPrivateIQ: false, // whether to send private IQ or call event manager directly for createxmpprootevent
+    useBridge: true, // for p2p flow set this flag to false
     logLevel: 2, // 0: Error, 1: Warning, 2: Info, 3: Verbose
-
-    /* Provide keys for domain*/
-    /* PROD keys */
-    appKey: '',
-    appSecret: '',
     channelLastN: "-1",
     sdkVersion: '3.4.3'
 }
