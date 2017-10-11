@@ -42,7 +42,9 @@ function RtcXmpp() {
     eventEmitter.call(this);
     this.ws = null;
     this.client = null;
-    this.timer = null;
+    this.pingtimer = null;
+    this.pingexpiredtimer = null;
+    this.pingLocalCounter = 0;
     this.prestimer = [];
     this.token = null;
     this.jid = null;
@@ -124,9 +126,6 @@ RtcXmpp.prototype.connect = function connect(server, path, jid, traceId, token) 
     // Offline event
     this.client.on('offline', function() {
         logger.log(logger.level.INFO, "RtcXmpp.connect", "XMPP connection disconnected");
-
-        // Stop the ping timer
-        //clearTimeout(self.timer);
         self.stopPing();
         self.stopPresenceAlive();
 
@@ -142,6 +141,18 @@ RtcXmpp.prototype.connect = function connect(server, path, jid, traceId, token) 
     });
 }
 
+RtcXmpp.prototype.closeWebSocket = function closeSocket() {
+    logger.log(logger.level.INFO, "RtcXmpp",
+        " RtcXmpp::closeWebSocket called ");
+
+    // Check the websocket state: CONNECTING =0, OPEN=1, CLOSING=2, CLOSED=3
+    if (this.client.connection.websocket && this.client.connection.websocket.readyState == 1) {
+        this.client.connection.websocket.close();
+        return 1;
+    }
+    return 0;
+}
+
 // Method to disconnect from websocket server
 //
 // @param {Nothing}
@@ -151,7 +162,9 @@ RtcXmpp.prototype.disconnect = function disconnect() {
     this.client = null; // Is there a disconnect method?
     this.ws = null;
     this.client = null;
-    this.timer = null;
+    this.pingtimer = null;
+    this.pingexpiredtimer = null;
+    this.pingLocalCounter = 0;
     this.prestimer = [];
     this.token = null;
     this.jid = null;
@@ -259,6 +272,8 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
 //
 RtcXmpp.prototype.sendPresenceAlive = function sendPresenceAlive(config) {
 
+    logger.log(logger.level.INFO, "RtcXmpp", "sendPresenceAlive : roomId: " + config.roomId + " eventType : " + config.eventType);
+
     var self = this;
 
     // Stop the ping timer
@@ -304,7 +319,7 @@ RtcXmpp.prototype.sendPresenceAlive = function sendPresenceAlive(config) {
 // @returns {retValue} 0 on success, negative value on error
 //
 RtcXmpp.prototype.stopPresenceAlive = function stopPresenceAlive(roomid) {
-    logger.log(logger.level.INFO, "RtcXmpp", "stopPresenceAlive");
+    logger.log(logger.level.INFO, "RtcXmpp", "stopPresenceAlive : " + roomid);
     if (!roomid) {
         for (var member in this.prestimer) {
             clearInterval(this.prestimer[member]);
@@ -327,13 +342,28 @@ RtcXmpp.prototype.startPing = function startPing() {
     var self = this;
 
     // Start a timer to send ping to keep this connection alive
-    self.timer = setInterval(function() {
+    self.pingtimer = setInterval(function() {
         // Send a ping message
         var ping = new Stanza(
             'iq', { id: 'c2s1', type: 'get' }
         ).c('ping', { xmlns: 'urn:xmpp:ping' });
 
         self.client.send(ping);
+
+        self.pingLocalCounter = self.pingLocalCounter + 1;
+
+        if (self.pingLocalCounter >= Rtcconfig.json.pingCounter) {
+
+            logger.log(logger.level.INFO, "RtcXmpp", " Ping counter reached maximum re-tries " + self.pingLocalCounter +
+                ". Start the expiry timeout for " + Rtcconfig.json.pingInterval / 1000 + " seconds");
+
+            // Start ping expiry timer
+            self.pingexpiredtimer = setTimeout(function() {
+                self.stopPing();
+                logger.log(logger.level.INFO, "RtcXmpp", " Ping timer expired");
+                self.closeWebSocket();
+            }, Rtcconfig.json.pingInterval);
+        }
 
     }, Rtcconfig.json.pingInterval);
 }
@@ -346,7 +376,9 @@ RtcXmpp.prototype.startPing = function startPing() {
 RtcXmpp.prototype.stopPing = function stopPing() {
 
     // Stop the ping timer
-    clearInterval(this.timer);
+    clearInterval(this.pingtimer);
+    clearTimeout(this.pingexpiredtimer);
+    this.pingLocalCounter = 0;
 }
 
 // Method to send session-accept 
@@ -938,6 +970,8 @@ RtcXmpp.prototype.onMessage = function onMessage(stanza) {
 //
 RtcXmpp.prototype._onIQ = function _onIQ(stanza) {
 
+    var self = this;
+
     // CHeck if this is a jingle message
     if (stanza.getChild('jingle')) {
         this._onJingle(stanza);
@@ -947,6 +981,14 @@ RtcXmpp.prototype._onIQ = function _onIQ(stanza) {
         this._onPrivateIQ(stanza);
     } else if (stanza.getChild('ref')) {
         this._onRayoIQ(stanza);
+    } else if (stanza && stanza.attrs && stanza.attrs.id == 'c2s1') {
+
+        //If we get reply for the last try in ping counter clear the timeout
+        if (self.pingLocalCounter == Rtcconfig.json.pingCounter) {
+            logger.log(logger.level.INFO, "RtcXmpp", " Got ping reply for last try in pingCounter clearing the timeout");
+            clearTimeout(self.pingexpiredtimer);
+        }
+        self.pingLocalCounter = 0;
     }
 
 
