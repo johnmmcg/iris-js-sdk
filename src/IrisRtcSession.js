@@ -137,7 +137,54 @@ IrisRtcSession.prototype.create = function(config, connection) {
 
     if (config.sessionType != "join" || (config.sessionType == "join" && config.type == "chat" && !config.rtcServer)) {
         self.sendEvent("SDK_StartMucRequest", { message: "Start Muc for create session or joining chat session" });
-        self.sendStartMucWithRoomId(self.config);
+
+        RestHelper.EventManager.sendStartMucWithRoomId(self.config, function(response) {
+                logger.log(logger.level.INFO, "IrisRtcSession",
+                    " StartMucResponse " + JSON.stringify(response));
+
+                if (self.state == IrisRtcSession.CONNECTING) return;
+
+                // Send events
+                self.sendEvent("SDK_StartMucResponse", response);
+
+                // Get the EM room id
+                self.config.rootNodeId = response.root_node_id;
+                self.config.childNodeId = response.child_node_id;
+                self.config.roomId = response.eventdata.room_id;
+                self.config.roomtoken = response.eventdata.room_token;
+                self.config.roomtokenexpirytime = response.eventdata.room_token_expiry_time;
+
+                if (!self.config.rtcServer) {
+                    self.config.rtcServer = response.eventdata.rtc_server;
+                }
+
+                if (self.config.useBridge && (self.config.sessionType == "upgrade" || self.config.sessionType == "downgrade")) {
+                    self.state = IrisRtcSession.INCOMING;
+                } else {
+                    // Set the state to CONNECTING
+                    self.state = IrisRtcSession.CONNECTING;
+                }
+
+                if ((self.config.useBridge || self.config.type == "pstn" || self.config.sessionType == "downgrade" ||
+                        self.config.sessionType == "upgrade") && (self.config.type != "chat")) {
+                    if (!self.config.channelLastN)
+                        self.config.channelLastN = rtcConfig.json.channelLastN;
+
+                    // Send the allocate room request
+                    self.connection.xmpp.sendAllocate(self.config);
+                } else {
+                    // Send the presence if room is created
+                    self.connection.xmpp.sendPresence(self.config);
+                    self.connection.xmpp.sendPresenceAlive(self.config);
+
+                }
+
+                self.onCreated(response.eventdata.room_id);
+            },
+            function(error) {
+                logger.log(logger.level.INFO, "IrisRtcSession", "StartMuc Failed with error ", error);
+                return;
+            });
     } else {
         // Send the presence directly
         self.config.rootNodeId = "00000"; //TBD
@@ -719,68 +766,15 @@ IrisRtcSession.prototype.create = function(config, connection) {
     });
 };
 
-/**
- * @private
- */
-IrisRtcSession.prototype.sendStartMucWithRoomId = function(config) {
-    var self = this;
-    RestHelper.Evm.sendStartMucWithRoomId(config, function(response) {
-            logger.log(logger.level.INFO, "IrisRtcSession",
-                " START_MUC_SUCCESS " + JSON.stringify(response));
-
-            if (self.state == IrisRtcSession.CONNECTING) return;
-
-            // Send events
-            self.sendEvent("SDK_StartMucResponse", response);
-
-            // Get the EM room id
-            self.config.rootNodeId = response.root_node_id;
-            self.config.childNodeId = response.child_node_id;
-            self.config.roomId = response.eventdata.room_id;
-            self.config.roomtoken = response.eventdata.room_token;
-            self.config.roomtokenexpirytime = response.eventdata.room_token_expiry_time;
-
-            if (!self.config.rtcServer) {
-                self.config.rtcServer = response.eventdata.rtc_server;
-            }
-
-            if (self.config.useBridge && (self.config.sessionType == "upgrade" || self.config.sessionType == "downgrade")) {
-                self.state = IrisRtcSession.INCOMING;
-            } else {
-                // Set the state to CONNECTING
-                self.state = IrisRtcSession.CONNECTING;
-            }
-
-            if ((self.config.useBridge || self.config.type == "pstn" || self.config.sessionType == "downgrade" ||
-                    self.config.sessionType == "upgrade") && (self.config.type != "chat")) {
-                if (!self.config.channelLastN)
-                    self.config.channelLastN = rtcConfig.json.channelLastN;
-
-                // Send the allocate room request
-                self.connection.xmpp.sendAllocate(self.config);
-            } else {
-                // Send the presence if room is created
-                self.connection.xmpp.sendPresence(self.config);
-                self.connection.xmpp.sendPresenceAlive(self.config);
-
-            }
-
-            self.onCreated(response.eventdata.room_id);
-        },
-        function(error) {
-            logger.log(logger.level.INFO, "IrisRtcSession", "StartMuc Failed with error ", error);
-            return;
-        });
-}
 
 /**
  * @private
  */
 IrisRtcSession.prototype.sendRootEventWithRoomId = function(config) {
     var self = this;
-    RestHelper.Evm.sendRootEventWithRoomId(config, function(response) {
+    RestHelper.EventManager.sendRootEventWithRoomId(config, function(response) {
             logger.log(logger.level.INFO, "IrisRtcSession",
-                " onCreateRootEventWithRoomIdSent " + JSON.stringify(response));
+                " onRootEventWithRoomIdSent " + JSON.stringify(response));
 
             if (self.state == IrisRtcSession.CONNECTING) return;
 
@@ -2867,9 +2861,6 @@ IrisRtcSession.prototype.onCreated = function(roomId) {
  * @private
  */
 IrisRtcSession.prototype.onJoined = function(roomId, myJid) {
-
-    if (!this.config.useBridge || (this.config.type == "chat"))
-        this.connection.xmpp.sendPresenceAlive(this.config);
     this.onSessionJoined(roomId, myJid);
 }
 
@@ -3350,6 +3341,7 @@ IrisRtcSession.prototype.checkPresenceElapsedTime = function() {
 };
 
 /**
+ * This API allows user to send DTMF tones
  * @param {string} roomId - Room Id
  * @param {string} tone - DTMF tone
  * @param {string} duration - duration of the tone
@@ -3986,7 +3978,7 @@ IrisRtcSession.prototype.onDominantSpeakerChanged = function(roomId, dominantSpe
 
 /**
  * This is called when a participant changes type of the call
- * ex. From char > video or video > chat, callType will be 
+ * ex. From chat > video or video > chat, callType will be 
  * "video" for a video call
  * "audio" for a audio call
  * "chat" for a chat session

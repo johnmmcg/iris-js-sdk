@@ -12,7 +12,7 @@ var RtcRestHelper = module.exports;
 /**
  * @namespace
  */
-RtcRestHelper.Evm = {
+RtcRestHelper.EventManager = {
 
     /**
      * Makes a call to EVM to get RTC server and roomtoken details
@@ -23,7 +23,7 @@ RtcRestHelper.Evm = {
     sendStartMucWithRoomId: function(config, successCallback, failureCallback) {
         try {
 
-            logger.log(logger.level.INFO, "RtcRestCall.Evm",
+            logger.log(logger.level.INFO, "RtcRestHelper.EventManager",
                 " sendStartMucWithRoomId called ");
 
             var self = this;
@@ -41,7 +41,7 @@ RtcRestHelper.Evm = {
 
             var userData = (config.userData && config.eventType != "groupchat") ? config.userData : "";
 
-            logger.log(logger.level.VERBOSE, "RtcRestCall.Evm", "sendStartMucWithRoomId :: Ignore userData for groupchat calls");
+            logger.log(logger.level.VERBOSE, "RtcRestHelper.EventManager", "sendStartMucWithRoomId :: Ignore userData for groupchat calls");
 
             // JSON body 
             var jsonBody = {
@@ -51,7 +51,7 @@ RtcRestHelper.Evm = {
                 "userdata": userData
             };
 
-            logger.log(logger.level.INFO, "RtcRestCall.Evm",
+            logger.log(logger.level.INFO, "RtcRestHelper.EventManager",
                 " startmuc with roomid with options " + JSON.stringify(options) +
                 " & body " + JSON.stringify(jsonBody));
 
@@ -66,13 +66,13 @@ RtcRestHelper.Evm = {
 
                 // Callback when complete data is received
                 response.on('end', function() {
-                    logger.log(logger.level.INFO, "RtcRestCall.Evm",
+                    logger.log(logger.level.INFO, "RtcRestHelper.EventManager",
                         " Received server response  " + body);
 
                     // check if the status code is correct
                     if (response.statusCode != 200) {
 
-                        logger.log(logger.level.ERROR, "RtcXmpp",
+                        logger.log(logger.level.ERROR, "RtcRestHelper.EventManager",
                             " Start muc with roomid failed with status code  " +
                             response.statusCode + " & response " + body);
 
@@ -94,7 +94,7 @@ RtcRestHelper.Evm = {
             // Catch errors 
             req.on('error', function(e) {
 
-                logger.log(logger.level.ERROR, "RtcRestCall.Evm",
+                logger.log(logger.level.ERROR, "RtcRestHelper.EventManager",
                     " Create root event with roomid failed with error  " + e);
 
                 failureCallback(e);
@@ -109,7 +109,7 @@ RtcRestHelper.Evm = {
 
 
         } catch (e) {
-            logger.log(logger.level.ERROR, "RtcRestCall.Evm",
+            logger.log(logger.level.ERROR, "RtcRestHelper.EventManager",
                 "sendStartMucWithRoomId :: xmpp create room failed with error  ", e);
             failureCallback(e);
         }
@@ -123,7 +123,7 @@ RtcRestHelper.Evm = {
      */
     sendRootEventWithRoomId: function(config, successCallback, failureCallback) {
         try {
-            logger.log(logger.level.INFO, "RtcRestCall.Evm",
+            logger.log(logger.level.INFO, "RtcRestHelper.EventManager",
                 " sendRootEventWithRoomId called ");
             var self = this;
 
@@ -146,7 +146,7 @@ RtcRestHelper.Evm = {
                 "userdata": config.userData ? config.userData : ""
             };
 
-            logger.log(logger.level.INFO, "RtcRestCall.Evm",
+            logger.log(logger.level.INFO, "RtcRestHelper.EventManager",
                 " root event with roomid with options " + JSON.stringify(options) +
                 " & body " + JSON.stringify(jsonBody));
 
@@ -161,12 +161,12 @@ RtcRestHelper.Evm = {
 
                 // Callback when complete data is received
                 response.on('end', function() {
-                    logger.log(logger.level.INFO, "RtcRestCall.Evm",
+                    logger.log(logger.level.INFO, "RtcRestHelper.EventManager",
                         " Received server response  " + body);
 
                     // check if the status code is correct
                     if (response.statusCode != 200) {
-                        logger.log(logger.level.ERROR, "RtcRestCall.Evm",
+                        logger.log(logger.level.ERROR, "RtcRestHelper.EventManager",
                             " Create room with roomid failed with status code  " +
                             response.statusCode + " & response " + body);
 
@@ -185,7 +185,7 @@ RtcRestHelper.Evm = {
 
             // Catch errors 
             req.on('error', function(e) {
-                logger.log(logger.level.ERROR, "RtcRestCall.Evm",
+                logger.log(logger.level.ERROR, "RtcRestHelper.EventManager",
                     " Create root event with roomid failed with error  " + e);
 
                 failureCallback(e);
@@ -200,7 +200,7 @@ RtcRestHelper.Evm = {
 
 
         } catch (e) {
-            logger.log(logger.level.ERROR, "RtcRestCall.Evm",
+            logger.log(logger.level.ERROR, "RtcRestHelper.EventManager",
                 "sendRootEventWithRoomId :: xmpp root event failed with error  ", e);
             failureCallback(e);
         }

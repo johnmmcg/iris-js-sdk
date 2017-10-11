@@ -19,6 +19,7 @@ RtcConfig.json = {
         // UEStatsServer: '',
     },
     pingInterval: 15000,
+    pingCounter: 3,
     presInterval: 10000,
     presMonitorInterval: 10000,
     reconnectInterval: 10000,
