@@ -173,12 +173,7 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
                     logger.log(logger.level.ERROR, "IrisRtcConnection",
                         " Getting xmpp server details failed with status code : " +
                         response.statusCode + " & response : " + body);
-
-                    if (response.statusCode == '503' || response.statusCode == '404') {
-                        self._doreconnect();
-                        return;
-                    } else
-                        return errors.code.ERR_INVALID_STATE;
+                    return errors.code.ERR_INVALID_STATE;
                 }
 
                 // Get the the response json
@@ -188,8 +183,8 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
                 if (!resJson.websocket_server || !resJson.websocket_server_token || !resJson.websocket_server_token_expiry_time) {
                     logger.log(logger.level.ERROR, "IrisRtcConnection",
                         " Getting xmpp server details failed as didnt receive all the parameters  ");
-                    return errors.code.ERR_INVALID_STATE;
 
+                    return errors.code.ERR_INVALID_STATE;
                 }
 
                 // Store the data for next time
@@ -286,8 +281,6 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
             self.onClose();
             self.sendEvent("SDK_WebSocketServerDisconnected", { message: "WS connection disconnected" });
 
-            // do reconnect
-            self._doreconnect();
         });
         // Monitor onmessage method
         this.xmpp.on('onMessage', function(data, flags) {
@@ -342,47 +335,6 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
     this.xmpp.connect(xmppServer, path, this.userID, this.traceId, this.token);
 };
 
-/**
- * Function to reconnect connection
- * @private
- */
-IrisRtcConnection.prototype._doreconnect = function() {
-    var self = this;
-
-    var delay;
-    if (!config.json.reconnectInterval) {
-        delay = 10000;
-    } else {
-        delay = config.json.reconnectInterval;
-    }
-
-    // Check if we are already connected
-    if (this.state == IrisRtcConnection.CONNECTED) {
-        // Check if we still have a valid xmpp token
-        logger.log(logger.level.INFO, "IrisRtcConnection",
-            " Already connected !!!");
-        return 0;
-    }
-
-    setTimeout(function() {
-        logger.log(logger.level.INFO, "IrisRtcConnection",
-            " doreconnect::Reconnecting...");
-
-        // Check if we still have a valid xmpp token
-        logger.log(logger.level.INFO, "IrisRtcConnection",
-            " this.xmpptokenExpiry " + self.xmpptokenExpiry +
-            " Date.now() " + Math.floor(Date.now() / 1000));
-        if (self.xmpptokenExpiry > (Math.floor(Date.now() / 1000))) {
-            logger.log(logger.level.INFO, "IrisRtcConnection",
-                " Found a valid token");
-
-            // XMPP token received, make a call to XMPP server and stay connected
-            self._connectXmpp(self.xmpptoken, self.xmppServer, self.xmpptokenExpiry);
-            return 0;
-        }
-
-    }, delay);
-};
 
 /**
  * Called when websocket is opened
