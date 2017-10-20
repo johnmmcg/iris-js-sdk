@@ -126,7 +126,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
     }
 
     // Create a DTMF Manager
-    if (self.peerconnection && self.localStream && self.localStream.getAudioTracks() && self.config.useDTMF) {
+    if (self.peerconnection && self.localStream && self.localStream.getAudioTracks() && self.config.type == "pstn") {
         var audiotracks = self.localStream.getAudioTracks();
         if (audiotracks) {
             for (var i = 0; i < audiotracks.length; i++) {
@@ -183,6 +183,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
             },
             function(error) {
                 logger.log(logger.level.INFO, "IrisRtcSession", "StartMuc Failed with error ", error);
+                self.onError(error);
                 return;
             });
     } else {
@@ -814,6 +815,7 @@ IrisRtcSession.prototype.sendRootEventWithRoomId = function(config) {
         },
         function(error) {
             logger.log(logger.level.INFO, "IrisRtcSession", "Root event failed with  ", error);
+            self.onError(error);
         });
 
 }
@@ -3646,6 +3648,7 @@ IrisRtcSession.prototype.downgradeToChat = function(downgradeConfig, notificatio
             this.localStream = null;
         }
         if (this.connection && this.connection.xmpp && this.config) {
+            this.config.irisToken = downgradeConfig.irisToken;
             this.config.type = "chat";
             this.state = IrisRtcSession.INCOMING;
             this.connection.xmpp.stopPresenceAlive(this.config.roomId);
@@ -3671,9 +3674,11 @@ IrisRtcSession.prototype.downgradeToChat = function(downgradeConfig, notificatio
             }
         } else {
             logger.log(logger.level.ERROR, "IrisRtcSession", "downgradeToChat :: Connection or config is missing ");
+            this.onError("Failed to downgrade to chat session ");
         }
     } catch (error) {
-        logger.log(logger.level.ERROR, "IrisRtcSession", "downgradeToChat :: Failed")
+        logger.log(logger.level.ERROR, "IrisRtcSession", "downgradeToChat :: Failed");
+        this.onError("Failed to downgrade to chat session " + error);
     }
 }
 
@@ -3699,6 +3704,7 @@ IrisRtcSession.prototype.upgradeToVideo = function(stream, upgradeConfig, notifi
         this.localStream = stream;
 
         if (this.connection && this.connection.xmpp && this.config) {
+            this.config.irisToken = upgradeConfig.irisToken;
             this.config.type = "video";
             this.state = IrisRtcSession.INCOMING;
             this.connection.xmpp.stopPresenceAlive(this.config.roomId);
@@ -3737,9 +3743,11 @@ IrisRtcSession.prototype.upgradeToVideo = function(stream, upgradeConfig, notifi
             }
         } else {
             logger.log(logger.level.ERROR, "IrisRtcSession", "upgradeToVideo :: Failed, check for connection and config");
+            this.onError("Failed to upgrade to video session ");
         }
     } catch (error) {
-        logger.log(logger.level.ERROR, "IrisRtcSession", "upgradeToVideo :: Failed ", error)
+        logger.log(logger.level.ERROR, "IrisRtcSession", "upgradeToVideo :: Failed ", error);
+        this.onError("Failed to upgrade to video session " + error);
     }
 }
 
@@ -3761,6 +3769,7 @@ IrisRtcSession.prototype.upgradeToAudio = function(stream, upgradeConfig, notifi
         this.localStream = stream;
 
         if (this.connection && this.connection.xmpp && this.config) {
+            this.config.irisToken = upgradeConfig.irisToken;
             this.config.type = "audio";
             this.state = IrisRtcSession.INCOMING;
             this.connection.xmpp.stopPresenceAlive(this.config.roomId);
@@ -3796,9 +3805,11 @@ IrisRtcSession.prototype.upgradeToAudio = function(stream, upgradeConfig, notifi
             }
         } else {
             logger.log(logger.level.ERROR, "IrisRtcSession", "upgradeToAudio :: Failed, check for connection and config");
+            this.onError("Failed to upgrade to audio session");
         }
     } catch (error) {
-        logger.log(logger.level.ERROR, "IrisRtcSession", "upgradeToAudio :: Failed ", error)
+        logger.log(logger.level.ERROR, "IrisRtcSession", "upgradeToAudio :: Failed ", error);
+        this.onError("Failed to upgrade to audio session " + error);
     }
 }
 
