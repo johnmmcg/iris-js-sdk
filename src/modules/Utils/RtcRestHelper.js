@@ -76,7 +76,8 @@ RtcRestHelper.EventManager = {
                             " Start muc with roomid failed with status code  " +
                             response.statusCode + " & response " + body);
 
-                        failureCallback(response);
+                        failureCallback("Start muc with roomid failed with status code  " +
+                            response.statusCode + " & response " + body);
 
                         return;
 
@@ -95,9 +96,9 @@ RtcRestHelper.EventManager = {
             req.on('error', function(e) {
 
                 logger.log(logger.level.ERROR, "RtcRestHelper.EventManager",
-                    " Create root event with roomid failed with error  " + e);
+                    " Start muc with roomid failed with error  " + e);
 
-                failureCallback(e);
+                failureCallback("Start muc with roomid failed with error " + e);
 
             });
 
@@ -167,10 +168,12 @@ RtcRestHelper.EventManager = {
                     // check if the status code is correct
                     if (response.statusCode != 200) {
                         logger.log(logger.level.ERROR, "RtcRestHelper.EventManager",
-                            " Create room with roomid failed with status code  " +
+                            " Create root event failed with status code  " +
                             response.statusCode + " & response " + body);
 
-                        failureCallback(response);
+                        failureCallback("Create root event failed with status code  " +
+                            response.statusCode + " & response " + body);
+
                         return;
                     } else {
 
