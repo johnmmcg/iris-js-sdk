@@ -348,6 +348,8 @@ IrisRtcSession.prototype.create = function(config, connection) {
                     var closeSession = false;
                     if (self.participants && Object.keys(self.participants).length == 0) {
                         closeSession = true; // Close session if all participants left
+                        clearInterval(self.monitorIntervalValue);
+
                     }
 
                     self.onParticipantLeft(response.roomId, response.jid, closeSession);
@@ -494,7 +496,9 @@ IrisRtcSession.prototype.create = function(config, connection) {
                     });
                     var closeSession = false;
                     if (self.participants && Object.keys(self.participants).length == 0) {
-                        closeSession = true; // Close session if all participants left
+                        closeSession = true; // Close session if all participants left 
+                        clearInterval(self.monitorIntervalValue);
+
                     }
 
                     self.onParticipantLeft(response.roomId, response.jid, closeSession);
