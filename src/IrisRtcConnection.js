@@ -49,6 +49,7 @@ function IrisRtcConnection() {
     this.irisUserId = null;
     this.subscriberId = null;
     this.turnCredentialExpiry = null;
+    this.isAlive = false;
 
 }
 
@@ -118,6 +119,7 @@ IrisRtcConnection.prototype.close = function() {
     this.domain = null;
     this.iceServerJson = null;
     this.myJid = null;
+    this.isAlive = false;
 };
 
 /**
@@ -268,6 +270,7 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
             logger.log(logger.level.INFO, "IrisRtcConnection",
                 " onOpened");
             self.state = IrisRtcConnection.CONNECTED;
+            self.isAlive = true;
             self.myJid = jid.toString();
             self.onOpen();
             self.sendEvent("SDK_WebSocketServerConnected", { myJid: self.myJid });
@@ -278,6 +281,7 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
             logger.log(logger.level.INFO, "IrisRtcConnection",
                 " onClosed");
             self.state = IrisRtcConnection.DISCONNECTED;
+            self.isAlive = false;
             self.onClose();
             self.sendEvent("SDK_WebSocketServerDisconnected", { message: "WS connection disconnected" });
 
@@ -295,6 +299,7 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
                 " onError " + e);
             self.sendEvent("SDK_Error", e.toString());
             self.state = IrisRtcConnection.DISCONNECTED;
+            self.isAlive = false;
             self.onError(e);
         });
 

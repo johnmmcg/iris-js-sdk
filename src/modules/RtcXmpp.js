@@ -6,7 +6,6 @@
 // Import the modules
 var logger = require('./RtcLogger.js');
 var errors = require('./RtcErrors.js');
-var WebSocket = require('ws');
 var eventEmitter = require("events").EventEmitter;
 var util = require("util");
 var xmppClient = require('./node-xmpp-client')
@@ -44,6 +43,7 @@ function RtcXmpp() {
     this.client = null;
     this.pingtimer = null;
     this.pingexpiredtimer = null;
+    this.keepAliveTimer = null;
     this.pingLocalCounter = 0;
     this.prestimer = [];
     this.token = null;
@@ -55,6 +55,7 @@ function RtcXmpp() {
     this.index = 1;
     this.rayo_resourceid = '';
     this.userAgent = (navigator && navigator.userAgent) ? navigator.userAgent : "Iris JS SDK -v" + Rtcconfig.json.sdkVersion;
+    this.isAlive = false;
 }
 
 // Setup an event emitter
@@ -118,6 +119,11 @@ RtcXmpp.prototype.connect = function connect(server, path, jid, traceId, token) 
 
         self.emit('onOpen', data.jid);
 
+        self.isAlive = true;
+
+        //Start a ping<->pong for every three seconds
+        self.startPingPong();
+
         // Start a timer to send ping to keep this connection alive
         self.startPing();
 
@@ -128,8 +134,10 @@ RtcXmpp.prototype.connect = function connect(server, path, jid, traceId, token) 
         logger.log(logger.level.INFO, "RtcXmpp.connect", "XMPP connection disconnected");
         self.stopPing();
         self.stopPresenceAlive();
-
-        this.client = null;
+        clearTimeout(self.keepAliveTimer);
+        self.client.removeAllListeners();
+        self.client = null;
+        self.isAlive = false;
 
         self.emit('onClose');
     });
@@ -141,13 +149,49 @@ RtcXmpp.prototype.connect = function connect(server, path, jid, traceId, token) 
     });
 }
 
+RtcXmpp.prototype.startPingPong = function() {
+    var self = this;
+
+    logger.log(logger.level.VERBOSE, "RtcXmpp",
+        " RtcXmpp :: startPingPong");
+
+    self.keepAliveTimer = setTimeout(function() {
+        logger.log(logger.level.VERBOSE, "RtcXmpp",
+            " RtcXmpp :: startPingPong : isAlive : " + self.isAlive);
+
+        if (self.isAlive) {
+            self.isAlive = false;
+            clearTimeout(self.keepAliveTimer);
+
+            var ping = new Stanza('iq', { id: 'c2s1', type: 'get' })
+                .c('ping', { xmlns: 'urn:xmpp:ping' });
+
+            self.client.send(ping);
+
+            self.startPingPong();
+        } else {
+            logger.log(logger.level.ERROR, "RtcXmpp",
+                " PingPong  failed : close the socket connection");
+
+            clearTimeout(self.keepAliveTimer);
+            self.stopPing();
+            self.stopPresenceAlive();
+            this.client = null;
+            self.isAlive = false;
+            self.emit('onError', "WS connection is broken");
+            self.closeWebSocket();
+        }
+    }, Rtcconfig.json.pingPongInterval);
+}
+
 RtcXmpp.prototype.closeWebSocket = function closeSocket() {
     logger.log(logger.level.INFO, "RtcXmpp",
         " RtcXmpp::closeWebSocket called ");
 
     // Check the websocket state: CONNECTING =0, OPEN=1, CLOSING=2, CLOSED=3
     if (this.client.connection.websocket && this.client.connection.websocket.readyState == 1) {
-        this.client.connection.websocket.close();
+        this.client.end();
+        this.isAlive = false;
         return 1;
     }
     return 0;
@@ -159,11 +203,16 @@ RtcXmpp.prototype.closeWebSocket = function closeSocket() {
 // @returns {retValue} 0 on success, negative value on error
 //
 RtcXmpp.prototype.disconnect = function disconnect() {
+    this.client.end();
+    this.stopPing();
+    clearTimeout(self.keepAliveTimer);
+    this.isAlive = false;
     this.client = null; // Is there a disconnect method?
     this.ws = null;
     this.client = null;
     this.pingtimer = null;
     this.pingexpiredtimer = null;
+    this.keepAliveTimer = null;
     this.pingLocalCounter = 0;
     this.prestimer = [];
     this.token = null;
@@ -172,6 +221,7 @@ RtcXmpp.prototype.disconnect = function disconnect() {
     this.xmppJid = null;
     this.sid = null;
     this.localSDP = null;
+    this.isAlive = false;
 }
 
 // Method to send presence to a room
@@ -920,16 +970,6 @@ RtcXmpp.prototype.sendSourceRemove = function sendSourceRemove(sdpDiffer, data) 
     this.client.send(remove.tree());
 }
 
-// Method to disconnect from websocket server
-//
-// @param None
-// @returns {retValue} 0 on success, negative value on error
-//
-RtcXmpp.prototype.disconnect = function disconnect() {
-    this.client.connection.websocket.close();
-    this.stopPing();
-}
-
 // Callback to inform that connection is successful
 //
 // @param None
@@ -982,6 +1022,8 @@ RtcXmpp.prototype._onIQ = function _onIQ(stanza) {
     } else if (stanza.getChild('ref')) {
         this._onRayoIQ(stanza);
     } else if (stanza && stanza.attrs && stanza.attrs.id == 'c2s1') {
+
+        self.isAlive = true;
 
         //If we get reply for the last try in ping counter clear the timeout
         if (self.pingLocalCounter == Rtcconfig.json.pingCounter) {
