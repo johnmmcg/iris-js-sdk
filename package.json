@@ -24,12 +24,11 @@
         "minimist": "^1.2.0",
         "sdp-interop": "^0.1.11",
         "sdp-transform": "^1.6.2",
-        "uuid": "3.0.1",
-        "ws": "^1.1.1"
+        "uuid": "3.0.1"
     },
     "devDependencies": {
-        "browserify": "^13.1.0",
-        "bufferutil": "^1.2.1",
+        "browserify": "^14.1.0",
+        "bufferutil": "^3.0.0",
         "chai": "^3.2.0",
         "chai-http": "^1.0.0",
         "cors": "2.7.1",
@@ -39,13 +38,13 @@
         "mocha": "^2.4.5",
         "mongoreporter": "^0.2.1",
         "request": "^2.79.0",
-        "uglify-js": "^2.7.5",
-        "utf-8-validate": "^1.2.1"
+        "uglify-es": "^3.0.0",
+        "utf-8-validate": "^3.0.0"
     },
     "scripts": {
         "build": "npm run browserify  && npm run uglifyjs",
         "browserify": "browserify -d ./src/IrisRtcSdk.js | exorcist iris-js-sdk.js.map > iris-js-sdk.js",
-        "uglifyjs": "uglifyjs -p relative iris-js-sdk.js -o iris-js-sdk.min.js --source-map iris-js-sdk.min.map --in-source-map iris-js-sdk.js.map",
+        "uglifyjs": "uglifyjs iris-js-sdk.js -o iris-js-sdk.min.js --source-map",
         "copy": "cp iris-js-sdk.min.js ./dist/iris-js-sdk.min.js"
     }
 }
