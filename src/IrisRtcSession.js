@@ -765,8 +765,26 @@ IrisRtcSession.prototype.create = function(config, connection) {
             self.onError(self.config.roomId, response.error);
         }
     });
+
+    connection.xmpp.on('onError', self.onXMPPError.bind(this));
+
 };
 
+/**
+ * @private
+ */
+IrisRtcSession.prototype.onXMPPError = function(error) {
+    var self = this;
+    logger.log(logger.level.INFO, "IrisRtcSession",
+        " onXMPPError : error : " + error);
+
+    if (typeof error == 'string' && error == "WS connection is broken") {
+        if (self.config.endSessionOnBrokenConnection) {
+            self.end(); // Should we do this?
+        }
+        clearInterval(self.monitorIntervalValue);
+    }
+}
 
 /**
  * @private
@@ -964,6 +982,7 @@ IrisRtcSession.prototype.end = function() {
             this.sdkStats.events = [];
         }
 
+        this.connection.xmpp.removeListener("onError", this.onXMPPError);
         this.connection.xmpp.removeAllListeners(this.config.roomId);
 
         // Leave the room

@@ -20,6 +20,7 @@ RtcConfig.json = {
     },
     pingInterval: 15000,
     pingCounter: 3,
+    pingPongInterval: 3000,
     presInterval: 10000,
     presMonitorInterval: 10000,
     reconnectInterval: 10000,
