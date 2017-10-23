@@ -67,7 +67,7 @@ util.inherits(RtcXmpp, eventEmitter);
 // @param {xmppServer} Xmpp server url
 // @returns {retValue} 0 on success, negative value on error
 //
-RtcXmpp.prototype.connect = function connect(server, path, jid, traceId, token) {
+RtcXmpp.prototype.connect = function connect(server, path, jid, resourceId, traceId, token) {
 
     logger.log(logger.level.INFO, "RtcXmpp",
         " Connecting to server at  " + "wss://" + server + path);
@@ -82,7 +82,7 @@ RtcXmpp.prototype.connect = function connect(server, path, jid, traceId, token) 
 
     // Create the xmpp client
     this.client = new xmppClient({
-        jid: jid,
+        jid: jid + "/" + resourceId,
         password: "",
         preferred: 'NOAUTH',
         xmlns: 'jabber:client',
