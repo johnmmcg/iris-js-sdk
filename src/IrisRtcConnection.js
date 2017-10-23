@@ -14,6 +14,13 @@ var errors = require('./modules/RtcErrors.js');
 var config = require('./modules/RtcConfig.js');
 var https = require('https');
 var xmpp = require('./modules/RtcXmpp.js');
+var uuidV1 = require('uuid/v1');
+
+var resourceId = null;
+
+if (!resourceId) {
+    resourceId = uuidV1(); // Create new timebased uuid
+}
 
 // States
 ["DISCONNECTED", "CONNECTED"].forEach(function each(state, index) {
@@ -337,7 +344,7 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
         tokenExpiry + "/token/" + this.xmpptoken; //+ "/traceid/" + this.traceId;
 
     // Call connect method
-    this.xmpp.connect(xmppServer, path, this.userID, this.traceId, this.token);
+    this.xmpp.connect(xmppServer, path, this.userID, resourceId, this.traceId, this.token);
 };
 
 
