@@ -95,7 +95,7 @@ WSConnection.prototype.stopParser = function() {
 WSConnection.prototype.onmessage = function(msg) {
 
 
-    if ((msg.data.indexOf('c2p1') !== -1 || msg.data.indexOf('c2s1') !== -1)) {
+    if ((msg.data.indexOf('c2p1') !== -1)) {
         logger.log(logger.level.VERBOSE, "WS", "RX <-- " + msg.data)
     } else {
         logger.log(logger.level.INFO, "WS", "RX <-- " + msg.data)
@@ -180,7 +180,7 @@ WSConnection.prototype.send = function(stanza) {
         stanza.attrs.xmlns = 'jabber:client'
     }
 
-    if (stanza.attrs && (stanza.attrs.id == 'c2p1' || stanza.attrs.id == "c2s1")) {
+    if (stanza.attrs && (stanza.attrs.id == 'c2p1' /*|| stanza.attrs.id == "c2s1"*/ )) {
         stanza = stanza.toString()
         logger.log(logger.level.VERBOSE, "WS", "TX --> " + stanza)
     } else {

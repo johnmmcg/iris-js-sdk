@@ -82,7 +82,8 @@ RtcXmpp.prototype.connect = function connect(server, path, jid, resourceId, trac
 
     // Create the xmpp client
     this.client = new xmppClient({
-        jid: jid + "/" + resourceId,
+        // jid: jid + "/" + resourceId,
+        jid: jid,
         password: "",
         preferred: 'NOAUTH',
         xmlns: 'jabber:client',
@@ -125,7 +126,7 @@ RtcXmpp.prototype.connect = function connect(server, path, jid, resourceId, trac
         self.startPingPong();
 
         // Start a timer to send ping to keep this connection alive
-        self.startPing();
+        // self.startPing();
 
     });
 
@@ -156,7 +157,7 @@ RtcXmpp.prototype.startPingPong = function() {
         " RtcXmpp :: startPingPong");
 
     self.keepAliveTimer = setTimeout(function() {
-        logger.log(logger.level.VERBOSE, "RtcXmpp",
+        logger.log(logger.level.INFO, "RtcXmpp",
             " RtcXmpp :: startPingPong : isAlive : " + self.isAlive);
 
         if (self.isAlive) {
@@ -174,6 +175,10 @@ RtcXmpp.prototype.startPingPong = function() {
                 " PingPong  failed : close the socket connection");
 
             clearTimeout(self.keepAliveTimer);
+            clearInterval(self.pingtimer);
+            clearTimeout(self.pingexpiredtimer);
+            self.pingLocalCounter = 0;
+
             self.stopPing();
             self.stopPresenceAlive();
             this.client = null;
@@ -189,7 +194,7 @@ RtcXmpp.prototype.closeWebSocket = function closeSocket() {
         " RtcXmpp::closeWebSocket called ");
 
     // Check the websocket state: CONNECTING =0, OPEN=1, CLOSING=2, CLOSED=3
-    if (this.client.connection.websocket && this.client.connection.websocket.readyState == 1) {
+    if (this.client && this.client.connection && this.client.connection.websocket && this.client.connection.websocket.readyState == 1) {
         this.client.end();
         this.isAlive = false;
         return 1;
@@ -203,13 +208,14 @@ RtcXmpp.prototype.closeWebSocket = function closeSocket() {
 // @returns {retValue} 0 on success, negative value on error
 //
 RtcXmpp.prototype.disconnect = function disconnect() {
+    logger.log(logger.level.INFO, "RtcXmpp",
+        " RtcXmpp::disconnect called ");
+
     this.client.end();
     this.stopPing();
     clearTimeout(self.keepAliveTimer);
     this.isAlive = false;
     this.client = null; // Is there a disconnect method?
-    this.ws = null;
-    this.client = null;
     this.pingtimer = null;
     this.pingexpiredtimer = null;
     this.keepAliveTimer = null;
@@ -248,7 +254,8 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
             'host': this.server,
         }).up();
 
-        this.client.send(pres.tree());
+        if (this.client)
+            this.client.send(pres.tree());
 
         this.stopPresenceAlive(config.roomId);
         delete this.prestimer[config.roomId];
@@ -256,7 +263,7 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
         var elem = 0;
         for (e in this.prestimer) { elem++; }
         if (elem == 0) {
-            this.startPing();
+            // this.startPing();
         }
     } else {
         // Join the room by sending the presence
@@ -310,7 +317,8 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
             'userdata': config.userData
         }).up();
 
-        this.client.send(pres.tree());
+        if (this.client)
+            this.client.send(pres.tree());
         // Wait for a presence error or presence ack (self)
     }
 }
@@ -359,7 +367,8 @@ RtcXmpp.prototype.sendPresenceAlive = function sendPresenceAlive(config) {
 
     // Start a timer to send presence at interval
     this.prestimer[config.roomId] = setInterval(function() {
-        self.client.send(pres.tree());
+        if (self.client)
+            self.client.send(pres.tree());
     }, Rtcconfig.json.presInterval);
 }
 
@@ -398,7 +407,8 @@ RtcXmpp.prototype.startPing = function startPing() {
             'iq', { id: 'c2s1', type: 'get' }
         ).c('ping', { xmlns: 'urn:xmpp:ping' });
 
-        self.client.send(ping);
+        if (self.client)
+            self.client.send(ping);
 
         self.pingLocalCounter = self.pingLocalCounter + 1;
 
