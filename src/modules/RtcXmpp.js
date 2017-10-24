@@ -178,13 +178,13 @@ RtcXmpp.prototype.startPingPong = function() {
             clearTimeout(self.keepAliveTimer);
             clearInterval(self.pingtimer);
             clearTimeout(self.pingexpiredtimer);
+            self.closeWebSocket();
             self.pingLocalCounter = 0;
             self.stopPing();
             self.stopPresenceAlive("");
             self.client = null;
             self.isAlive = false;
             self.emit('onError', "WS connection is broken");
-            self.closeWebSocket();
         }
     }, Rtcconfig.json.pingPongInterval);
 }
@@ -1762,7 +1762,12 @@ RtcXmpp.prototype.sendGroupChatMessage = function(config, id, message, topic) {
         .c('body').t(message).up()
         .c('active', { xmlns: 'http://jabber.org/protocol/chatstates' }).up()
         .c('data', data).up();
-    this.client.send(msg.tree());
+
+    if (this.client)
+        this.client.send(msg.tree());
+    else
+        logger.log(logger.level.ERROR, "RtcXmpp", "sendGroupChatMessage :: Failed to send group chat")
+
 }
 
 /**
@@ -1788,7 +1793,11 @@ RtcXmpp.prototype.sendChatState = function(config, chatState) {
             })
         .c(chatState, { xmlns: 'http://jabber.org/protocol/chatstates' }).up()
         .c('data', data).up();
-    this.client.send(msg.tree());
+
+    if (this.client)
+        this.client.send(msg.tree());
+    else
+        logger.log(logger.level.ERROR, "RtcXmpp", "sendChatState :: Failed to send chat state")
 }
 
 RtcXmpp.prototype.sendVideoMute = function(to, isMute, config) {
