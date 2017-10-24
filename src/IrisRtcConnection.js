@@ -23,7 +23,7 @@ if (!resourceId) {
 }
 
 // States
-["DISCONNECTED", "CONNECTED"].forEach(function each(state, index) {
+["DISCONNECTED", "CONNECTED", "CONNECTING"].forEach(function each(state, index) {
     IrisRtcConnection.prototype[state] = IrisRtcConnection[state] = index;
 });
 
@@ -74,18 +74,23 @@ function IrisRtcConnection() {
  */
 IrisRtcConnection.prototype.connect = function(irisToken, routingId, eventManagerUrl) {
 
-    if (this.state == IrisRtcConnection.CONNECTED) {
-        logger.log(logger.level.INFO, "IrisRtcConnection", "Iris Connection exits");
-        return;
-    }
-
     if (!irisToken || !routingId) {
         logger.log(logger.level.ERROR, "IrisRtcConnection", "irisToken and routingId are required to create a connection");
         return;
     } else {
         logger.log(logger.level.INFO, "IrisRtcConnection",
             " connect :: routingId : " + routingId +
-            " irisToken : " + irisToken);
+            " irisToken : " + irisToken + " eventManagerUrl : " + eventManagerUrl);
+    }
+
+    if (this.state == IrisRtcConnection.CONNECTED) {
+        logger.log(logger.level.INFO, "IrisRtcConnection", "Iris Connection exits");
+        return;
+    }
+
+    if (this.state == IrisRtcConnection.CONNECTING) {
+        logger.log(logger.level.ERROR, "IrisRtcConnection", "Connecting... Please wait");
+        return;
     }
 
     var self = this;
@@ -93,9 +98,14 @@ IrisRtcConnection.prototype.connect = function(irisToken, routingId, eventManage
     self.userID = routingId;
     self.token = "Bearer " + irisToken;
 
+    this.state = IrisRtcConnection.CONNECTING;
+
     if (self._getWSTurnServerInfo(self.token, self.userID, eventManagerUrl) < 0) {
         logger.log(logger.level.ERROR, "IrisRtcConnection",
-            "  Connection with XMPP server failed with error");
+            "connect ::  Connection with XMPP server failed with error");
+
+        self.state = IrisRtcConnection.DISCONNECTED;
+        self.isAlive = false;
         self.onError(new Error("Connection with XMPP server failed"));
     }
 };
@@ -143,7 +153,8 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
         !token ||
         !routingId) {
         logger.log(logger.level.ERROR, "IrisRtcConnection",
-            " Incorrect parameters");
+            " _getWSTurnServerInfo :: Incorrect parameters : eventManagerUrl  " + eventManagerUrl +
+            " config.json.urls.eventManager " + config.json.urls.eventManager);
         return errors.code.ERR_INCORRECT_PARAMETERS;
     }
 
@@ -156,7 +167,7 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
     };
 
     logger.log(logger.level.VERBOSE, "IrisRtcConnection",
-        " Getting xmpp server details " +
+        " _getWSTurnServerInfo :: Getting xmpp server details " +
         " with options " + JSON.stringify(options));
 
     var self = this;
@@ -175,12 +186,12 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
             // Callback when complete data is received
             response.on('end', function() {
                 logger.log(logger.level.INFO, "IrisRtcConnection",
-                    " Received server response  " + body);
+                    " _getWSTurnServerInfo :: Received server response  " + body);
 
                 // check if the status code is correct
                 if (response.statusCode != 200) {
                     logger.log(logger.level.ERROR, "IrisRtcConnection",
-                        " Getting xmpp server details failed with status code : " +
+                        " _getWSTurnServerInfo :: Getting xmpp server details failed with status code : " +
                         response.statusCode + " & response : " + body);
                     return errors.code.ERR_INVALID_STATE;
                 }
@@ -191,7 +202,7 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
                 // Check if we have all the data
                 if (!resJson.websocket_server || !resJson.websocket_server_token || !resJson.websocket_server_token_expiry_time) {
                     logger.log(logger.level.ERROR, "IrisRtcConnection",
-                        " Getting xmpp server details failed as didnt receive all the parameters  ");
+                        " _getWSTurnServerInfo :: Getting xmpp server details failed as didnt receive all the parameters  ");
 
                     return errors.code.ERR_INVALID_STATE;
                 }
@@ -206,7 +217,7 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
                 self.xmpptokenExpiry = resJson.websocket_server_token_expiry_time;
 
                 logger.log(logger.level.VERBOSE, "IrisRtcConnection",
-                    " Ice server details are  " + resJson.turn_credentials);
+                    " _getWSTurnServerInfo :: Ice server details are  " + resJson.turn_credentials);
 
                 self.iceServerJson = resJson.turn_credentials;
 
@@ -216,7 +227,7 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
                     self.turnCredentialExpiry = currTime + json.ttl;
 
                     logger.log(logger.level.INFO, "IrisRtcConnection",
-                        " xmpptokenExpiry : " + self.xmpptokenExpiry +
+                        " _getWSTurnServerInfo : xmpptokenExpiry : " + self.xmpptokenExpiry +
                         " turnCredentialExpiry : " + self.turnCredentialExpiry);
                 }
 
@@ -228,7 +239,10 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
         // Catch errors 
         req.on('error', function(e) {
             logger.log(logger.level.ERROR, "IrisRtcConnection",
-                " Getting xmpp server details failed with error  " + e);
+                " _getWSTurnServerInfo :: Getting xmpp server details failed with error  " + e);
+
+            self.state = IrisRtcConnection.DISCONNECTED;
+            self.isAlive = false;
             self.onError(e);
         });
 
@@ -237,7 +251,10 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
 
     } catch (e) {
         logger.log(logger.level.ERROR, "IrisRtcConnection",
-            "Getting xmpp server details with error  " + e);
+            "_getWSTurnServerInfo :: Getting xmpp server details with error  " + e);
+
+        self.state = IrisRtcConnection.DISCONNECTED;
+        self.isAlive = false;
         self.onError(e);
     }
 
@@ -254,7 +271,7 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
 IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, tokenExpiry) {
 
     logger.log(logger.level.INFO, "IrisRtcConnection",
-        " Connecting to Xmpp server at  " + xmppServer +
+        " _connectXmpp :: Connecting to Xmpp server at  " + xmppServer +
         " with xmpptoken : " + xmpptoken + " & RoutingId : " + this.userID);
 
     // Parameter checking
@@ -303,7 +320,7 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
         // Monitor onError method
         this.xmpp.on('onError', function(e) {
             logger.log(logger.level.INFO, "IrisRtcConnection",
-                " onError " + e);
+                " onError : " + e);
             self.sendEvent("SDK_Error", e.toString());
             self.state = IrisRtcConnection.DISCONNECTED;
             self.isAlive = false;
