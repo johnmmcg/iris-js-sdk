@@ -306,16 +306,171 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
 
         if (!self.connection) return;
 
-        if ((response.jid == self.connection.myJid) &&
-            (response.roomId == self.config.roomId)) {
-            if (response.type == "join") {
-                if (self.presenceState == IrisRtcSession.PRESENCE_JOINED) {
-                    // This is just an update so ignore
+        if (response.roomId == self.config.roomId) {
 
-                    // Check if we have become moderator
-                    if (response.role == "moderator" && self.config.focusJid) {
-                        // What to do?
+            if (response.jid == self.connection.myJid) {
+
+                logger.log(logger.level.INFO, "IrisRtcSession",
+                    " onPresence :: Received Presence for my self ");
+
+                if (response.type == "join") {
+                    if (self.presenceState == IrisRtcSession.PRESENCE_JOINED) {
+                        // This is just an update so ignore
+
+                        // Check if we have become moderator
+                        if (response.role == "moderator" && self.config.focusJid) {
+                            // What to do?
+                        }
+                        if (response.videomuted) {
+                            self.onVideoMuted(response.jid, response.videomuted);
+                        }
+                        if (response.audiomuted) {
+                            self.onAudioMuted(response.jid, response.audiomuted);
+                        }
+                        if (response.nick) {
+                            self.onDisplayNameChange(response.jid, response.nick);
+                        }
+                        return;
                     }
+
+                    if (self.presenceState !== IrisRtcSession.PRESENCE_JOINED) {
+                        self.onJoined(response.roomId, response.jid);
+                    }
+                    self.presenceState = IrisRtcSession.PRESENCE_JOINED;
+
+                    logger.log(logger.level.INFO, "IrisRtcSession",
+                        " onPresence " + JSON.stringify(response));
+
+
+                    // Send events
+                    self.sendEvent("SDK_XMPPJoined", { myJid: response.jid });
+
+                    // for audio call, send the rayo command
+                    if (self.config.type == "pstn" && self.config.sessionType != "join" && self.pstnState == IrisRtcSession.NONE) {
+                        self.pstnState = IrisRtcSession.INPROGRESS;
+                        // send the rayo command
+                        connection.xmpp.sendRayo(self.config);
+                    }
+
+                    /* Stats Init Begin*/
+                    var statsOptions = {
+                        wsServer: connection.xmppServer,
+                        rtcServer: self.config.rtcServer,
+                        roomId: self.config.roomId,
+                        routingId: self.config.routingId,
+                        traceId: self.config.traceId,
+                        UEStatsServer: rtcConfig.json.urls.UEStatsServer,
+                        sdkVersion: rtcConfig.json.sdkVersion,
+                        UID: self.config.publicId ? self.config.publicId : self.config.routingId,
+                        useBridge: self.config.useBridge
+                    };
+
+                    self.sdkStats.options = statsOptions;
+                    self.sdkStats.localStatInterval = 2000;
+                    self.sdkStats.getPeerStats(self.peerconnection, rtcConfig.json.statsInterval, true);
+                    /* Stats Init End*/
+
+                    // Check the state
+                    if (self.state == IrisRtcSession.CONNECTING) {
+                        logger.log(logger.level.INFO, "IrisRtcSession",
+                            " send onCreated ");
+
+                        // We were the first ones to join so go with createoffer flow
+                        // Only for non bridge case we generate the offer first
+                        if (!self.config.useBridge && (self.config.sessionType != "join") && (self.config.type != "pstn")) {
+                            self.state = IrisRtcSession.OUTGOING;
+                            try {
+                                self.createOffer(self.config.type);
+                            } catch (e) {
+                                logger.log(logger.level.ERROR, "IrisRtcSession",
+                                    " createOffer exception " + e);
+                            }
+                        }
+                    }
+                } else if (response.type == "unavailable") {
+
+                    logger.log(logger.level.INFO, "IrisRtcSession", "Received presence unavailable for my self, ignoring");
+
+                }
+            } else {
+
+                logger.log(logger.level.INFO, "IrisRtcSession",
+                    " onPresence :: Received Presence from jid : " + response.jid);
+
+                if (response.type == "join") {
+                    found = false;
+                    Object.keys(self.participants).forEach(function(jid) {
+                        if (jid == response.jid) {
+                            found = true;
+                        }
+
+                    });
+
+                    if (!found) {
+                        if (response.jid.indexOf('f0cus') > 0) {
+
+                            if (!self.config.focusJid) {
+                                // Send events
+                                self.sendEvent("SDK_XMPPFocusJoined", { focusJid: response.jid });
+                            }
+
+                            // Change the focus jid
+                            self.config.focusJid = response.jid;
+
+                            logger.log(logger.level.INFO, "IrisRtcSession",
+                                " onPresence " + JSON.stringify(response));
+
+
+                            // Set the state to INCOMING
+                            self.state = IrisRtcSession.INCOMING;
+
+                            // Send the capability
+                            var data = {
+                                "to": response.from,
+                                "rootNodeId": self.config.rootNodeId,
+                                "childNodeId": self.config.childNodeId,
+                                "traceId": self.config.traceId,
+                                "roomId": self.config.roomId,
+                                "eventType": self.config.eventType
+                            };
+                            self.connection.xmpp.requestCapabilities(data);
+                        } else {
+                            self.jid = response.jid;
+
+                            self.participants[response.jid] = { "jid": response.jid };
+
+                            self.onParticipantJoined(response.roomId, response.jid);
+                            self.participants[response.jid].eventType = response.dataElement.event;
+
+                            if (self.config.type != "pstn") {
+                                self.participants[response.jid].lastPresenceReceived = new Date();
+
+                                if (self.startPresenceMonitor) {
+                                    self.startPresenceMonitor = false;
+                                    self.presenceMonitor();
+                                }
+                            }
+
+                            logger.log(logger.level.INFO, "IrisRtcSession",
+                                " onPresence " + JSON.stringify(response));
+
+                            // Send events
+                            self.sendEvent("SDK_XMPPOccupantJoined", { participantJid: response.jid });
+
+                            // Send the capability
+                            var data = {
+                                "to": response.from,
+                                "rootNodeId": self.config.rootNodeId,
+                                "childNodeId": self.config.childNodeId,
+                                "traceId": self.config.traceId,
+                                "roomId": self.config.roomId,
+                                "eventType": self.config.eventType
+                            };
+                            self.connection.xmpp.requestCapabilities(data);
+                        }
+
+                    }
+
                     if (response.videomuted) {
                         self.onVideoMuted(response.jid, response.videomuted);
                     }
@@ -325,230 +480,70 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
                     if (response.nick) {
                         self.onDisplayNameChange(response.jid, response.nick);
                     }
-                    return;
-                }
-
-                if (self.presenceState !== IrisRtcSession.PRESENCE_JOINED) {
-                    self.onJoined(response.roomId, response.jid);
-                }
-                self.presenceState = IrisRtcSession.PRESENCE_JOINED;
-
-                logger.log(logger.level.INFO, "IrisRtcSession",
-                    " onPresence " + JSON.stringify(response));
-
-
-                // Send events
-                self.sendEvent("SDK_XMPPJoined", { myJid: response.jid });
-
-                // for audio call, send the rayo command
-                if (self.config.type == "pstn" && self.config.sessionType != "join" && self.pstnState == IrisRtcSession.NONE) {
-                    self.pstnState = IrisRtcSession.INPROGRESS;
-                    // send the rayo command
-                    connection.xmpp.sendRayo(self.config);
-                }
-
-                /* Stats Init Begin*/
-                var statsOptions = {
-                    wsServer: connection.xmppServer,
-                    rtcServer: self.config.rtcServer,
-                    roomId: self.config.roomId,
-                    routingId: self.config.routingId,
-                    traceId: self.config.traceId,
-                    UEStatsServer: rtcConfig.json.urls.UEStatsServer,
-                    sdkVersion: rtcConfig.json.sdkVersion,
-                    UID: self.config.publicId ? self.config.publicId : self.config.routingId,
-                    useBridge: self.config.useBridge
-                };
-
-                self.sdkStats.options = statsOptions;
-                self.sdkStats.localStatInterval = 2000;
-                self.sdkStats.getPeerStats(self.peerconnection, rtcConfig.json.statsInterval, true);
-                /* Stats Init End*/
-
-                // Check the state
-                if (self.state == IrisRtcSession.CONNECTING) {
-                    logger.log(logger.level.INFO, "IrisRtcSession",
-                        " send onCreated ");
-
-                    // We were the first ones to join so go with createoffer flow
-                    // Only for non bridge case we generate the offer first
-                    if (!self.config.useBridge && (self.config.sessionType != "join") && (self.config.type != "pstn")) {
-                        self.state = IrisRtcSession.OUTGOING;
-                        try {
-                            self.createOffer(self.config.type);
-                        } catch (e) {
-                            logger.log(logger.level.ERROR, "IrisRtcSession",
-                                " createOffer exception " + e);
-                        }
-                    }
-                }
-            } else if (response.type == "unavailable") {
-
-                logger.log(logger.level.INFO, "IrisRtcSession", "Received presence unavailable for my self ignoring");
-
-                // Object.keys(self.participants).forEach(function(jid) {
-                //     if (jid == response.jid) {
-                //         delete self.participants[jid];
-                //     }
-                // });
-
-                // var closeSession = false;
-                // if (self.participants && Object.keys(self.participants).length == 0) {
-                //     closeSession = true; // Close session if all participants left
-                //     clearInterval(self.monitorIntervalValue);
-                // }
-
-                // self.onParticipantLeft(response.roomId, response.jid, closeSession);
-                // // Send events
-                // self.sendEvent("SDK_XMPPOccupantLeft", { participantJid: response.jid });
-            }
-        } else if (response.roomId == self.config.roomId) {
-            if (response.type == "join") {
-                found = false;
-                Object.keys(self.participants).forEach(function(jid) {
-                    if (jid == response.jid) {
-                        found = true;
+                    if (response.status) {
+                        self.onUserStatusChange(response.jid, response.status);
                     }
 
-                });
+                    if (response.dataElement && response.dataElement.event) {
+                        if (self.participants[response.jid] && self.participants[response.jid].eventType != response.dataElement.event) {
+                            self.participants[response.jid].eventType = response.dataElement.event;
+                            logger.log(logger.level.INFO, "IrisRtcSession", "onPresence ::" +
+                                "onSessionTypeChange:: type : " + response.dataElement.event + " participant :: " + response.jid);
+                            if (self.config.eventType != response.dataElement.event) {
 
-                if (!found) {
-                    if (response.jid.indexOf('f0cus') > 0) {
+                                var eventType = response.dataElement.event;
 
-                        if (!self.config.focusJid) {
-                            // Send events
-                            self.sendEvent("SDK_XMPPFocusJoined", { focusJid: response.jid });
-                        }
+                                eventType = (eventType == "groupchat") ? "chat" : (eventType == "videocall") ? "video" :
+                                    (eventType == "audiocall") ? "audio" : (eventType == "pstncall") ? "pstn" : "";
 
-                        // Change the focus jid
-                        self.config.focusJid = response.jid;
-
-                        logger.log(logger.level.INFO, "IrisRtcSession",
-                            " onPresence " + JSON.stringify(response));
-
-
-                        // Set the state to INCOMING
-                        self.state = IrisRtcSession.INCOMING;
-
-                        // Send the capability
-                        var data = {
-                            "to": response.from,
-                            "rootNodeId": self.config.rootNodeId,
-                            "childNodeId": self.config.childNodeId,
-                            "traceId": self.config.traceId,
-                            "roomId": self.config.roomId,
-                            "eventType": self.config.eventType
-                        };
-                        self.connection.xmpp.requestCapabilities(data);
-                    } else {
-                        self.jid = response.jid;
-
-                        self.participants[response.jid] = { "jid": response.jid };
-
-                        self.onParticipantJoined(response.roomId, response.jid);
-                        self.participants[response.jid].eventType = response.dataElement.event;
-
-                        if (self.config.type != "pstn") {
-                            self.participants[response.jid].lastPresenceReceived = new Date();
-
-                            if (self.startPresenceMonitor) {
-                                self.startPresenceMonitor = false;
-                                self.presenceMonitor();
+                                self.onSessionTypeChange(self.config.roomId, response.jid, eventType);
                             }
                         }
-
-                        logger.log(logger.level.INFO, "IrisRtcSession",
-                            " onPresence " + JSON.stringify(response));
-
-                        // Send events
-                        self.sendEvent("SDK_XMPPOccupantJoined", { participantJid: response.jid });
-
-                        // Send the capability
-                        var data = {
-                            "to": response.from,
-                            "rootNodeId": self.config.rootNodeId,
-                            "childNodeId": self.config.childNodeId,
-                            "traceId": self.config.traceId,
-                            "roomId": self.config.roomId,
-                            "eventType": self.config.eventType
-                        };
-                        self.connection.xmpp.requestCapabilities(data);
                     }
 
-                }
+                    // Check the state
+                    if (self.state == IrisRtcSession.CONNECTING) {
+                        // We were the first ones to join so go with set remote description flow
+                        self.state = IrisRtcSession.INCOMING;
+                    }
 
-                if (response.videomuted) {
-                    self.onVideoMuted(response.jid, response.videomuted);
-                }
-                if (response.audiomuted) {
-                    self.onAudioMuted(response.jid, response.audiomuted);
-                }
-                if (response.nick) {
-                    self.onDisplayNameChange(response.jid, response.nick);
-                }
-                if (response.status) {
-                    self.onUserStatusChange(response.jid, response.status);
-                }
+                    // Send the offer
+                    if (self.state == IrisRtcSession.OUTGOING) {
+                        // Check if it is already generated
+                        if (self.localSdp) {
+                            // Send the offer
+                            var data = {
+                                "sdp": self.localSdp,
+                                "to": response.jid,
+                                "traceId": self.config.traceId,
+                                "roomId": self.config.roomId,
+                                "rtcServer": self.config.rtcServer
+                            };
+                            // Call the session-initiate api
+                            self.connection.xmpp.sendSessionInitiate(data);
+                            // Send events
+                            self.sendEvent("SDK_XMPPJingleSessionInitiateSent", { message: "Sending session-initate" });
 
-                if (response.dataElement && response.dataElement.event) {
-                    if (self.participants[response.jid] && self.participants[response.jid].eventType != response.dataElement.event) {
-                        self.participants[response.jid].eventType = response.dataElement.event;
-                        logger.log(logger.level.INFO, "IrisRtcSession", "onPresence ::" +
-                            "onSessionTypeChange:: type : " + response.dataElement.event + " participant :: " + response.jid);
-                        if (self.config.eventType != response.dataElement.event) {
-
-                            var eventType = response.dataElement.event;
-
-                            eventType = (eventType == "groupchat") ? "chat" : (eventType == "videocall") ? "video" :
-                                (eventType == "audiocall") ? "audio" : (eventType == "pstncall") ? "pstn" : "";
-
-                            self.onSessionTypeChange(self.config.roomId, response.jid, eventType);
                         }
                     }
-                }
+                } else if (response.type == "unavailable") {
 
-                // Check the state
-                if (self.state == IrisRtcSession.CONNECTING) {
-                    // We were the first ones to join so go with set remote description flow
-                    self.state = IrisRtcSession.INCOMING;
-                }
+                    Object.keys(self.participants).forEach(function(jid) {
+                        if (jid == response.jid) {
+                            delete self.participants[jid];
+                        }
 
-                // Send the offer
-                if (self.state == IrisRtcSession.OUTGOING) {
-                    // Check if it is already generated
-                    if (self.localSdp) {
-                        // Send the offer
-                        var data = {
-                            "sdp": self.localSdp,
-                            "to": response.jid,
-                            "traceId": self.config.traceId,
-                            "roomId": self.config.roomId,
-                            "rtcServer": self.config.rtcServer
-                        };
-                        // Call the session-initiate api
-                        self.connection.xmpp.sendSessionInitiate(data);
-                        // Send events
-                        self.sendEvent("SDK_XMPPJingleSessionInitiateSent", { message: "Sending session-initate" });
-
-                    }
-                }
-            } else if (response.type == "unavailable") {
-
-                Object.keys(self.participants).forEach(function(jid) {
-                    if (jid == response.jid) {
-                        delete self.participants[jid];
+                    });
+                    var closeSession = false;
+                    if (self.participants && Object.keys(self.participants).length == 0) {
+                        closeSession = true; // Close session if all participants left
+                        clearInterval(self.monitorIntervalValue);
                     }
 
-                });
-                var closeSession = false;
-                if (self.participants && Object.keys(self.participants).length == 0) {
-                    closeSession = true; // Close session if all participants left
-                    clearInterval(self.monitorIntervalValue);
+                    self.onParticipantLeft(response.roomId, response.jid, closeSession);
+                    // Send events
+                    self.sendEvent("SDK_XMPPOccupantLeft", { participantJid: response.jid });
                 }
-
-                self.onParticipantLeft(response.roomId, response.jid, closeSession);
-                // Send events
-                self.sendEvent("SDK_XMPPOccupantLeft", { participantJid: response.jid });
             }
         }
     } else if (event === "onPresenceError") {
@@ -931,7 +926,7 @@ IrisRtcSession.prototype.sendChatMessage = function(roomId, id, message, topic) 
         return;
     }
 
-    if (!message || !id || (typeof id != 'string') || (typeof message != 'string')) {
+    if (!message || !message.trim() || !id || (typeof id != 'string') || (typeof message != 'string')) {
         logger.log(logger.level.ERROR, "IrisRtcSession", "Message and id can't be empty : message :" +
             message + " id " + id);
         return;
@@ -3379,6 +3374,15 @@ IrisRtcSession.prototype.checkPresenceElapsedTime = function() {
 
                 self.sendEvent("SDK_ParticipantNotResponding", { "presenceReceivedTimeDiff": presenceReceivedTimeDiff, "jid": jid });
 
+                //If participant is not responding remove him from participants list
+                //And if all participants are removed from list, clear monitor interval
+                delete self.participants[jid];
+
+                if (Object.keys(self.participants).length == 0) {
+                    logger.log(logger.level.INFO, "IrisRtcSession", 'clearing presence monitor interval');
+                    clearInterval(self.monitorIntervalValue);
+                }
+
                 // Throw an event to client with the particpantJid who is not sending presence
                 self.onSessionParticipantNotResponding(self.config.roomId, jid);
             } else {
@@ -4084,9 +4088,9 @@ IrisRtcSession.prototype.endSession = function(roomId) {
     logger.log(logger.level.INFO, "IrisRtcSession",
         "endSession :: roomId " + roomId + " ", this);
 
-    if (this.config && this.config.roomId !== roomId) {
+    if (!roomId || (this.config && this.config.roomId && this.config.roomId !== roomId)) {
         logger.log(logger.level.ERROR, "IrisRtcSession",
-            "endSession called with wrong roomId " + roomId);
+            "endSession called with wrong roomId : " + roomId);
         return;
     }
     this.end();

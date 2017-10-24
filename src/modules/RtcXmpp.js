@@ -70,7 +70,7 @@ util.inherits(RtcXmpp, eventEmitter);
 RtcXmpp.prototype.connect = function connect(server, path, jid, resourceId, traceId, token) {
 
     logger.log(logger.level.INFO, "RtcXmpp",
-        " Connecting to server at  " + "wss://" + server + path);
+        " connect :: Connecting to server at  " + "wss://" + server + path);
 
     // If already not created 
     /*if (this.client != null )
@@ -134,7 +134,7 @@ RtcXmpp.prototype.connect = function connect(server, path, jid, resourceId, trac
     this.client.on('offline', function() {
         logger.log(logger.level.INFO, "RtcXmpp.connect", "XMPP connection disconnected");
         self.stopPing();
-        self.stopPresenceAlive();
+        self.stopPresenceAlive("");
         clearTimeout(self.keepAliveTimer);
         self.client.removeAllListeners();
         self.client = null;
@@ -174,14 +174,14 @@ RtcXmpp.prototype.startPingPong = function() {
             logger.log(logger.level.ERROR, "RtcXmpp",
                 " PingPong  failed : close the socket connection");
 
+            self.client.removeAllListeners();
             clearTimeout(self.keepAliveTimer);
             clearInterval(self.pingtimer);
             clearTimeout(self.pingexpiredtimer);
             self.pingLocalCounter = 0;
-
             self.stopPing();
-            self.stopPresenceAlive();
-            this.client = null;
+            self.stopPresenceAlive("");
+            self.client = null;
             self.isAlive = false;
             self.emit('onError', "WS connection is broken");
             self.closeWebSocket();
@@ -380,12 +380,15 @@ RtcXmpp.prototype.sendPresenceAlive = function sendPresenceAlive(config) {
 RtcXmpp.prototype.stopPresenceAlive = function stopPresenceAlive(roomid) {
     logger.log(logger.level.INFO, "RtcXmpp", "stopPresenceAlive : " + roomid);
     if (!roomid) {
+        logger.log(logger.level.INFO, "RtcXmpp", "stopPresenceAlive : Clear all periodic presence intervals");
         for (var member in this.prestimer) {
+            logger.log(logger.level.INFO, "RtcXmpp", "stopPresenceAlive :: Clearing interval for roomid : " + member);
             clearInterval(this.prestimer[member]);
             delete this.prestimer[member];
         }
     } else {
         // Stop the presence timer
+        logger.log(logger.level.INFO, "RtcXmpp", "stopPresenceAlive :: Clearing interval for roomid : " + roomid);
         clearInterval(this.prestimer[roomid]);
         delete this.prestimer[roomid];
     }
