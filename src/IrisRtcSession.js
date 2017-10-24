@@ -311,7 +311,7 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
             if (response.jid == self.connection.myJid) {
 
                 logger.log(logger.level.INFO, "IrisRtcSession",
-                    " onPresence :: Received Presence for my self ");
+                    " onPresence :: For my self : roomId : " + self.config.roomId);
 
                 if (response.type == "join") {
                     if (self.presenceState == IrisRtcSession.PRESENCE_JOINED) {
@@ -389,13 +389,13 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
                     }
                 } else if (response.type == "unavailable") {
 
-                    logger.log(logger.level.INFO, "IrisRtcSession", "Received presence unavailable for my self, ignoring");
-
+                    logger.log(logger.level.INFO, "IrisRtcSession", " onPresence :: unavailable for my self ingoring," +
+                        " roomId : " + self.config.roomId);
                 }
             } else {
 
                 logger.log(logger.level.INFO, "IrisRtcSession",
-                    " onPresence :: Received Presence from jid : " + response.jid);
+                    " onPresence :: from jid : " + response.jid + " roomId : " + self.config.roomId);
 
                 if (response.type == "join") {
                     found = false;
@@ -3371,7 +3371,8 @@ IrisRtcSession.prototype.presenceMonitor = function() {
             if (presenceReceivedTimeDiff > 30) {
                 logger.log(logger.level.VERBOSE, "IrisRtcSession", 'presenceMonitor :: currentTime :: ' + currTime);
                 logger.log(logger.level.VERBOSE, "IrisRtcSession", 'presenceMonitor :: lastPresenceReceived :: ' + self.participants[jid].lastPresenceReceived);
-                logger.log(logger.level.INFO, "IrisRtcSession", 'presenceMonitor :: last presence received for participant : ' + jid + " is " + presenceReceivedTimeDiff + " seconds ago");
+                logger.log(logger.level.INFO, "IrisRtcSession", 'presenceMonitor :: last presence received for participant : ' +
+                    jid + " is " + presenceReceivedTimeDiff + " seconds ago. RoomId : " + self.config.roomId);
 
                 self.sendEvent("SDK_ParticipantNotResponding", { "presenceReceivedTimeDiff": presenceReceivedTimeDiff, "jid": jid });
 
@@ -3486,7 +3487,7 @@ IrisRtcSession.prototype.createSession = function(sessionConfig, connection, str
     var config = JSON.parse(JSON.stringify(sessionConfig));
 
     logger.log(logger.level.INFO, "IrisRtcSession",
-        " Create session with config " + JSON.stringify(config));
+        " createSession :: Create session with config " + JSON.stringify(config));
 
     if (!config || !connection || !connection.xmpp) {
         logger.log(logger.level.ERROR, "IrisRtcSession",
@@ -3559,7 +3560,7 @@ IrisRtcSession.prototype.joinSession = function(sessionConfig, connection, strea
     var config = JSON.parse(JSON.stringify(sessionConfig));
 
     logger.log(logger.level.INFO, "IrisRtcSession",
-        " Join session with config " + JSON.stringify(config));
+        " joinSession :: Join session with config " + JSON.stringify(config));
 
     if (!notificationPayload) {
         logger.log(logger.level.ERROR, "IrisRtcSession",
@@ -3613,7 +3614,7 @@ IrisRtcSession.prototype.createChatSession = function(sessionConfig, connection)
     var config = JSON.parse(JSON.stringify(sessionConfig));
 
     logger.log(logger.level.INFO, "IrisRtcSession",
-        " Create chat session with config " + JSON.stringify(config));
+        " createChatSession :: Create chat session with config " + JSON.stringify(config));
 
     if (!config || config.type != "chat") {
         logger.log(logger.level.ERROR, "IrisRtcSession",
@@ -3651,7 +3652,7 @@ IrisRtcSession.prototype.joinChatSession = function(sessionConfig, connection, n
     var config = JSON.parse(JSON.stringify(sessionConfig));
 
     logger.log(logger.level.INFO, "IrisRtcSession",
-        " Join chat session with config " + JSON.stringify(config));
+        " joinChatSession :: Join chat session with config " + JSON.stringify(config));
 
     if (!config || config.type != "chat") {
         logger.log(logger.level.ERROR, "IrisRtcSession",
