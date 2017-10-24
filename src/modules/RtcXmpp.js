@@ -211,7 +211,8 @@ RtcXmpp.prototype.disconnect = function disconnect() {
     logger.log(logger.level.INFO, "RtcXmpp",
         " RtcXmpp::disconnect called ");
 
-    this.client.end();
+    if (this.client)
+        this.client.end();
     this.stopPing();
     clearTimeout(self.keepAliveTimer);
     this.isAlive = false;
@@ -378,9 +379,9 @@ RtcXmpp.prototype.sendPresenceAlive = function sendPresenceAlive(config) {
 // @returns {retValue} 0 on success, negative value on error
 //
 RtcXmpp.prototype.stopPresenceAlive = function stopPresenceAlive(roomid) {
-    logger.log(logger.level.INFO, "RtcXmpp", "stopPresenceAlive : " + roomid);
+    logger.log(logger.level.INFO, "RtcXmpp", "stopPresenceAlive :: " + roomid);
     if (!roomid) {
-        logger.log(logger.level.INFO, "RtcXmpp", "stopPresenceAlive : Clear all periodic presence intervals");
+        logger.log(logger.level.INFO, "RtcXmpp", "stopPresenceAlive :: Clear all periodic presence intervals");
         for (var member in this.prestimer) {
             logger.log(logger.level.INFO, "RtcXmpp", "stopPresenceAlive :: Clearing interval for roomid : " + member);
             clearInterval(this.prestimer[member]);

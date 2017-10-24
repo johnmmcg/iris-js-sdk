@@ -70,7 +70,7 @@ function IrisRtcSession() {
 
     this.addSourcesQueue = async.queue(this.addSourceFF.bind(this), 1);
     this.addSourcesQueue.pause();
-    this.startPresenceMonitor = true;
+    this.isPresenceMonitorStarted = false;
     this.chatState = null;
 }
 
@@ -224,7 +224,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
 //     // this.connection.xmpp.removeListener("onError", this.onXMPPError);
 //     // this.connection.xmpp.removeAllListeners(this.config.roomId);
 
-//     clearInterval(self.monitorIntervalValue);
+//     clearInterval(self.presenceMonitorInterval);
 
 //     connection.xmpp.on(self.config.roomId, self.roomEventListener.bind(this));
 //     connection.xmpp.on('onError', self.onXMPPError.bind(this));
@@ -246,7 +246,7 @@ IrisRtcSession.prototype.onXMPPError = function(error) {
         // if (self.config.endSessionOnBrokenConnection) {
         //     self.end(); // Should we do this?
         // }
-        clearInterval(self.monitorIntervalValue);
+        clearInterval(self.presenceMonitorInterval);
     }
 }
 
@@ -445,9 +445,9 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
                             if (self.config.type != "pstn") {
                                 self.participants[response.jid].lastPresenceReceived = new Date();
 
-                                if (self.startPresenceMonitor) {
-                                    self.startPresenceMonitor = false;
-                                    self.presenceMonitor();
+                                if (!self.isPresenceMonitorStarted) {
+                                    self.isPresenceMonitorStarted = true;
+                                    self.presenceMonitorStart();
                                 }
                             }
 
@@ -537,7 +537,7 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
                     var closeSession = false;
                     if (self.participants && Object.keys(self.participants).length == 0) {
                         closeSession = true; // Close session if all participants left
-                        clearInterval(self.monitorIntervalValue);
+                        clearInterval(self.presenceMonitorInterval);
                     }
 
                     self.onParticipantLeft(response.roomId, response.jid, closeSession);
@@ -997,7 +997,7 @@ IrisRtcSession.prototype.end = function() {
 
     if (this.state != IrisRtcSession.NONE) {
 
-        clearInterval(this.monitorIntervalValue);
+        clearInterval(this.presenceMonitorInterval);
 
         // Send events
         this.sendEvent("SDK_SessionEnded", { message: "Session is closed" });
@@ -1051,6 +1051,7 @@ IrisRtcSession.prototype.end = function() {
         this.dataChannel = null;
         this.chatState = null;
         this.isPSTNOnHold = false;
+        this.isPresenceMonitorStarted = false;
 
         // Add the entry
         delete this; // Does this work?
@@ -3338,17 +3339,17 @@ function DTMFManager(self, audioTrack, peerconnection) {
  * Monitor presence messages from remote participants
  * @private
  */
-IrisRtcSession.prototype.presenceMonitor = function() {
+IrisRtcSession.prototype.presenceMonitorStart = function() {
     var self = this;
     try {
-        logger.log(logger.level.VERBOSE, "IrisRtcSession", 'presenceMonitor');
+        logger.log(logger.level.VERBOSE, "IrisRtcSession", 'presenceMonitorStart');
 
-        this.monitorIntervalValue = setInterval(function() {
-            self.checkPresenceElapsedTime();
+        this.presenceMonitorInterval = setInterval(function() {
+            self.presenceMonitor();
         }, rtcConfig.json.presMonitorInterval);
 
     } catch (error) {
-        logger.log(logger.level.ERROR, "IrisRtcSession", 'presenceMonitor :: Presence monitoring failed ', error);
+        logger.log(logger.level.ERROR, "IrisRtcSession", 'presenceMonitorStart :: Presence monitoring failed ', error);
     }
 };
 
@@ -3356,35 +3357,36 @@ IrisRtcSession.prototype.presenceMonitor = function() {
  * Check if last presence is received 30seconds ago, if so raise onSessionParticipantNotResponding event
  * @private
  */
-IrisRtcSession.prototype.checkPresenceElapsedTime = function() {
+IrisRtcSession.prototype.presenceMonitor = function() {
     var self = this;
 
     try {
         var currTime = new Date();
-        logger.log(logger.level.VERBOSE, "IrisRtcSession", 'checkPresenceElapsedTime');
+        logger.log(logger.level.VERBOSE, "IrisRtcSession", 'presenceMonitor');
 
         Object.keys(self.participants).forEach(function(jid) {
 
             var presenceReceivedTimeDiff = (currTime - self.participants[jid].lastPresenceReceived) / 1000;
 
             if (presenceReceivedTimeDiff > 30) {
-                logger.log(logger.level.VERBOSE, "IrisRtcSession", 'checkPresenceElapsedTime :: currentTime :: ' + currTime);
-                logger.log(logger.level.VERBOSE, "IrisRtcSession", 'checkPresenceElapsedTime :: lastPresenceReceived :: ' + self.participants[jid].lastPresenceReceived);
-                logger.log(logger.level.INFO, "IrisRtcSession", 'checkPresenceElapsedTime :: presenceReceivedTimeDiff :: ' + presenceReceivedTimeDiff);
+                logger.log(logger.level.VERBOSE, "IrisRtcSession", 'presenceMonitor :: currentTime :: ' + currTime);
+                logger.log(logger.level.VERBOSE, "IrisRtcSession", 'presenceMonitor :: lastPresenceReceived :: ' + self.participants[jid].lastPresenceReceived);
+                logger.log(logger.level.INFO, "IrisRtcSession", 'presenceMonitor :: last presence received for participant : ' + jid + " is " + presenceReceivedTimeDiff + " seconds ago");
 
                 self.sendEvent("SDK_ParticipantNotResponding", { "presenceReceivedTimeDiff": presenceReceivedTimeDiff, "jid": jid });
+
+                // Throw an event to client with the particpantJid who is not sending presence
+                self.onSessionParticipantNotResponding(self.config.roomId, jid);
 
                 //If participant is not responding remove him from participants list
                 //And if all participants are removed from list, clear monitor interval
                 delete self.participants[jid];
 
                 if (Object.keys(self.participants).length == 0) {
-                    logger.log(logger.level.INFO, "IrisRtcSession", 'clearing presence monitor interval');
-                    clearInterval(self.monitorIntervalValue);
+                    logger.log(logger.level.INFO, "IrisRtcSession", 'presenceMonitor :: clearing presence monitor interval');
+                    clearInterval(self.presenceMonitorInterval);
                 }
 
-                // Throw an event to client with the particpantJid who is not sending presence
-                self.onSessionParticipantNotResponding(self.config.roomId, jid);
             } else {
                 //
             }
