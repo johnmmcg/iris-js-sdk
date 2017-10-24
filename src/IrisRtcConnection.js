@@ -80,7 +80,7 @@ IrisRtcConnection.prototype.connect = function(irisToken, routingId, eventManage
     } else {
         logger.log(logger.level.INFO, "IrisRtcConnection",
             " connect :: routingId : " + routingId +
-            " irisToken : " + irisToken + " eventManagerUrl : " + eventManagerUrl);
+            " irisToken :  <irisToken> " + " eventManagerUrl: " + eventManagerUrl);
     }
 
     if (this.state == IrisRtcConnection.CONNECTED) {
@@ -185,7 +185,7 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
 
             // Callback when complete data is received
             response.on('end', function() {
-                logger.log(logger.level.INFO, "IrisRtcConnection",
+                logger.log(logger.level.VERBOSE, "IrisRtcConnection",
                     " _getWSTurnServerInfo :: Received server response  " + body);
 
                 // check if the status code is correct
@@ -270,7 +270,7 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
  */
 IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, tokenExpiry) {
 
-    logger.log(logger.level.INFO, "IrisRtcConnection",
+    logger.log(logger.level.VERBOSE, "IrisRtcConnection",
         " _connectXmpp :: Connecting to Xmpp server at  " + xmppServer +
         " with xmpptoken : " + xmpptoken + " & RoutingId : " + this.userID);
 
