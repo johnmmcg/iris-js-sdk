@@ -24,7 +24,7 @@ var WebRTC = require('./modules/RtcWebrtcAdapter.js');
 
 // States
 ["NONE", "CONNECTING", "OUTGOING", "INCOMING", "INPROGRESS", "CONNECTED",
-    "PRESENCE_NONE", "PRESENCE_JOINED", "PRESENCE_JOINED_MODERATOR"
+    "PRESENCE_NONE", "PRESENCE_JOINED", "PRESENCE_JOINED_MODERATOR", "STARTED"
 ].forEach(function each(state, index) {
     IrisRtcSession.prototype[state] = IrisRtcSession[state] = index;
 });
@@ -91,6 +91,8 @@ IrisRtcSession.prototype.create = function(config, connection) {
             " Create failed, incorrect parameters ");
         return errors.code.ERR_INCORRECT_PARAMETERS;
     }
+
+    this.state = IrisRtcSession.STARTED;
 
     // Assign self
     var self = this;
@@ -180,12 +182,12 @@ IrisRtcSession.prototype.create = function(config, connection) {
                 }
 
                 self.onCreated(response.eventdata.room_id);
-            },
+            }.bind(this),
             function(error) {
                 logger.log(logger.level.INFO, "IrisRtcSession", "StartMuc Failed with error ", error);
-                self.onError(error);
+                self.onError(self.config.roomId, error);
                 return;
-            });
+            }.bind(this));
     } else {
         // Send the presence directly
         self.config.rootNodeId = "00000"; //TBD
@@ -857,7 +859,7 @@ IrisRtcSession.prototype.sendRootEventWithRoomId = function(config) {
         },
         function(error) {
             logger.log(logger.level.INFO, "IrisRtcSession", "Root event failed with  ", error);
-            self.onError(error);
+            self.onError(self.config.roomId, error);
         });
 
 }
@@ -1020,9 +1022,6 @@ IrisRtcSession.prototype.end = function() {
             this.connection.xmpp.sendPresence(this.config);
         }
 
-
-        this.onSessionEnd(this.config.roomId);
-
         // Set the presence state
         this.presenceState = IrisRtcSession.PRESENCE_NONE;
 
@@ -1032,9 +1031,7 @@ IrisRtcSession.prototype.end = function() {
         // De-initialize
         if (this.config)
             this.config.traceId = null;
-        this.config = null;
         this.state = IrisRtcSession.NONE;
-        //this.config = null;
         this.connection = null;
         this.participants = {};
         if (this.peerconnection)
@@ -1052,9 +1049,12 @@ IrisRtcSession.prototype.end = function() {
         this.chatState = null;
         this.isPSTNOnHold = false;
         this.isPresenceMonitorStarted = false;
+        var roomId = this.config.roomId;
+        this.config = null;
+        this.onSessionEnd(roomId);
 
         // Add the entry
-        delete this; // Does this work?
+        // delete this; // Does this work?
     }
 };
 
@@ -3730,11 +3730,11 @@ IrisRtcSession.prototype.downgradeToChat = function(downgradeConfig, notificatio
             }
         } else {
             logger.log(logger.level.ERROR, "IrisRtcSession", "downgradeToChat :: Connection or config is missing ");
-            this.onError("Failed to downgrade to chat session ");
+            this.onError(this.config.roomId, "Failed to downgrade to chat session ");
         }
     } catch (error) {
         logger.log(logger.level.ERROR, "IrisRtcSession", "downgradeToChat :: Failed");
-        this.onError("Failed to downgrade to chat session " + error);
+        this.onError(this.config.roomId, "Failed to downgrade to chat session " + error);
     }
 }
 
@@ -3799,11 +3799,11 @@ IrisRtcSession.prototype.upgradeToVideo = function(stream, upgradeConfig, notifi
             }
         } else {
             logger.log(logger.level.ERROR, "IrisRtcSession", "upgradeToVideo :: Failed, check for connection and config");
-            this.onError("Failed to upgrade to video session ");
+            this.onError(this.config.roomId, "Failed to upgrade to video session ");
         }
     } catch (error) {
         logger.log(logger.level.ERROR, "IrisRtcSession", "upgradeToVideo :: Failed ", error);
-        this.onError("Failed to upgrade to video session " + error);
+        this.onError(this.config.roomId, "Failed to upgrade to video session " + error);
     }
 }
 
@@ -3861,11 +3861,11 @@ IrisRtcSession.prototype.upgradeToAudio = function(stream, upgradeConfig, notifi
             }
         } else {
             logger.log(logger.level.ERROR, "IrisRtcSession", "upgradeToAudio :: Failed, check for connection and config");
-            this.onError("Failed to upgrade to audio session");
+            this.onError(this.config.roomId, "Failed to upgrade to audio session");
         }
     } catch (error) {
         logger.log(logger.level.ERROR, "IrisRtcSession", "upgradeToAudio :: Failed ", error);
-        this.onError("Failed to upgrade to audio session " + error);
+        this.onError(this.config.roomId, "Failed to upgrade to audio session " + error);
     }
 }
 

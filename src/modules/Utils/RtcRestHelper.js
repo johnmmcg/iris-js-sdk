@@ -26,8 +26,6 @@ RtcRestHelper.EventManager = {
             logger.log(logger.level.INFO, "RtcRestHelper.EventManager",
                 " sendStartMucWithRoomId called ");
 
-            var self = this;
-
             var options = {
                 host: Rtcconfig.json.urls.eventManager,
                 path: '/v1/xmpp/startmuc/room/' + config.roomId,
@@ -85,8 +83,6 @@ RtcRestHelper.EventManager = {
 
                         // Get the the response json
                         var resJson = JSON.parse(body);
-                        self.rtcServer = resJson.eventdata.rtc_server;
-
                         successCallback(resJson);
                     }
                 });
@@ -126,7 +122,6 @@ RtcRestHelper.EventManager = {
         try {
             logger.log(logger.level.INFO, "RtcRestHelper.EventManager",
                 " sendRootEventWithRoomId called ");
-            var self = this;
 
             var options = {
                 host: Rtcconfig.json.urls.eventManager,
@@ -179,7 +174,6 @@ RtcRestHelper.EventManager = {
 
                         // Get the the response json
                         var resJson = JSON.parse(body);
-                        self.rtcServer = resJson.eventdata.rtc_server;
                         successCallback(resJson);
                     }
 
