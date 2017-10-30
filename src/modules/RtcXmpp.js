@@ -274,7 +274,7 @@ RtcXmpp.prototype.startPing = function startPing() {
                     " PingPong  failed : close the socket connection");
 
                 removeNetworkEventListener(self);
-                self.client.removeAllListeners();
+                // self.client.removeAllListeners();
                 clearTimeout(self.keepAliveTimer);
                 clearInterval(self.pingtimer);
                 clearTimeout(self.pingexpiredtimer);
@@ -284,7 +284,7 @@ RtcXmpp.prototype.startPing = function startPing() {
                 self.stopPresenceAlive("");
                 self.client = null;
                 self.isAlive = false;
-                self.emit('onError', "WS connection is broken");
+                // self.emit('onError', "WS connection is broken");
 
             }, Rtcconfig.json.pingInterval);
         }
