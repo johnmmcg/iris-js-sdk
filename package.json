@@ -44,7 +44,7 @@
     "scripts": {
         "build": "npm run browserify  && npm run uglifyjs",
         "browserify": "browserify -d ./src/IrisRtcSdk.js | exorcist iris-js-sdk.js.map > iris-js-sdk.js",
-        "uglifyjs": "uglifyjs iris-js-sdk.js -o iris-js-sdk.min.js --source-map iris-js-sdk.min.js.map",
+        "uglifyjs": "uglifyjs iris-js-sdk.js -o iris-js-sdk.min.js --source-map --output iris-js-sdk.min.js",
         "copy": "cp iris-js-sdk.min.js ./dist/iris-js-sdk.min.js"
     }
 }
