@@ -4,7 +4,7 @@
 
 // Import the modules
 var logger = require('./modules/RtcLogger.js');
-var errors = require('./modules/RtcErrors.js');
+var RtcErrors = require('./modules/RtcErrors.js').code;
 var rtcConfig = require('./modules/RtcConfig.js');
 var WebRTC = require('./modules/RtcWebrtcAdapter.js');
 var Resolutions = require('./modules/Utils/Resolutions.js');
@@ -38,6 +38,15 @@ IrisRtcStream.prototype.createStream = function(streamConfig) {
 
     // assign self
     var self = this;
+
+    if (!streamConfig || (!streamConfig.streamType && !streamConfig.constraints) ||
+        (!streamConfig.constraints && (streamConfig.streamType != "video" && streamConfig.streamType != "audio")) ||
+        (!streamConfig.streamType && (streamConfig.constraints && !streamConfig.constraints.video && !streamConfig.constraints.audio))) {
+        logger.log(logger.level.ERROR, "IrisRtcStream", "Inavlid parameters");
+        this.onStreamError(RtcErrors.ERR_INCORRECT_PARAMETERS, "Invalid parameters");
+        return;
+    }
+
     self.streamConfig = streamConfig;
     try {
         // Save the stream config in rtcConfig
@@ -46,6 +55,8 @@ IrisRtcStream.prototype.createStream = function(streamConfig) {
         // Get media constraints required to getUserMedia 
         var constraints = getMediaConstraints(streamConfig);
         if (!constraints) {
+            logger.log(logger.level.ERROR, "IrisRtcStream", "Inavlid parameters");
+            this.onStreamError(RtcErrors.ERR_INCORRECT_PARAMETERS, "Invalid parameters");
             return;
         }
 
@@ -80,10 +91,14 @@ IrisRtcStream.prototype.createStream = function(streamConfig) {
         }).catch(function(error) {
             logger.log(logger.level.ERROR, "IrisRtcStream",
                 " getUserMedia :: Error :: ", error);
+            self.onStreamError(RtcErrors.ERR_CREATE_STREAM_FAILED,
+                "Failed to create stream");
         });
     } catch (error) {
         logger.log(logger.level.ERROR, "IrisRtcStream",
             " Failed to create a local stream ", error);
+        self.onStreamError(RtcErrors.ERR_CREATE_STREAM_FAILED,
+            "Failed to create stream");
     }
 };
 
@@ -190,6 +205,14 @@ IrisRtcStream.prototype.onLocalStream = function(stream) {
 };
 
 /**
+ * This callback is called if stream creation is failed
+ * @public
+ */
+IrisRtcStream.prototype.onStreamError = function(errorCode, errorMessage) {
+
+}
+
+/**
  * @private
  */
 IrisRtcStream.prototype.onStreamEndedListener = function(stream) {
@@ -237,6 +260,7 @@ IrisRtcStream.prototype.stopMediaStream = function(mediaStream) {
     try {
         if (!mediaStream) {
             logger.log(logger.level.ERROR, "IrisRtcStream : mediaStream is null");
+            this.onStreamError(RtcErrors.ERR_API_PARAMETERS, "Media stream is null");
             return;
         }
 
