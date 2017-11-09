@@ -1,5 +1,10 @@
 # Iris RTC JavaScript SDK
 
+
+[![Build Status](https://travis-ci.org/iris-platform/iris-js-sdk.svg?branch=master)](https://travis-ci.org/iris-platform/iris-js-sdk)
+
+
+
 This document covers the APIs for Iris Rtc JavaScript SDK.
 
 Iris RTC JavaScript SDK provides a stack of simple API's to build an application to make audio video calls, multi user conferences and PSTN call.
