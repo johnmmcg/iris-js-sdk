@@ -10,7 +10,7 @@ module.exports = IrisRtcConnection;
 
 // Import the modules
 var logger = require('./modules/RtcLogger.js');
-var errors = require('./modules/RtcErrors.js');
+var RtcErrors = require('./modules/RtcErrors.js').code;
 var config = require('./modules/RtcConfig.js');
 var https = require('https');
 var xmpp = require('./modules/RtcXmpp.js');
@@ -76,6 +76,9 @@ IrisRtcConnection.prototype.connect = function(irisToken, routingId, eventManage
 
     if (!irisToken || !routingId) {
         logger.log(logger.level.ERROR, "IrisRtcConnection", "irisToken and routingId are required to create a connection");
+
+        this.onConnectionError(RtcErrors.ERR_INCORRECT_PARAMETERS, "Invalid parameters")
+
         return;
     } else {
         logger.log(logger.level.INFO, "IrisRtcConnection",
@@ -84,12 +87,12 @@ IrisRtcConnection.prototype.connect = function(irisToken, routingId, eventManage
     }
 
     if (this.state == IrisRtcConnection.CONNECTED) {
-        logger.log(logger.level.INFO, "IrisRtcConnection", "Iris Connection exits");
+        logger.log(logger.level.WARNING, "IrisRtcConnection", "Iris Connection exits");
         return;
     }
 
     if (this.state == IrisRtcConnection.CONNECTING) {
-        logger.log(logger.level.ERROR, "IrisRtcConnection", "Connecting... Please wait");
+        logger.log(logger.level.WARNING, "IrisRtcConnection", "Connecting... Please wait");
         return;
     }
 
@@ -151,8 +154,8 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
 
         this.state = IrisRtcConnection.DISCONNECTED;
         this.isAlive = false;
-        this.onError(" _getWSTurnServerInfo :: Incorrect parameters : eventManagerUrl  " + eventManagerUrl +
-            " config.json.urls.eventManager " + config.json.urls.eventManager);
+        this.onConnectionError(RtcErrors.ERR_INCORRECT_PARAMETERS, "Event Manager Url not found")
+
         return;
     }
 
@@ -194,7 +197,7 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
 
                     self.state = IrisRtcConnection.DISCONNECTED;
                     self.isAlive = false;
-                    self.onError("IrisRtcConnection :: _getWSTurnServerInfo :: Getting xmpp server details failed with status code : " +
+                    self.onConnectionError(RtcErrors.ERR_CREATE_CONNECTION_FAILED, "IrisRtcConnection :: _getWSTurnServerInfo :: Getting xmpp server details failed with status code : " +
                         response.statusCode + " & response : " + body);
                     return;
                 }
@@ -209,7 +212,7 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
 
                     self.state = IrisRtcConnection.DISCONNECTED;
                     self.isAlive = false;
-                    self.onError("IrisRtcConnection :: _getWSTurnServerInfo :: Getting xmpp server details failed as didnt receive all the parameters  ");
+                    self.onConnectionError(RtcErrors.ERR_CREATE_CONNECTION_FAILED, "IrisRtcConnection :: _getWSTurnServerInfo :: Getting xmpp server details failed as didnt receive all the parameters  ");
                     return;
                 }
 
@@ -249,7 +252,8 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
 
             self.state = IrisRtcConnection.DISCONNECTED;
             self.isAlive = false;
-            self.onError(e);
+            self.onConnectionError(RtcErrors.ERR_CREATE_CONNECTION_FAILED, "Failed to reach evm");
+
         });
 
         // Write json
@@ -261,7 +265,7 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
 
         self.state = IrisRtcConnection.DISCONNECTED;
         self.isAlive = false;
-        self.onError(e);
+        self.onConnectionError(RtcErrors.ERR_CREATE_CONNECTION_FAILED, "Failed to connect");
     }
 };
 
@@ -286,7 +290,7 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
 
         this.state = IrisRtcConnection.DISCONNECTED;
         this.isAlive = false;
-        this.onError("Incorrect parameters");
+        this.onConnectionError(RtcErrors.ERR_API_PARAMETERS, "Invalid parameters");
         return;
     }
 
@@ -332,7 +336,7 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
             self.sendEvent("SDK_IrisRtcConnectionError", e.toString());
             self.state = IrisRtcConnection.DISCONNECTED;
             self.isAlive = false;
-            self.onError(e);
+            this.onConnectionError(RtcErrors.ERR_API_PARAMETERS, e.toString());
         });
 
         // Add a listener to incoming to calls
@@ -369,14 +373,13 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
         tokenExpiry + "/token/" + this.xmpptoken; //+ "/traceid/" + this.traceId;
 
     try {
-
         // Call connect method
         this.xmpp.connect(xmppServer, path, this.userID, resourceId, this.traceId, this.token);
 
     } catch (error) {
         self.state = IrisRtcConnection.DISCONNECTED;
         self.isAlive = false;
-        self.onError(error);
+        self.onConnectionError(RtcErrors.ERR_CREATE_CONNECTION_FAILED, error.toString())
     }
 };
 
@@ -391,11 +394,19 @@ IrisRtcConnection.prototype.onOpen = function() {
 
 /**
  * Callback for websocket is disconnection
- * @public
+ * @private
  */
 IrisRtcConnection.prototype.onClose = function() {
     // this.onDisconnected();
 };
+
+/**
+ * Callback for websocket disconnection
+ * @public
+ */
+IrisRtcConnection.prototype.onDisconnected = function() {
+
+}
 
 /**
  * Called when websocket has a message
@@ -404,12 +415,14 @@ IrisRtcConnection.prototype.onClose = function() {
 IrisRtcConnection.prototype.onMessage = function(data, flags) {};
 
 /**
- * Called when websocket has a error
- * @private
+ * This callback is called if there are any errors while creating connection
+ * @param {integer} errorCode - Error code
+ * @param {string} errorMessage - Error message
+ * @public
  */
-IrisRtcConnection.prototype.onError = function(e) {
-    this.onConnectionFailed(e);
-};
+IrisRtcConnection.prototype.onConnectionError = function(errorCode, errorMessage) {
+
+}
 
 /**
  * Called when connection has an event

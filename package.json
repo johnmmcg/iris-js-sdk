@@ -29,13 +29,14 @@
     "devDependencies": {
         "browserify": "^14.1.0",
         "bufferutil": "^3.0.0",
-        "chai": "^3.2.0",
+        "chai": "^4.0.0",
         "chai-http": "^1.0.0",
         "cors": "2.7.1",
         "docdash": "^0.4.0",
         "exorcist": "0.4.0",
         "express": "^4.14.0",
-        "mocha": "^2.4.5",
+        "jsdom": "^11.3.0",
+        "mocha": "^4.0.0",
         "mongoreporter": "^0.2.1",
         "request": "^2.79.0",
         "uglify-es": "^3.0.0",
@@ -45,6 +46,7 @@
         "build": "npm run browserify  && npm run uglifyjs",
         "browserify": "browserify -d ./src/IrisRtcSdk.js | exorcist iris-js-sdk.js.map > iris-js-sdk.js",
         "uglifyjs": "uglifyjs iris-js-sdk.js -o iris-js-sdk.min.js --source-map --output iris-js-sdk.min.js",
+	"test": "mocha test/testCases --timeout 15000",
         "copy": "cp iris-js-sdk.min.js ./dist/iris-js-sdk.min.js"
     }
 }
