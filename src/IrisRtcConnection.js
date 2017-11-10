@@ -336,7 +336,7 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
             self.sendEvent("SDK_IrisRtcConnectionError", e.toString());
             self.state = IrisRtcConnection.DISCONNECTED;
             self.isAlive = false;
-            this.onConnectionError(RtcErrors.ERR_API_PARAMETERS, e.toString());
+            self.onConnectionError(RtcErrors.ERR_API_PARAMETERS, e.toString());
         });
 
         // Add a listener to incoming to calls
