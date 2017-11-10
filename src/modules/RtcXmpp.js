@@ -157,16 +157,23 @@ RtcXmpp.prototype.connect = function connect(server, path, jid, resourceId, trac
 
 
 RtcXmpp.prototype.updateOnlineOfflineStatus = function(event) {
-    logger.log(logger.level.INFO, "RtcXmpp",
+    logger.log(logger.level.VERBOSE, "RtcXmpp",
         " RtcXmpp :: updateOnlineOfflineStatus : " + event.type);
 
     var self = this;
 
     if (event.type == "online") {
 
+        logger.log(logger.level.INFO, "RtcXmpp",
+            " RtcXmpp :: updateOnlineOfflineStatus : " + event.type);
+
         // Not doing anything yet
 
     } else if (event.type == "offline") {
+
+        logger.log(logger.level.ERROR, "RtcXmpp",
+            " RtcXmpp :: updateOnlineOfflineStatus : " + event.type);
+
 
         clearTimeout(self.keepAliveTimer);
         clearInterval(self.pingtimer);
