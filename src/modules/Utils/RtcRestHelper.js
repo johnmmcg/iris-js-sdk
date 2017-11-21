@@ -37,6 +37,11 @@ RtcRestHelper.EventManager = {
                 }
             };
 
+            //For PSTN calls use "/v1.1/pstn/startmuc/room/" API
+            if (config.eventType == "pstncall") {
+                options.path = '/v1.1/pstn/startmuc/room/' + config.roomId;
+            }
+
             var userData = (config.userData && config.eventType != "groupchat") ? config.userData : "";
 
             logger.log(logger.level.VERBOSE, "RtcRestHelper.EventManager", "sendStartMucWithRoomId :: Ignore userData for groupchat calls");

@@ -1015,7 +1015,12 @@ RtcXmpp.prototype.sendSourceAdd = function sendSourceAdd(sdpDiffer, data) {
             initiator: data.to,
             responder: this.xmppJid.toString(),
             sid: this.sid
-        }).up();
+        })
+
+    // Check if new ssrcs are available to send source-add
+    var isNewSsrc = sdpDiffer.toJingle(add);
+
+    add = add.up();
 
     add = add.c('data', {
         'xmlns': "urn:xmpp:comcast:info",
@@ -1023,13 +1028,12 @@ RtcXmpp.prototype.sendSourceAdd = function sendSourceAdd(sdpDiffer, data) {
         'host': this.server
     }).up();
 
-    // get the xmpp element
-    sdpDiffer.toJingle(add);
+    if (isNewSsrc) {
+        this.index++;
 
-    this.index++;
-
-    // Send the session-initiate
-    this.client.send(add.tree());
+        // Send the source-add
+        this.client.send(add.tree());
+    }
 }
 
 RtcXmpp.prototype.sendSourceRemove = function sendSourceRemove(sdpDiffer, data) {

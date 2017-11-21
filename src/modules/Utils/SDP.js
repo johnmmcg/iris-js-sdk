@@ -78,18 +78,23 @@ SDP.prototype.getMediaSsrcMap = function() {
  * @returns {boolean} <tt>true</tt> if this SDP contains given SSRC.
  */
 SDP.prototype.containsSSRC = function(ssrc) {
-    /*var medias = this.getMediaSsrcMap();
-    Object.keys(medias).forEach(function(mediaindex){
-        var media = medias[mediaindex];
-        //logger.log("Check", channel, ssrc);
-        if(Object.keys(media.ssrcs).indexOf(ssrc) != -1){
+    var medias = this.getMediaSsrcMap();
+    var result = false;
+    Object.keys(medias).forEach(function(mediaindex) {
+
+        if (result)
             return true;
+
+        if (medias[mediaindex].ssrcs[ssrc]) {
+            result = true;
         }
     });
-    return false;*/
-    if (this.raw.indexOf(ssrc) != -1)
-        return true;
-    return false;
+    return result;
+
+
+    // if (this.raw.indexOf(ssrc) != -1)
+    //     return true;
+    // return false;
 };
 
 // remove iSAC and CN from SDP
@@ -539,6 +544,7 @@ SDP.prototype.fromJingle = function(jingle) {
 */
 SDP.prototype.addSources = function(jingle) {
 
+    var addSourceInfo = [];
     // Get the contents
     var contents = jingle.getChildren('content');
     var self = this;
@@ -580,15 +586,30 @@ SDP.prototype.addSources = function(jingle) {
             });
         });
 
-        // Go through the media lines
-        self.media.forEach(function(medialines, idx) {
-            if (!SDPUtil.find_lines(medialines, 'a=mid:' + name).length)
-                return;
-            // Let's remove the old ssrc
-            //self.media[idx] = self.media[idx].replace(/\na=ssrc:(.*?)\r/mg, '');
-            self.media[idx] += lines;
-        });
+
+        if (lines) {
+            // Go through the media lines
+            self.media.forEach(function(medialines, idx) {
+                if (!SDPUtil.find_lines(medialines, 'a=mid:' + name).length)
+                    return;
+
+                if (!addSourceInfo[idx])
+                    addSourceInfo[idx] = '';
+
+                addSourceInfo[idx] += lines;
+
+            });
+        }
+
     });
+
+
+    // Go through the media lines
+    addSourceInfo.forEach(function(medialines, idx) {
+        self.media[idx] += medialines;
+    });
+
+
     self.raw = self.session + self.media.join('');
 }
 

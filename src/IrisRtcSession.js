@@ -327,7 +327,7 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
                 if (response.jid == self.connection.myJid) {
 
                     logger.log(logger.level.INFO, "IrisRtcSession",
-                        " onPresence :: For my self : roomId : " + self.config.roomId);
+                        " onPresence :: For my self : roomId : " + self.config.roomId + " myJid : " + response.jid);
 
                     if (response.type == "join") {
                         if (self.presenceState == IrisRtcSession.PRESENCE_JOINED) {
@@ -684,11 +684,6 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
                     return;
                 }
 
-                self.sessionInitiateSdp.addSources(response.jingle);
-
-                response.sdp = self.sessionInitiateSdp.raw;
-
-
                 // Check the current state of peerconnection: TBD
                 logger.log(logger.level.INFO, "IrisRtcSession",
                     " Calling setRemoteDescription with  " + response.sdp +
@@ -696,17 +691,11 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
                 //var desc = new RTCSessionDescription({ "sdp": response.sdp, "type": "offer" });
 
                 // self.setReOffer(response);
-                // self.readSsrcs(response);
+                self.readSsrcs(response);
 
 
                 if (RtcBrowserType.isFirefox()) {
                     logger.log(logger.level.VERBOSE, "IrisRtcSession", "addSourcesQueue :: Call addSourceFF");
-                    // self.addSourceFF(response);
-
-                    // self.dataNew = response;
-
-                    // var localsdp_new = self.interop.toPlanB(self.peerconnection.localDescription);
-                    // var old_sdp = new SDP(localsdp_new.sdp);
 
                     self.addSourcesQueue.push(response, function(old_sdp) {
                         logger.log(logger.level.VERBOSE, "IrisRtcSession", "addSourcesQueue Done");
@@ -728,9 +717,13 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
                     });
                 } else {
 
+                    // self.sessionInitiateSdp.addSources(response.jingle);
+                    // response.sdp = self.sessionInitiateSdp.raw;
+                    // self.readSsrcs(response);
+
                     self.setReOffer(response);
+
                 }
-                self.readSsrcs(response);
 
                 // if (RtcBrowserType.isChrome() || (RtcBrowserType.isFirefox() && self.participants.length >= 2)) {
                 //     self.setReOffer(desc, response.from);
@@ -1862,15 +1855,17 @@ IrisRtcSession.prototype.setOffer = function(desc, from) {
     }
 
     if (RtcBrowserType.isFirefox() && self.config.useBridge) {
+        desc.sdp = firefoxFMTP(desc.sdp); //firefox
+
         desc = self.interop.toUnifiedPlan(desc);
         logger.log(logger.level.INFO, "IrisRtcSession",
-            " Answer created Firefox specific :: toUnifiedPlan ::" + desc.sdp);
+            " Offer converted to toUnifiedPlan for Firefox :: toUnifiedPlan ::" + desc.sdp);
     }
     // Call the peerconnection setRemoteDescription
     this.peerconnection.setRemoteDescription(desc,
         function() {
             logger.log(logger.level.INFO, "IrisRtcSession",
-                " setOffer Success ");
+                " setRemoteDescription Success ");
 
             // Create Answer now
             self.peerconnection.createAnswer(function(answerDesc) {
@@ -1973,11 +1968,12 @@ IrisRtcSession.prototype.setReOffer = function(data) {
     sdp.addSources(data.jingle);
     var desc = new RTCSessionDescription({ type: 'offer', sdp: sdp.raw });
 
+
     // Call the peerconnection setRemoteDescription
     this.peerconnection.setRemoteDescription(desc,
         function() {
             logger.log(logger.level.INFO, "IrisRtcSession",
-                " setReOffer Success ");
+                " setRemoteDescription Success ");
 
             // Create Answer now
             self.peerconnection.createAnswer(function(answerDesc) {
@@ -2037,6 +2033,8 @@ IrisRtcSession.prototype.addSourceFF = function(data, successCallback, queueCall
 
     logger.log(logger.level.VERBOSE, "IrisRtcSession", "addSourceFF");
 
+    logger.log(logger.level.INFO, "IrisRtcSession", "addSourceFF : \n" + this.peerconnection.remoteDescription.sdp)
+
     var localsdp_new = this.interop.toPlanB(this.peerconnection.localDescription);
     var old_sdp = new SDP(localsdp_new.sdp);
     var sdpnew = this.interop.toPlanB(this.peerconnection.remoteDescription);
@@ -2044,13 +2042,16 @@ IrisRtcSession.prototype.addSourceFF = function(data, successCallback, queueCall
 
     sdp.addSources(data.jingle);
     var desc = new RTCSessionDescription({ type: 'offer', sdp: sdp.raw });
+
+    logger.log(logger.level.INFO, "IrisRtcSession", "addSourceFF :: Before Settting :\n " + desc.sdp);
+
     desc = self.interop.toUnifiedPlan(desc);
 
     // Call the peerconnection setRemoteDescription
     this.peerconnection.setRemoteDescription(desc,
         function() {
             logger.log(logger.level.INFO, "IrisRtcSession",
-                " setReOffer Success ");
+                " setRemoteDescription Success ");
 
             // Create Answer now
             self.peerconnection.createAnswer(function(answerDesc) {
@@ -2070,19 +2071,6 @@ IrisRtcSession.prototype.addSourceFF = function(data, successCallback, queueCall
                         if (successCallback) {
                             successCallback(old_sdp);
                         }
-
-                        // var localsdp_new = self.interop.toPlanB(self.peerconnection.localDescription);
-                        // var new_sdp = new SDP(localsdp_new.sdp);
-                        // var sdpDiffer = new SDPDiffer(old_sdp, new_sdp);
-
-                        // var dataAdd = {
-                        //     "to": self.to,
-                        //     "rootNodeId": self.config.rootNodeId,
-                        //     "childNodeId": self.config.childNodeId,
-                        //     "traceId": self.config.traceId,
-                        //     "eventType": self.config.eventType
-                        // };
-                        // self.connection.xmpp.sendSourceAdd(sdpDiffer, dataAdd);
 
                     }, function(error) {
                         logger.log(logger.level.ERROR, "IrisRtcSession",
@@ -3262,6 +3250,14 @@ function removeCodec(orgsdp, codec) {
     };
     return internalFunc(orgsdp);
 }
+
+function firefoxFMTP(sdp) {
+    var updated_sdp;
+    updated_sdp = sdp.replace("a=fmtp:100 x-google-start-bitrate=800\r\n", "a=fmtp:100 x-google-start-bitrate=800 max-fs=12288\r\n");
+
+    return updated_sdp;
+}
+
 
 /**
  * Function to prefer codec from sdp
