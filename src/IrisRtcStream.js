@@ -47,6 +47,9 @@ IrisRtcStream.prototype.createStream = function(streamConfig) {
         return;
     }
 
+    logger.log(logger.level.INFO, "IrisRtcStream",
+        " createStream with streamConfig ", JSON.stringify(streamConfig));
+
     self.streamConfig = streamConfig;
     try {
         // Save the stream config in rtcConfig
