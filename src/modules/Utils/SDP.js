@@ -127,16 +127,17 @@ SDP.prototype.mangle = function() {
 
 // remove lines matching prefix from session section
 SDP.prototype.removeSessionLines = function(prefix) {
-        var self = this;
-        var lines = SDPUtil.find_lines(this.session, prefix);
-        lines.forEach(function(line) {
-            self.session = self.session.replace(line + '\r\n', '');
-        });
-        this.raw = this.session + this.media.join('');
-        return lines;
-    }
-    // remove lines matching prefix from a media section specified by mediaindex
-    // TODO: non-numeric mediaindex could match mid
+    var self = this;
+    var lines = SDPUtil.find_lines(this.session, prefix);
+    lines.forEach(function(line) {
+        self.session = self.session.replace(line + '\r\n', '');
+    });
+    this.raw = this.session + this.media.join('');
+    return lines;
+}
+
+// remove lines matching prefix from a media section specified by mediaindex
+// TODO: non-numeric mediaindex could match mid
 SDP.prototype.removeMediaLines = function(mediaindex, prefix) {
     var self = this;
     var lines = SDPUtil.find_lines(this.media[mediaindex], prefix);
@@ -572,7 +573,7 @@ SDP.prototype.addSources = function(jingle) {
         desc.getChildren("source", "urn:xmpp:jingle:apps:rtp:ssma:0").forEach(function(source) {
             var ssrc = source.attrs.ssrc;
             if (self.containsSSRC(ssrc)) {
-                logger.log(logger.level.INFO, "Source-add request for existing SSRC: " + ssrc);
+                logger.log(logger.level.INFO, "SDP.addSources", "Source-add request for existing SSRC: " + ssrc);
                 return;
             }
             source.getChildren('parameter').forEach(function(parameter) {

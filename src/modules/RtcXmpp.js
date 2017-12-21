@@ -1029,6 +1029,10 @@ RtcXmpp.prototype.sendSourceAdd = function sendSourceAdd(sdpDiffer, data) {
     }).up();
 
     if (isNewSsrc) {
+
+        logger.log(logger.level.INFO, "RtcXmpp",
+            " sendSourceAdd ");
+
         this.index++;
 
         // Send the source-add

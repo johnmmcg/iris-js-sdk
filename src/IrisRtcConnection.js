@@ -167,6 +167,11 @@ IrisRtcConnection.prototype._getWSTurnServerInfo = function(token, routingId, ev
         headers: { "Authorization": token }
     };
 
+    // Use anonymoususer api for anonymous login calls
+    if (config.json.useAnonymousLogin) {
+        options.path = "/v1.1/wsturnserver/anonymoususer/" + routingId;
+    }
+
     logger.log(logger.level.VERBOSE, "IrisRtcConnection",
         " _getWSTurnServerInfo :: Getting xmpp server details " +
         " with options " + JSON.stringify(options));
@@ -451,7 +456,7 @@ IrisRtcConnection.prototype.onConnected = function() {
 
 /**
  *  Called when websocket has a error
- * @public
+ * @private
  */
 IrisRtcConnection.prototype.onConnectionFailed = function(e) {
     // Same as onError
