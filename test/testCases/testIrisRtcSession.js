@@ -1104,28 +1104,28 @@ describe('IrisRtcSession.joinChatSession', () => {
 
     });
 
-    it('should throw error with no rtc server in notification payload and config', (done) => {
+    // it('should throw error with no rtc server in notification payload and config', (done) => {
 
-        var irisRtcSession = new IrisRtcSession();
-        var irisRtcConnection = new IrisRtcConnection();
-        irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+    //     var irisRtcSession = new IrisRtcSession();
+    //     var irisRtcConnection = new IrisRtcConnection();
+    //     irisRtcConnection.xmpp = { "Dummy": "Dummy" }
 
-        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
-            if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid notification payload") {
-                done();
-            }
-        }
+    //     irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+    //         if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
+    //             errorMessage == "Invalid notification payload") {
+    //             done();
+    //         }
+    //     }
 
-        irisRtcSession.joinChatSession({ "type": "chat" }, irisRtcConnection, {
-            "roomId": "roomId",
-            "roomtoken": "roomtoken",
-            "roomtokenexpirytime": "roomtokenexpirytime",
-            "routingId": "routingId",
-            "traceId": "traceId"
-        });
+    //     irisRtcSession.joinChatSession({ "type": "chat" }, irisRtcConnection, {
+    //         "roomId": "roomId",
+    //         "roomtoken": "roomtoken",
+    //         "roomtokenexpirytime": "roomtokenexpirytime",
+    //         "routingId": "routingId",
+    //         "traceId": "traceId"
+    //     });
 
-    });
+    // });
 
     it('should throw error with improper connection object', (done) => {
 

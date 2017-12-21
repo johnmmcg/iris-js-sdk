@@ -4096,7 +4096,7 @@ IrisRtcSession.prototype.joinChatSession = function(sessionConfig, connection, n
 
     } else if (!notificationPayload.roomId || !notificationPayload.traceId) {
         logger.log(logger.level.ERROR, "IrisRtcSession",
-            " RoomId, roomtoken and roomtokenexpirytime parameters are required");
+            " RoomId, traceId parameters are required");
 
         self.onSessionError(config.roomId, RtcErrors.ERR_INCORRECT_PARAMETERS,
             "Invalid notification payload");
