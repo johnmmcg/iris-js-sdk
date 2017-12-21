@@ -25,10 +25,11 @@ RtcConfig.json = {
     presMonitorInterval: 10000,
     reconnectInterval: 10000,
     statsInterval: 10000,
+    useAnonymousLogin: false,
     useBridge: true, // for p2p flow set this flag to false
     logLevel: 2, // 0: Error, 1: Warning, 2: Info, 3: Verbose
     channelLastN: "-1",
-    sdkVersion: '3.4.16'
+    sdkVersion: '3.4.19'
 }
 
 /**

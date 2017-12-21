@@ -32,7 +32,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   
   ```html
-  <script src="https://unpkg.com/iris-js-sdk@3.4.16/dist/iris-js-sdk.min.js"></script>
+  <script src="https://unpkg.com/iris-js-sdk@3.4.19/dist/iris-js-sdk.min.js"></script>
   ```
 
 
@@ -83,9 +83,11 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   urls                      json            (MANDATORY) JSON object with the eventManager urls as mentioned below
   urls.eventManager         string          (MANDATORY) "eventManagerUrl"
   urls.UEStatsServer        string          (MANDATORY) "StatsServerUrl"
+  useAnonymousLogin         boolean         (OPTIONAL)  true for anonymous calls
+  roomName                  string          (MANDATORY for ANONYMOUS)  a random string, its a mandatory for anonymous calls
   logLevel                  integer         (OPTIONAL)  Log level required by user
   name                      string          (OPTIONAL)  Name of the participant
-  publicId                  string          (OPTIONAL) Public Id of the participant
+  publicId                  string          (OPTIONAL)  Public Id of the participant
   ```
  
 * **Example**  <br />
@@ -927,7 +929,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   
   ```html
-  <script src="https://unpkg.com/iris-js-sdk@3.4.16/dist/iris-js-sdk.min.js"></script>
+  <script src="https://unpkg.com/iris-js-sdk@3.4.19/dist/iris-js-sdk.min.js"></script>
   ```
   
 ### Example for Using API's
@@ -972,7 +974,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
     // A boolean value
     // "true" - enables user to join an anonymous session 
     // "false" - Non-anonymous call user has to provide username and password to login
-    config.anonymous            =     true;
+    config.useAnonymousLogin    =     true;
     
     // Any alphanumeric string can be a roomName or session name to join anonymous session
     config.roomName             =     "room";
