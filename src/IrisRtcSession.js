@@ -67,9 +67,7 @@ function IrisRtcSession() {
     this.interop = new Interop();
     // Stats Init
     this.sdkStats = new rtcStats(this.config);
-
-    this.addSourcesQueue = async.queue(this.addSourceFF.bind(this), 1);
-    this.addSourcesQueue.pause();
+    this.modificationQueue = async.queue(this._processQueueTasks.bind(this), 1);
     this.isPresenceMonitorStarted = false;
     this.chatState = null;
 }
@@ -640,8 +638,21 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
                         "candidate": response.line
                     });
 
-                    // Addice candidate
-                    self.peerconnection.addIceCandidate(candidate);
+                    const workFunction = finishedCallback => {
+                        self.peerconnection.addIceCandidate(
+                            candidate,
+                            () => {
+                                logger.log(logger.level.INFO, "IrisRtcSession", 'addIceCandidate Done!');
+                            },
+                            error => {
+                                logger.log(logger.level.ERROR, "IrisRtcSession", 'addIceCandidate Failed', error);
+                            });
+
+                        finishedCallback();
+                    };
+
+                    self.modificationQueue.push(workFunction);
+
                 } catch (e) {
                     logger.log(logger.level.ERROR, "IrisRtcSession",
                         " error adding candidate  " + e);
@@ -743,26 +754,11 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
                 self.readSsrcs(response);
 
                 if (RtcBrowserType.isFirefox()) {
-                    logger.log(logger.level.VERBOSE, "IrisRtcSession", "addSourcesQueue :: Call addSourceFF");
-
-                    self.addSourcesQueue.push(response, function(old_sdp, new_sdp, answerDesc) {
-
-                        logger.log(logger.level.VERBOSE, "IrisRtcSession", "addSourcesQueue Done new_sdp : ", new_sdp);
-
-                        var sdpDiffer = new SDPDiffer(old_sdp, new_sdp);
-
-                        var dataAdd = {
-                            "to": self.to,
-                            "traceId": self.config.traceId,
-                        };
-                        logger.log(logger.level.VERBOSE, "IrisRtcSession", "addSourcesQueue Done dataAdd : " + dataAdd);
-
-                        self.connection.xmpp.sendSourceAdd(sdpDiffer, dataAdd);
-                    });
+                    //addsources for firefox
+                    self.setReOfferFirefox(response);
                 } else {
-
+                    //addsources for chrome
                     self.setReOffer(response);
-
                 }
 
             } else {
@@ -1309,7 +1305,6 @@ IrisRtcSession.prototype.onIceCandidate = function(event) {
  */
 IrisRtcSession.prototype.onIceConnectionStateChange = function(event) {
     if (this.peerconnection) {
-        this.updateAddSourcesQueue();
         var iceState = ""
         if (this.peerconnection.iceConnectionState) {
             logger.log(logger.level.INFO, "IrisRtcSession",
@@ -1376,7 +1371,6 @@ IrisRtcSession.prototype.onIceConnectionStateChange = function(event) {
  */
 IrisRtcSession.prototype.onSignalingStateChange = function(event) {
     if (this.peerconnection) {
-        this.updateAddSourcesQueue();
         logger.log(logger.level.INFO, "IrisRtcSession",
             " onSignalingStateChange " + this.peerconnection.signalingState);
 
@@ -1829,10 +1823,8 @@ IrisRtcSession.prototype.initWebRTC = function(response, type) {
             this.peerconnection.onicechange = this.onIceConnectionStateChange.bind(this);
             this.peerconnection.onaddstream = this.onAddStream.bind(this);
 
-            // ontrack for firefox testing
-            // this.peerconnection.ontrack = this.onRemoteStreamNew.bind(this);
-
             // this.peerconnection.ontrack = this.onAddTrack.bind(this);
+
         } catch (e) {
             logger.log(logger.level.INFO, "IrisRtcSession",
                 " Createpeerconnection error " + JSON.stringify(e));
@@ -1856,115 +1848,122 @@ IrisRtcSession.prototype.setOffer = function(desc, from) {
     var self = this;
     // Set constraints
     //var constraints = {};
+    const workFunction = finishedCallback => {
 
-    if (self.config.type == "video" || self.config.type == "audio") {
-        var modSDP = desc.sdp;
+        if (self.config.type == "video" || self.config.type == "audio") {
+            var modSDP = desc.sdp;
 
-        // modSDP = modSDP.replace("a=sendrecv\r\n", "a=recvonly\r\n");
-        // modSDP = modSDP.replace("a=sendrecv\r\n", "a=recvonly\r\n");
+            desc.sdp = modSDP;
 
-        desc.sdp = modSDP;
-
-        logger.log(logger.level.VERBOSE, "IrisRtcSession",
-            " Modified Offer \n" + desc.sdp);
-    }
-
-    if ((self.config.type == "video" || self.config.type == "audio") && self.config.useBridge == true) {
-        // Remove codecs not supported
-        if (self.config.videoCodec && self.config.videoCodec.toLowerCase() == "h264") {
-            //desc.sdp = removeCodec(desc.sdp, "VP8");
-            //desc.sdp = removeCodec(desc.sdp, "VP9");
-            desc.sdp = preferH264(desc.sdp);
+            logger.log(logger.level.VERBOSE, "IrisRtcSession",
+                " Modified Offer \n" + desc.sdp);
         }
 
-        // Preferring audio codecs
-        if (self.config.audioCodec && self.config.audioCodec.toLowerCase() == "isac") {
-            desc.sdp = preferISAC(desc.sdp);
-        }
-        //opus/48000/2
-        if (self.config.audioCodec && self.config.audioCodec.toLowerCase() == "opus") {
-            desc.sdp = preferOpus(desc.sdp);
-        }
+        if ((self.config.type == "video" || self.config.type == "audio") && self.config.useBridge == true) {
+            // Remove codecs not supported
+            if (self.config.videoCodec && self.config.videoCodec.toLowerCase() == "h264") {
+                //desc.sdp = removeCodec(desc.sdp, "VP8");
+                //desc.sdp = removeCodec(desc.sdp, "VP9");
+                desc.sdp = preferH264(desc.sdp);
+            }
 
-        logger.log(logger.level.INFO, "IrisRtcSession",
-            "Modified offer \n" + desc.sdp);
-    }
+            // Preferring audio codecs
+            if (self.config.audioCodec && self.config.audioCodec.toLowerCase() == "isac") {
+                desc.sdp = preferISAC(desc.sdp);
+            }
+            //opus/48000/2
+            if (self.config.audioCodec && self.config.audioCodec.toLowerCase() == "opus") {
+                desc.sdp = preferOpus(desc.sdp);
+            }
 
-    if (RtcBrowserType.isFirefox() && self.config.useBridge) {
-        desc.sdp = firefoxFMTP(desc.sdp); //firefox
-
-        desc = self.interop.toUnifiedPlan(desc);
-        logger.log(logger.level.INFO, "IrisRtcSession",
-            " Offer converted to toUnifiedPlan for Firefox :: toUnifiedPlan ::" + desc.sdp);
-    }
-    // Call the peerconnection setRemoteDescription
-    this.peerconnection.setRemoteDescription(desc,
-        function() {
             logger.log(logger.level.INFO, "IrisRtcSession",
-                " setRemoteDescription Success ");
+                "Modified offer \n" + desc.sdp);
+        }
 
-            // Create Answer now
-            self.peerconnection.createAnswer(function(answerDesc) {
-                    logger.log(logger.level.INFO, "IrisRtcSession",
-                        " Answer created " + answerDesc.sdp);
-                    if (RtcBrowserType.isFirefox() && self.config.useBridge) {
-                        var answer = self.interop.toPlanB(answerDesc);
-                        answerDesc = self.interop.toUnifiedPlan(answer);
-                    } else {
-                        var answer = answerDesc;
-                    }
+        if (RtcBrowserType.isFirefox() && self.config.useBridge) {
+            desc.sdp = firefoxFMTP(desc.sdp); //firefox
 
-                    //If it is p2p call send candidates after offer is set 
-                    //and answer is sent 
-                    if (!self.config.useBridge) {
-                        self.localAnswer = answerDesc;
-                        self.sendCandidates();
-                    }
+            desc = self.interop.toUnifiedPlan(desc);
+            logger.log(logger.level.INFO, "IrisRtcSession",
+                " Offer converted to toUnifiedPlan for Firefox :: toUnifiedPlan ::" + desc.sdp);
+        }
+        // Call the peerconnection setRemoteDescription
+        this.peerconnection.setRemoteDescription(desc,
+            function() {
+                logger.log(logger.level.INFO, "IrisRtcSession",
+                    " setRemoteDescription Success ");
 
-                    // Call set local description
-                    self.peerconnection.setLocalDescription(answerDesc, function() {
+                // Create Answer now
+                self.peerconnection.createAnswer(function(answerDesc) {
                         logger.log(logger.level.INFO, "IrisRtcSession",
-                            " setLocalDescription Success :: sdp " + self.peerconnection.localDescription.sdp);
-
-                        var localsdp_new = "";
+                            " Answer created " + answerDesc.sdp);
                         if (RtcBrowserType.isFirefox() && self.config.useBridge) {
-                            localsdp_new = self.interop.toPlanB(self.peerconnection.localDescription);
+                            var answer = self.interop.toPlanB(answerDesc);
+                            answerDesc = self.interop.toUnifiedPlan(answer);
                         } else {
-                            localsdp_new = self.peerconnection.localDescription
+                            var answer = answerDesc;
                         }
 
-                        // Send the answer
-                        var data = {
-                            "sdp": localsdp_new.sdp,
-                            "to": self.to,
-                            "traceId": self.config.traceId,
-                        };
+                        //If it is p2p call send candidates after offer is set 
+                        //and answer is sent 
+                        if (!self.config.useBridge) {
+                            self.localAnswer = answerDesc;
+                            self.sendCandidates();
+                        }
 
-                        self.localSdp = localsdp_new.sdp;
+                        // Call set local description
+                        self.peerconnection.setLocalDescription(answerDesc, function() {
+                            logger.log(logger.level.INFO, "IrisRtcSession",
+                                " setLocalDescription Success :: sdp " + self.peerconnection.localDescription.sdp);
 
-                        // Send session-accept
-                        self.connection.xmpp.sendSessionAccept(data);
-                        self.sendEvent("SDK_XMPPJingleSessionAcceptSent", { message: "Session-accept is sent" });
+                            var localsdp_new = "";
+                            if (RtcBrowserType.isFirefox() && self.config.useBridge) {
+                                localsdp_new = self.interop.toPlanB(self.peerconnection.localDescription);
+                            } else {
+                                localsdp_new = self.peerconnection.localDescription
+                            }
 
-                        self.sendEvent("SDK_XMPPJingleSessionAcceptSent", { message: "Session-accept is sent" });
+                            // Send the answer
+                            var data = {
+                                "sdp": localsdp_new.sdp,
+                                "to": self.to,
+                                "traceId": self.config.traceId,
+                            };
 
+                            self.localSdp = localsdp_new.sdp;
 
-                    }, function(error) {
+                            // Send session-accept
+                            self.connection.xmpp.sendSessionAccept(data);
+                            self.sendEvent("SDK_XMPPJingleSessionAcceptSent", { message: "Session-accept is sent" });
+
+                            self.sendEvent("SDK_XMPPJingleSessionAcceptSent", { message: "Session-accept is sent" });
+                            finishedCallback();
+
+                        }, function(error) {
+                            logger.log(logger.level.ERROR, "IrisRtcSession",
+                                " setLocalDescription Error " + error);
+                            finishedCallback();
+
+                        });
+                    },
+                    function(err) {
                         logger.log(logger.level.ERROR, "IrisRtcSession",
-                            " setLocalDescription Error " + error);
-                    });
-                },
-                function(err) {
-                    logger.log(logger.level.ERROR, "IrisRtcSession",
-                        " createAnswer Failure with error " + err);
-                },
-                self.pcConstraints
-            );
-        },
-        function(err) {
-            logger.log(logger.level.ERROR, "IrisRtcSession",
-                " setRemoteDescription Failure with error " + err);
-        });
+                            " createAnswer Failure with error " + err);
+                        finishedCallback();
+
+                    },
+                    self.pcConstraints
+                );
+            },
+            function(err) {
+                logger.log(logger.level.ERROR, "IrisRtcSession",
+                    " setRemoteDescription Failure with error " + err);
+                finishedCallback();
+
+            });
+    }
+
+    self.modificationQueue.push(workFunction);
 };
 
 /**
@@ -1977,168 +1976,165 @@ IrisRtcSession.prototype.setReOffer = function(data) {
 
     // Assign self
     var self = this;
-    // Set constraints
-    //var constraints = {};
+    const workFunction = finishedCallback => {
 
-    //    if (self.config.type == "video") {
-    //        var modSDP = desc.sdp;
-    //        //nija
-    //        // modSDP = modSDP.replace("a=sendrecv\r\n", "a=recvonly\r\n");
-    //        // modSDP = modSDP.replace("a=sendrecv\r\n", "a=recvonly\r\n");
-    //
-    //        desc.sdp = modSDP;
-    //
-    //        logger.log(logger.level.INFO, "IrisRtcSession",
-    //            " Updated Offer Recv" + desc.sdp);
-    //    }
-    //
-    //    if (rtcConfig.json.useBridge == true) {
-    //        // Remove codecs not supported
-    //        if (self.config.codec == "h264") {
-    //            //desc.sdp = removeCodec(desc.sdp, "VP8");
-    //            //desc.sdp = removeCodec(desc.sdp, "VP9");
-    //            desc.sdp = preferH264(desc.sdp);
-    //        }
-    //
-    //
-    //        logger.log(logger.level.INFO, "IrisRtcSession",
-    //            " Answer after updating codecs " + desc.sdp);
-    //    }
 
-    if (RtcBrowserType.isFirefox() && self.config.useBridge) {
-        this.addSourceFF(data);
-        return;
-    }
-    var old_sdp = new SDP(this.peerconnection.localDescription.sdp);
-    var sdp = new SDP(this.peerconnection.remoteDescription.sdp);
+        if (RtcBrowserType.isFirefox() && self.config.useBridge) {
+            this.setReOfferFirefox(data);
+            return;
+        }
+        var old_sdp = new SDP(this.peerconnection.localDescription.sdp);
+        var sdp = new SDP(this.peerconnection.remoteDescription.sdp);
 
-    sdp.addSources(data.jingle);
-    var desc = new RTCSessionDescription({ type: 'offer', sdp: sdp.raw });
+        sdp.addSources(data.jingle);
+        var desc = new RTCSessionDescription({ type: 'offer', sdp: sdp.raw });
 
-    // Call the peerconnection setRemoteDescription
-    this.peerconnection.setRemoteDescription(desc,
-        function() {
-            logger.log(logger.level.INFO, "IrisRtcSession",
-                " setRemoteDescription Success ");
+        // Call the peerconnection setRemoteDescription
+        this.peerconnection.setRemoteDescription(desc,
+            function() {
+                logger.log(logger.level.INFO, "IrisRtcSession",
+                    " setRemoteDescription Success ");
 
-            // Create Answer now
-            self.peerconnection.createAnswer(function(answerDesc) {
-                    logger.log(logger.level.INFO, "IrisRtcSession",
-                        " Answer created " + answerDesc.sdp);
-                    // Send the answer
-
-                    // Call set local description
-                    self.peerconnection.setLocalDescription(answerDesc, function() {
+                // Create Answer now
+                self.peerconnection.createAnswer(function(answerDesc) {
                         logger.log(logger.level.INFO, "IrisRtcSession",
-                            " setLocalDescription Success ");
+                            " Answer created " + answerDesc.sdp);
+                        // Send the answer
 
-                        var new_sdp = new SDP(self.peerconnection.localDescription.sdp);
-                        var sdpDiffer = new SDPDiffer(old_sdp, new_sdp);
+                        // Call set local description
+                        self.peerconnection.setLocalDescription(answerDesc, function() {
+                            logger.log(logger.level.INFO, "IrisRtcSession",
+                                " setLocalDescription Success ");
 
-                        var dataAdd = {
-                            "to": self.to,
-                            "traceId": self.config.traceId,
-                        };
-                        self.connection.xmpp.sendSourceAdd(sdpDiffer, dataAdd);
+                            var new_sdp = new SDP(self.peerconnection.localDescription.sdp);
+                            var sdpDiffer = new SDPDiffer(old_sdp, new_sdp);
 
-                    }, function(error) {
+                            var dataAdd = {
+                                "to": self.to,
+                                "traceId": self.config.traceId,
+                            };
+                            self.connection.xmpp.sendSourceAdd(sdpDiffer, dataAdd);
+                            finishedCallback();
+
+                        }, function(error) {
+                            logger.log(logger.level.ERROR, "IrisRtcSession",
+                                " setLocalDescription Error " + error);
+                            finishedCallback();
+
+                        });
+                    },
+                    function(err) {
                         logger.log(logger.level.ERROR, "IrisRtcSession",
-                            " setLocalDescription Error " + error);
-                    });
+                            " createAnswer Failure with error " + err);
+                        finishedCallback();
 
+                    }, self.pcConstraints
+                );
+            },
+            function(err) {
+                logger.log(logger.level.ERROR, "IrisRtcSession",
+                    " setRemoteDescription Failure with error " + err);
+                finishedCallback();
 
-                },
-                function(err) {
-                    logger.log(logger.level.ERROR, "IrisRtcSession",
-                        " createAnswer Failure with error " + err);
-                }, self.pcConstraints
-            );
-        },
-        function(err) {
-            logger.log(logger.level.ERROR, "IrisRtcSession",
-                " setRemoteDescription Failure with error " + err);
-        });
+            });
+
+    }
+    self.modificationQueue.push(workFunction);
 };
 
 
 /**
  * @private
  */
-IrisRtcSession.prototype.addSourceFF = function(data, successCallback, queueCallback) {
+IrisRtcSession.prototype.setReOfferFirefox = function(data) {
     var self = this;
 
-    // data = self.dataNew;
 
-    if (!(this.peerconnection.signalingState == 'stable' &&
-            this.peerconnection.iceConnectionState == 'connected')) {
-        logger.log(logger.level.VERBOSE, "IrisRtcSession", "Too early to send updates");
-        return;
-    }
+    const workFunction = finishedCallback => {
 
-    logger.log(logger.level.VERBOSE, "IrisRtcSession", "addSourceFF");
+        if (!(this.peerconnection.signalingState == 'stable' &&
+                this.peerconnection.iceConnectionState == 'connected')) {
+            logger.log(logger.level.VERBOSE, "IrisRtcSession", "Too early to send updates");
+            return;
+        }
 
-    logger.log(logger.level.INFO, "IrisRtcSession", "addSourceFF : \n" + this.peerconnection.remoteDescription.sdp)
+        logger.log(logger.level.VERBOSE, "IrisRtcSession", "setReOfferFirefox");
 
-    var localsdp_new = this.interop.toPlanB(this.peerconnection.localDescription);
-    var old_sdp = new SDP(localsdp_new.sdp);
-    var sdpnew = this.interop.toPlanB(this.peerconnection.remoteDescription);
-    var sdp = new SDP(sdpnew.sdp);
+        logger.log(logger.level.INFO, "IrisRtcSession", "setReOfferFirefox : \n" + this.peerconnection.remoteDescription.sdp)
 
-    sdp.addSources(data.jingle);
-    var desc = new RTCSessionDescription({ type: 'offer', sdp: sdp.raw });
+        var localsdp_new = this.interop.toPlanB(this.peerconnection.localDescription);
+        var old_sdp = new SDP(localsdp_new.sdp);
+        var sdpnew = this.interop.toPlanB(this.peerconnection.remoteDescription);
+        var sdp = new SDP(sdpnew.sdp);
 
-    logger.log(logger.level.INFO, "IrisRtcSession", "addSourceFF :: Before Settting :\n " + desc.sdp);
+        sdp.addSources(data.jingle);
+        var desc = new RTCSessionDescription({ type: 'offer', sdp: sdp.raw });
 
-    desc = self.interop.toUnifiedPlan(desc);
+        logger.log(logger.level.INFO, "IrisRtcSession", "setReOfferFirefox :: Before Settting :\n " + desc.sdp);
 
-    // self.removeStream(self.localStream);
-    // self.addStream(self.localStream);
+        desc = self.interop.toUnifiedPlan(desc);
 
-    // Call the peerconnection setRemoteDescription
-    this.peerconnection.setRemoteDescription(desc,
-        function() {
-            logger.log(logger.level.INFO, "IrisRtcSession",
-                " setRemoteDescription Success ");
+        // Call the peerconnection setRemoteDescription
+        this.peerconnection.setRemoteDescription(desc,
+            function() {
+                logger.log(logger.level.INFO, "IrisRtcSession",
+                    " setRemoteDescription Success ");
 
-            // Create Answer now
-            self.peerconnection.createAnswer(function(answerDesc) {
-                    logger.log(logger.level.INFO, "IrisRtcSession",
-                        " Answer created " + answerDesc.sdp);
-                    self.localSdp = answerDesc.sdp;
-
-                    answerDesc = self.interop.toPlanB(answerDesc);
-
-                    answerDesc = self.interop.toUnifiedPlan(answerDesc);
-
-                    // Call set local description
-                    self.peerconnection.setLocalDescription(answerDesc, function() {
+                // Create Answer now
+                self.peerconnection.createAnswer(function(answerDesc) {
                         logger.log(logger.level.INFO, "IrisRtcSession",
-                            " setLocalDescription Success sdp " + self.peerconnection.localDescription.sdp);
+                            " Answer created " + answerDesc.sdp);
+                        self.localSdp = answerDesc.sdp;
 
-                        if (successCallback) {
+                        answerDesc = self.interop.toPlanB(answerDesc);
+
+                        answerDesc = self.interop.toUnifiedPlan(answerDesc);
+
+                        // Call set local description
+                        self.peerconnection.setLocalDescription(answerDesc, function() {
+                            logger.log(logger.level.INFO, "IrisRtcSession",
+                                " setLocalDescription Success sdp " + self.peerconnection.localDescription.sdp);
+
                             var localsdp_new = self.interop.toPlanB(self.peerconnection.localDescription);
                             var new_sdp = new SDP(localsdp_new.sdp);
-                            successCallback(old_sdp, new_sdp, answerDesc);
-                        }
 
-                    }, function(error) {
+
+                            var sdpDiffer = new SDPDiffer(old_sdp, new_sdp);
+
+                            var dataAdd = {
+                                "to": self.to,
+                                "traceId": self.config.traceId,
+                            };
+
+                            self.connection.xmpp.sendSourceAdd(sdpDiffer, dataAdd);
+                            finishedCallback();
+
+                        }, function(error) {
+                            logger.log(logger.level.ERROR, "IrisRtcSession",
+                                " setLocalDescription Error " + error);
+
+                            finishedCallback();
+
+                        });
+                    },
+                    function(err) {
                         logger.log(logger.level.ERROR, "IrisRtcSession",
-                            " setLocalDescription Error " + error);
-                        queueCallback();
-                    });
-                },
-                function(err) {
-                    logger.log(logger.level.ERROR, "IrisRtcSession",
-                        " createAnswer Failure with error " + err);
-                    queueCallback();
-                }, self.pcConstraints
-            );
-        },
-        function(err) {
-            logger.log(logger.level.ERROR, "IrisRtcSession",
-                " setRemoteDescription Failure with error " + err);
-            queueCallback();
-        });
+                            " createAnswer Failure with error " + err);
+
+                        finishedCallback();
+
+                    }, self.pcConstraints
+                );
+            },
+            function(err) {
+                logger.log(logger.level.ERROR, "IrisRtcSession",
+                    " setRemoteDescription Failure with error " + err);
+                finishedCallback();
+
+            });
+    }
+
+    self.modificationQueue.push(workFunction);
 };
 
 /**
@@ -2296,6 +2292,7 @@ IrisRtcSession.prototype.createOffer = function(type) {
 IrisRtcSession.prototype.sendSourceAdd = function() {
     var self = this;
     try {
+
         if (!self.peerconnection.localDescription.sdp || !self.peerconnection.remoteDescription.sdp) {
             return;
         }
@@ -2416,20 +2413,9 @@ IrisRtcSession.prototype.sendSourceRemove = function() {
 /**
  * @private
  */
-IrisRtcSession.prototype.updateAddSourcesQueue = function() {
-    logger.log(logger.level.INFO, "IrisRtcSession", "updateAddSourcesQueue called ");
-
-    var signalingState = this.peerconnection.signalingState;
-    var iceConnectionState = this.peerconnection.iceConnectionState;
-    if (signalingState === 'stable' && iceConnectionState === 'connected') {
-        logger.log(logger.level.INFO, "IrisRtcSession", "updateAddSourcesQueue :: Resume");
-        this.addSourcesQueue.resume();
-    } else {
-        logger.log(logger.level.INFO, "IrisRtcSession", "updateAddSourcesQueue :: Pause ");
-        this.addSourcesQueue.pause();
-    }
-};
-
+IrisRtcSession.prototype._processQueueTasks = function(task, finishedCallback) {
+    task(finishedCallback);
+}
 
 /**
  * Add Stream to webrtc based on the call
@@ -2458,8 +2444,6 @@ IrisRtcSession.prototype.addStream = function(localStream) {
             logger.log(logger.level.ERROR, "IrisRtcSession", " Peerconnection is null !!, Failed to add stream ");
         }
 
-        // FOR firefox add Tracks instead of stream
-
         // var videoStream = "";
         // var audioStream = "";
 
@@ -2471,10 +2455,8 @@ IrisRtcSession.prototype.addStream = function(localStream) {
 
         //     if (track.kind == "video") {
         //         self.videoSender = self.peerconnection.addTrack(track, videoStream);
-        //         console.log("Video Sender :: ", self.videoSender);
         //     } else {
         //         self.audioSender = self.peerconnection.addTrack(track, audioStream);
-        //         console.log("Audio Sender :: ", self.audioSender);
         //     }
 
         //     logger.log(logger.level.VERBOSE, "IrisRtcSession", "Stream is successfully added to peerconnection ", track);
@@ -2498,21 +2480,20 @@ IrisRtcSession.prototype.removeStream = function(localStream) {
     try {
 
 
-        if (self.peerconnection) {
-            self.peerconnection.removeTrack(self.videoSender);
-            self.peerconnection.removeTrack(self.audioSender)
-        }
-
-
-        // if (localStream && this.peerconnection) {
-        //     self.localStream = localStream;
-        //     if (this.peerconnection.removeStream) {
-        //         this.peerconnection.removeStream(localStream);
-        //     }
-        // } else {
-        //     logger.log(logger.level.ERROR, "IrisRtcSession",
-        //         " localStream or Peerconnection is null !! ");
+        // if (self.peerconnection) {
+        //     self.peerconnection.removeTrack(self.videoSender);
+        //     self.peerconnection.removeTrack(self.audioSender)
         // }
+
+        if (localStream && this.peerconnection) {
+            self.localStream = localStream;
+            if (this.peerconnection.removeStream) {
+                this.peerconnection.removeStream(localStream);
+            }
+        } else {
+            logger.log(logger.level.ERROR, "IrisRtcSession",
+                " localStream or Peerconnection is null !! ");
+        }
 
     } catch (error) {
         logger.log(logger.level.ERROR, "IrisRtcSession",
@@ -3357,18 +3338,18 @@ function removeCodec(orgsdp, codec) {
 }
 
 function firefoxFMTP(sdp) {
-    var updated_sdp = sdp;
+    var updated_sdp;
 
     // updated_sdp = sdp.replace("a=fmtp:100 x-google-start-bitrate=800\r\n",
     //     "a=fmtp:100 x-google-start-bitrate=800 max-fs=12288\r\n");
 
-    // updated_sdp = sdp.replace("a=fmtp:100 x-google-start-bitrate=800\r\n",
-    //    "a=fmtp:100 x-google-start-bitrate=800 max-fs=12288\r\n " +
-    //    "a=fmtp:107 profile-level-id=42e01f;level-asymmetry-allowed=1;packetization-mode=1\r\n");
+    updated_sdp = sdp.replace("a=fmtp:100 x-google-start-bitrate=800\r\n",
+        "a=fmtp:100 x-google-start-bitrate=800 max-fs=12288\r\n " +
+        "a=fmtp:107 profile-level-id=42e01f;level-asymmetry-allowed=1;packetization-mode=1\r\n");
 
-    //updated_sdp = updated_sdp.replace("a=extmap:3 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time",
-    //    "a=extmap:3 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n" +
-    //   "a=extmap:4 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id\r\n");
+    updated_sdp = updated_sdp.replace("a=extmap:3 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time",
+        "a=extmap:3 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\n" +
+        "a=extmap:4 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id\r\n");
 
 
     return updated_sdp;
@@ -4488,7 +4469,7 @@ IrisRtcSession.prototype.onError = function(roomId, error) {
  * Callback to inform about the session relarted errors
  * @param {string} roomId - Room ID
  * @param {string} errorCode - Error code
- * @private {string} errorMessage - Error message
+ * @param {string} errorMessage - Error message
  * @public
  */
 IrisRtcSession.prototype.onSessionError = function(roomId, errorCode, errorMessage) {
