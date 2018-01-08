@@ -571,22 +571,44 @@ SDP.prototype.addSources = function(jingle) {
         });
 
         desc.getChildren("source", "urn:xmpp:jingle:apps:rtp:ssma:0").forEach(function(source) {
+
             var ssrc = source.attrs.ssrc;
             if (self.containsSSRC(ssrc)) {
                 logger.log(logger.level.INFO, "SDP.addSources", "Source-add request for existing SSRC: " + ssrc);
                 return;
             }
+            var msidCount = 0;
             source.getChildren('parameter').forEach(function(parameter) {
-                var name = parameter.attrs.name;
-                var value = parameter.attrs.value;
-                value = SDPUtil.filter_special_chars(value);
-                lines += 'a=ssrc:' + ssrc + ' ' + name;
-                if (value && value.length)
-                    lines += ':' + value;
-                lines += '\r\n';
+                if (parameter.attrs.name == "msid") {
+                    msidCount = msidCount + 1;
+                }
             });
-        });
 
+            if (msidCount == 0) {
+                logger.log(logger.level.INFO, "SDP.addSources", "Remove ssrcs without msid");
+                //Don't set ssrc without msid
+            } else {
+                source.getChildren('parameter').forEach(function(parameter) {
+                    var name = parameter.attrs.name;
+                    var value = parameter.attrs.value;
+                    value = SDPUtil.filter_special_chars(value);
+                    lines += 'a=ssrc:' + ssrc + ' ' + name;
+                    if (value && value.length)
+                        lines += ':' + value;
+                    lines += '\r\n';
+                });
+            }
+
+            // source.getChildren('parameter').forEach(function(parameter) {
+            //     var name = parameter.attrs.name;
+            //     var value = parameter.attrs.value;
+            //     value = SDPUtil.filter_special_chars(value);
+            //     lines += 'a=ssrc:' + ssrc + ' ' + name;
+            //     if (value && value.length)
+            //         lines += ':' + value;
+            //     lines += '\r\n';
+            // });
+        });
 
         if (lines) {
             // Go through the media lines
@@ -604,12 +626,10 @@ SDP.prototype.addSources = function(jingle) {
 
     });
 
-
     // Go through the media lines
     addSourceInfo.forEach(function(medialines, idx) {
         self.media[idx] += medialines;
     });
-
 
     self.raw = self.session + self.media.join('');
 }
@@ -904,15 +924,43 @@ SDP.prototype.jingle2media = function(content) {
 
     desc.getChildren("source", "urn:xmpp:jingle:apps:rtp:ssma:0").forEach(function(source) {
         var ssrc = source.attrs.ssrc;
+
+
+        var msidCount = 0;
         source.getChildren('parameter').forEach(function(parameter) {
-            var name = parameter.attrs.name;
-            var value = parameter.attrs.value;
-            value = SDPUtil.filter_special_chars(value);
-            media += 'a=ssrc:' + ssrc + ' ' + name;
-            if (value && value.length)
-                media += ':' + value;
-            media += '\r\n';
+            if (parameter.attrs.name == "msid") {
+                msidCount = msidCount + 1;
+            }
         });
+
+        if (msidCount == 0) {
+
+            logger.log(logger.level.INFO, "SDP.sessionInitiate", "Remove ssrc without msid");
+
+            //Don't set ssrc without msid
+        } else {
+            source.getChildren('parameter').forEach(function(parameter) {
+                var name = parameter.attrs.name;
+                var value = parameter.attrs.value;
+                value = SDPUtil.filter_special_chars(value);
+                media += 'a=ssrc:' + ssrc + ' ' + name;
+                if (value && value.length)
+                    media += ':' + value;
+                media += '\r\n';
+            });
+        }
+
+        // source.getChildren('parameter').forEach(function(parameter) {
+        //     var name = parameter.attrs.name;
+        //     var value = parameter.attrs.value;
+        //     value = SDPUtil.filter_special_chars(value);
+        //     media += 'a=ssrc:' + ssrc + ' ' + name;
+        //     if (value && value.length)
+        //         media += ':' + value;
+        //     media += '\r\n';
+        // });
+
+
     });
 
     return media;

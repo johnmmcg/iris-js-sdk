@@ -393,6 +393,11 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
         if (elem == 0) {
             // this.startPing();
         }
+
+        if (this.prestimer.length == 0 && this.disconnectWS) {
+            this.disconnect();
+        }
+
     } else {
         // Join the room by sending the presence
         var pres = new xmppClient.Element(
@@ -442,7 +447,8 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
             'host': this.server,
             'roomtoken': config.roomtoken,
             'roomtokenexpirytime': config.roomtokenexpirytime,
-            'userdata': config.userData
+            'userdata': config.userData,
+            'maxparticipants': config.maxParticipants
         }).up();
 
         if (this.client)
@@ -793,7 +799,9 @@ RtcXmpp.prototype.sendAllocate = function sendAllocate(data) {
         'host': this.server,
         'roomtoken': data.roomtoken,
         'roomtokenexpirytime': data.roomtokenexpirytime,
-        'userdata': data.userData
+        'userdata': data.userData,
+        'maxparticipants': data.maxParticipants
+
     }
 
     if (data.sessionType == "upgrade" || data.sessionType == "downgrade") {
@@ -1552,31 +1560,46 @@ RtcXmpp.prototype._onPrivateIQ = function _onPrivateIQ(stanza) {
             return;
         }
 
-        var incomingConfig = {
-            "roomId": data.attrs.roomid,
-            "action": data.attrs.action,
-            "routingId": data.attrs.routingid,
-            "rtcserver": data.attrs.rtcserver,
-            "traceId": data.attrs.traceid,
-            "userdata": data.attrs.userdata,
-            "roomtoken": data.attrs.roomtoken,
-            "roomtokenexpirytime": data.attrs.roomtokenexpirytime,
-            "type": data.attrs.type
-        };
-
         if (data.attrs.type) {
 
-            var roomIdListenerCount = self.listenerCount(incomingConfig.roomId);
+            if (data.attrs.type == "disconnect") {
 
-            if ((incomingConfig.type == 'notify') ||
-                ((incomingConfig.type == 'cancel' || incomingConfig.type == 'chat') && roomIdListenerCount == 0)) {
-                self.emit('onIncoming', incomingConfig);
+                logger.log(logger.level.INFO, "RtcXmpp._onPrivateIQ", "Disconnect WebSocket connection")
+
+                if (self.prestimer.length == 0) {
+                    //end connection
+                    self.disconnect();
+                } else {
+                    self.disconnectWS = true;
+                }
+            } else if (data.attrs.type == 'notify' || data.attrs.type == 'cancel' || data.attrs.type == 'chat') {
+
+                var incomingConfig = {
+                    "roomId": data.attrs.roomid,
+                    "action": data.attrs.action,
+                    "routingId": data.attrs.routingid,
+                    "rtcserver": data.attrs.rtcserver,
+                    "traceId": data.attrs.traceid,
+                    "userdata": data.attrs.userdata,
+                    "roomtoken": data.attrs.roomtoken,
+                    "roomtokenexpirytime": data.attrs.roomtokenexpirytime,
+                    "type": data.attrs.type
+                };
+
+                var roomIdListenerCount = self.listenerCount(incomingConfig.roomId);
+
+                if ((incomingConfig.type == 'notify') ||
+                    ((incomingConfig.type == 'cancel' || incomingConfig.type == 'chat') && roomIdListenerCount == 0)) {
+                    self.emit('onIncoming', incomingConfig);
+                } else {
+                    logger.log(logger.level.INFO, "RtcXmpp._onPrivateIQ", "Notification type is " + incomingConfig.type)
+                }
             } else {
-                logger.log(logger.level.INFO, "RtcXmpp._onPrivateIQ", "Notification type is " + incomingConfig.type)
+                logger.log(logger.level.INFO, "RtcXmpp._onPrivateIQ", "Private IQ type is " + data.attrs.type)
             }
+
         } else {
-            // send the incoming message
-            self.emit('onIncoming', incomingConfig);
+            logger.log(logger.level.INFO, "RtcXmpp._onPrivateIQ", "Private IQ is received")
         }
 
     } else {
@@ -1654,19 +1677,19 @@ RtcXmpp.prototype._onChat = function(stanza) {
             " _onChat : message: " + message);
         if (message) {
             //Handle mute/unmute of the particpant
-            // if (id && id == "mute") {
-            if (message == 'mute') {
-                self.emit(roomId, 'onVideoMute', { "mute": true, "roomId": roomId });
-            } else if (message == 'unmute') {
-                self.emit(roomId, 'onVideoMute', { "mute": false, "roomId": roomId });
-            } else if (message == 'audioMute') {
-                self.emit(roomId, 'onAudioMute', { "mute": true, "roomId": roomId });
-            } else if (message == 'audioUnmute') {
-                self.emit(roomId, 'onAudioMute', { "mute": false, "roomId": roomId });
+            if (id && id == "mute") {
+                if (message == 'mute') {
+                    self.emit(roomId, 'onVideoMute', { "mute": true, "roomId": roomId });
+                } else if (message == 'unmute') {
+                    self.emit(roomId, 'onVideoMute', { "mute": false, "roomId": roomId });
+                } else if (message == 'audioMute') {
+                    self.emit(roomId, 'onAudioMute', { "mute": true, "roomId": roomId });
+                } else if (message == 'audioUnmute') {
+                    self.emit(roomId, 'onAudioMute', { "mute": false, "roomId": roomId });
+                }
+            } else {
+                // For handling chat messages
             }
-            // } else {
-            // For handling chat messages
-            // }
         }
     }
 }

@@ -29,7 +29,7 @@ RtcConfig.json = {
     useBridge: true, // for p2p flow set this flag to false
     logLevel: 2, // 0: Error, 1: Warning, 2: Info, 3: Verbose
     channelLastN: "-1",
-    sdkVersion: '3.4.19'
+    sdkVersion: '3.4.20'
 }
 
 /**
