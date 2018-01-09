@@ -1670,6 +1670,8 @@ RtcXmpp.prototype._onChat = function(stanza) {
     // var to = stanza.attrs.to.split('/')[0];
     var to = stanza.attrs.to;
     var id = stanza.attrs.id;
+    var data = stanza.getChild('data');
+    roomId = data.attrs.roomid;
     var body = stanza.getChild('body');
     if (body) {
         var message = body.getText();
@@ -1923,6 +1925,7 @@ RtcXmpp.prototype.sendVideoMute = function(to, isMute, config) {
         'xmlns': "urn:xmpp:comcast:info",
         'traceid': config.traceId,
         'host': this.server,
+        'roomid': config.roomId
     }).up();
 
     // send the mute/unmute private message
@@ -1946,6 +1949,7 @@ RtcXmpp.prototype.sendAudioMute = function(to, isMute, config) {
         'xmlns': "urn:xmpp:comcast:info",
         'traceid': config.traceId,
         'host': this.server,
+        'roomid': config.roomId
     }).up();
 
     // send the mute/unmute private message
