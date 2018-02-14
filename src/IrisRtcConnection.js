@@ -1,4 +1,4 @@
-// Copyright 2016 Comcast Cable Communications Management, LLC
+// Copyright 2018 Comcast Cable Communications Management, LLC
 
 // IrisRtcConnection.js : Javascript code for establishing connection with backend
 //                        The input to the connection is the public id as provided

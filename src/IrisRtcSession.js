@@ -1,4 +1,4 @@
-// Copyright 2016 Comcast Cable Communications Management, LLC
+// Copyright 2018 Comcast Cable Communications Management, LLC
 
 // IrisRtcSession.js : Javascript code for managing calls/sessions for audio, video and PSTN
 
@@ -70,7 +70,8 @@ function IrisRtcSession() {
     this.modificationQueue = async.queue(this._processQueueTasks.bind(this), 1);
     this.isPresenceMonitorStarted = false;
     this.chatState = null;
-}
+
+};
 
 /**
  * Entry point for creating the session
@@ -163,6 +164,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
 
                 if (!self.config.rtcServer) {
                     self.config.rtcServer = response.rtcServer;
+                    self.onRtcServerReceived(config.rtcServer);
                 }
 
                 if (self.config.useBridge && (self.config.sessionType == "upgrade" ||
@@ -178,6 +180,9 @@ IrisRtcSession.prototype.create = function(config, connection) {
                 self.connection.xmpp.sendPresenceAlive(self.config);
 
                 self.onCreated(self.config.roomId);
+                self.connection.xmpp.sessionStore[self.config.roomId] = self.config.eventType;
+
+
 
             }.bind(this), function(error) {
 
@@ -209,6 +214,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
 
                     if (!self.config.rtcServer) {
                         self.config.rtcServer = response.eventdata ? response.eventdata.rtc_server : response.rtc_server;
+                        self.onRtcServerReceived(config.rtcServer);
                     }
 
                     if (self.config.useBridge && (self.config.sessionType == "upgrade" || self.config.sessionType == "downgrade")) {
@@ -235,6 +241,8 @@ IrisRtcSession.prototype.create = function(config, connection) {
                         self.connection.xmpp.on(self.config.roomId, self.roomEventListener.bind(this));
 
                     self.onCreated(self.config.roomId);
+                    self.connection.xmpp.sessionStore[self.config.roomId] = self.config.eventType;
+                    self.onRtcServerReceived(self.config.rtcServer);
                 }.bind(this),
                 function(error) {
                     logger.log(logger.level.INFO, "IrisRtcSession", "StartMuc Failed with error ", error);
@@ -320,9 +328,32 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
     try {
         var connection = self.connection;
 
-        logger.log(logger.level.INFO, "IrisRtcSession",
-            " Room : " + self.config.roomId + " Event : " + event + " response : " + JSON.stringify(response));
+        if (event == "onPresence" && response && response.dataElement && response.dataElement.type && response.dataElement.type == "periodic") {
 
+            logger.log(logger.level.VERBOSE, "IrisRtcSession",
+                " Room : " + self.config.roomId + " Event : " + event + " response : " + JSON.stringify(response));
+
+        } else {
+
+            logger.log(logger.level.INFO, "IrisRtcSession",
+                " Room : " + self.config.roomId + " Event : " + event + " response : " + JSON.stringify(response));
+
+        }
+        if (event === "onDisconnectIQ") {
+            console.log("received disconnect :: sessionType is ::", self.config.eventType);
+            if (self.connection.xmpp.disconnectWS == true) {
+                self.end();
+            }
+            return;
+        } else if (event === 'leaveRoom') {
+            logger.log(logger.level.INFO, "IrisRtcSession", "leave the room");
+            if (self.config.eventType == "groupchat") {
+                self.end();
+            } else {
+                self.disconnectRTC = true;
+            }
+            return;
+        }
         if (self.config.roomId != response.roomId) {
             logger.log(logger.level.ERROR, "IrisRtcSession", "RoomId mismatch : Listening event to " +
                 self.config.roomId + " Received event for " + response.roomId);
@@ -432,7 +463,11 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
 
                         self.sdkStats.options = statsOptions;
                         self.sdkStats.localStatInterval = 2000;
-                        self.sdkStats.getPeerStats(self.peerconnection, rtcConfig.json.statsInterval, true);
+                        if (self.config.sendStatsIQ) {
+                            self.reportStats();
+                        } else {
+                            self.sdkStats.getPeerStatsEndCall(self.peerconnection, rtcConfig.json.statsInterval, true);
+                        }
                         /* Stats Init End*/
 
                         // Check the state
@@ -584,6 +619,7 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
                                     "roomId": self.config.roomId,
                                     "rtcServer": self.config.rtcServer
                                 };
+
                                 // Call the session-initiate api
                                 self.connection.xmpp.sendSessionInitiate(data);
                                 // Send events
@@ -896,6 +932,7 @@ IrisRtcSession.prototype.sendRootEventWithRoomId = function(config) {
             }
 
             self.onCreated(response.eventdata.room_id);
+            self.onRtcServerReceived(self.config.rtcServer);
 
         },
         function(error) {
@@ -1077,11 +1114,11 @@ IrisRtcSession.prototype.onChatState = function(roomId, participantJid, chatStat
 IrisRtcSession.prototype.end = function() {
 
     logger.log(logger.level.INFO, "IrisRtcSession", "end :: close the session");
-
+    var self = this;
     if (this.state != IrisRtcSession.NONE) {
 
         clearInterval(this.presenceMonitorInterval);
-
+        clearInterval(this.reportStatsInterval);
         // Send events
         this.sendEvent("SDK_SessionEnded", { message: "Session is closed" });
 
@@ -1101,6 +1138,7 @@ IrisRtcSession.prototype.end = function() {
             // Leave the room
             this.config.presenceType = "leave";
             this.connection.xmpp.sendPresence(this.config);
+
         }
 
         // Set the presence state
@@ -1240,7 +1278,9 @@ IrisRtcSession.prototype.sendCandidates = function() {
     logger.log(logger.level.VERBOSE, "IrisRtcSession", "sendCandidates");
     var self = this;
     // Check the current state whether the remote participant has joined the room
+    // if ((Object.keys(this.participants).length != 0) && (!self.config.useBridge || this.localSdp || this.localAnswer)) {
     if ((Object.keys(this.participants).length != 0) && (self.config.useBridge || this.localSdp || this.localAnswer)) {
+
         this.candidates.forEach(function(candidate) {
             var type;
             if (self.focusJid) {
@@ -2254,7 +2294,9 @@ IrisRtcSession.prototype.createOffer = function(type) {
 
                     desc.sdp = serializer.deserialize();
                 }
-
+                if (RtcBrowserType.isFirefox() && !self.config.useBridge) {
+                    desc.sdp = desc.sdp.replace(/sdparta_0/g, "audio").replace(/sdparta_1/g, "video");
+                }
                 //TBD - Preferring audio codec for p2p call
 
                 logger.log(logger.level.INFO, "IrisRtcSession",
@@ -3109,6 +3151,14 @@ IrisRtcSession.prototype.onCreated = function(roomId) {
 };
 
 /**
+ * onRtcServer callback
+ * @private
+ */
+IrisRtcSession.prototype.onRtcServerReceived = function(rtcServer) {
+    this.onRtcServer(rtcServer);
+};
+
+/**
  * @private
  */
 IrisRtcSession.prototype.onJoined = function(roomId, myJid) {
@@ -3260,23 +3310,95 @@ IrisRtcSession.prototype.onUserProfileChange = function(roomId, jid, profileJson
  * Called to report an SDK event or an error
  * @private
  */
-IrisRtcSession.prototype.sendEvent = function(event, details) {
 
-    var eventdata = {
-        "type": "session",
-        "event": event,
-        "roomId": (this.config && this.config.roomId) ? this.config.roomId : details.roomId ? details.roomId : "00",
-        "routingId": (this.config && this.config.routingId) ? this.config.routingId : details.routingId ? details.routingId : "00",
-        "traceId": (this.config && this.config.traceId) ? this.config.traceId : details.traceId ? details.traceId : "00",
-        "details": details
-    };
+IrisRtcSession.prototype.sendEvent = function(eventName, details) {
 
-    this.onEvent(eventdata.roomId, eventdata);
+    var self = this;
 
-    logger.log(logger.level.INFO, "IrisRtcSession", "RoomId: " + eventdata.roomId + " Data: " + JSON.stringify(eventdata));
+    if (!this.connection || !this.connection.xmpp)
+        return;
+    if (self.config.sendStatsIQ) {
 
-    this.sdkStats.eventLogs(event, eventdata);
+        var timeseries = "";
+        var eventdata = "";
+        var statsPayload = "";
+
+        var meta = {
+            "sdkVersion": rtcConfig.json.sdkVersion,
+            "sdkType": "iris-js-sdk",
+            "userAgent": self.userAgent,
+            "browser": self.browserName,
+            "browserVersion": self.browserVersion,
+        }
+
+        var streaminfo = {
+            "UID": self.config.publicId ? self.config.publicId : "",
+            "wsServer": self.connection ? self.connection.xmppServer : "",
+            "rtcServer": self.config.rtcServer,
+            "useBridge": self.config.useBridge,
+            "roomId": self.config.roomId,
+            "routingId": self.config.routingId,
+            "traceId": self.config.traceId,
+        }
+
+        if (eventName == "timeseries") {
+            timeseries = details;
+            statsPayload = {
+                "meta": meta,
+                "streaminfo": streaminfo,
+                "timeseries": timeseries
+            }
+        } else {
+            eventdata = {
+                "type": "session",
+                "event": eventName,
+                "roomId": (self.config && self.config.roomId) ? self.config.roomId : details.roomId ? details.roomId : "00",
+                "routingId": (self.config && self.config.routingId) ? self.config.routingId : details.routingId ? details.routingId : "00",
+                "traceId": (self.config && self.config.traceId) ? self.config.traceId : details.traceId ? details.traceId : "00",
+                "details": details
+            };
+
+            self.onEvent(eventdata.roomId, eventdata);
+
+            self.sdkStats.eventLogs(eventName, eventdata);
+
+            statsPayload = {
+                "n": eventName,
+                "timestamp": new Date(),
+                "attr": eventdata,
+                "meta": meta,
+                "streaminfo": streaminfo
+            }
+        }
+
+        this.connection.xmpp.sendCallStats({
+            "stats": statsPayload,
+            "traceId": self.config.traceId,
+            "roomId": self.config.roomId,
+            "eventType": self.config.eventType
+        });
+
+        timeseries = "";
+        eventdata = "";
+        statsPayload = "";
+    } else {
+        var eventdata = {
+            "type": "session",
+            "event": event,
+            "roomId": (this.config && this.config.roomId) ? this.config.roomId : details.roomId ? details.roomId : "00",
+            "routingId": (this.config && this.config.routingId) ? this.config.routingId : details.routingId ? details.routingId : "00",
+            "traceId": (this.config && this.config.traceId) ? this.config.traceId : details.traceId ? details.traceId : "00",
+            "details": details
+        };
+
+        this.onEvent(eventdata.roomId, eventdata);
+
+        logger.log(logger.level.INFO, "IrisRtcSession", "RoomId: " + eventdata.roomId + " Data: " + JSON.stringify(eventdata));
+
+        this.sdkStats.eventLogs(event, eventdata);
+    }
 };
+
 
 /**
  * Called when connection has an event
@@ -3296,12 +3418,16 @@ IrisRtcSession.prototype.onEvent = function(roomId, event) {
  */
 function removeCodec(orgsdp, codec) {
     var internalFunc = function(sdp) {
+        // a=rtpmap:97 H264/90000
+
         var codecre = new RegExp('(a=rtpmap:(\\d*) ' + codec + '\/90000\\r\\n)');
+
         var rtpmaps = sdp.match(codecre);
         if (rtpmaps == null || rtpmaps.length <= 2) {
             return sdp;
         }
         var rtpmap = rtpmaps[2];
+
         var modsdp = sdp.replace(codecre, "");
         var rtcpre = new RegExp('(a=rtcp-fb:' + rtpmap + '.*\r\n)', 'g');
         modsdp = modsdp.replace(rtcpre, "");
@@ -3388,6 +3514,7 @@ function preferH264(sdp) {
     sdpLines = removeCN(sdpLines, mLineIndex);
 
     sdp = sdpLines.join('\r\n');
+
     return sdp;
 };
 
@@ -3832,9 +3959,9 @@ IrisRtcSession.prototype.createSession = function(sessionConfig, connection, str
 
         //If no codec is specified default to h264
         if (!config.videoCodec)
-            config.videoCodec = "h264";
+        // config.videoCodec = "h264";
 
-        config.sessionType = "create";
+            config.sessionType = "create";
 
         self.sendEvent("SDK_CreateSession", { roomId: config.roomId, routingId: config.routingId, traceId: config.traceId, type: config.type });
 
@@ -3946,6 +4073,7 @@ IrisRtcSession.prototype.joinSession = function(sessionConfig, connection, strea
 
         if (!config.rtcServer) {
             config.rtcServer = notificationPayload.rtcserver;
+            self.onRtcServerReceived(config.rtcServer);
         }
 
         if (!config.routingId) {
@@ -4097,6 +4225,7 @@ IrisRtcSession.prototype.joinChatSession = function(sessionConfig, connection, n
 
         if (!config.rtcServer) {
             config.rtcServer = notificationPayload.rtcserver;
+            self.onRtcServerReceived(config.rtcServer);
         }
 
         if (!config.routingId) {
@@ -4133,7 +4262,10 @@ IrisRtcSession.prototype.downgradeToChat = function(downgradeConfig, notificatio
             this.onSessionError(this.config ? this.config.roomId : "RoomId", RtcErrors.ERR_INCORRECT_PARAMETERS,
                 "Invalid config or notificationPayload");
         }
-
+        if (this.disconnectRTC) {
+            this.end();
+            return;
+        }
         logger.log(logger.level.INFO, "IrisRtcSession", "downgradeToChat :: Moving Audio/Video session to Chat session");
         logger.log(logger.level.INFO, "IrisRtcSession", "downgradeToChat : config : " + JSON.stringify(downgradeConfig));
 
@@ -4370,46 +4502,73 @@ IrisRtcSession.prototype.getRealTimeStats = function(roomId) {
  * @private
  */
 IrisRtcSession.prototype.updateEventType = function() {
-    try {
-        if (this && this.config && this.config.type) {
-            switch (this.config.type) {
-                case "video":
-                    this.config.eventType = "videocall";
-                    break;
-                case "audio":
-                    this.config.eventType = "audiocall";
-                    break;
-                case "pstn":
-                    this.config.eventType = "pstncall";
-                    break;
-                case "chat":
-                    this.config.eventType = "groupchat";
-                    break;
-                default:
-                    //
+        try {
+            if (this && this.config && this.config.type) {
+                switch (this.config.type) {
+                    case "video":
+                        this.config.eventType = "videocall";
+                        break;
+                    case "audio":
+                        this.config.eventType = "audiocall";
+                        break;
+                    case "pstn":
+                        this.config.eventType = "pstncall";
+                        break;
+                    case "chat":
+                        this.config.eventType = "groupchat";
+                        break;
+                    default:
+                        //
+                }
             }
+            logger.log(logger.level.INFO, "IrisRtcSession", "updateEventType :: eventType : " + this.config.eventType);
+        } catch (error) {
+            logger.log(logger.level.ERROR, "IrisRtcSession", "updateEventType :: Failed", error);
         }
-        logger.log(logger.level.INFO, "IrisRtcSession", "updateEventType :: eventType : " + this.config.eventType);
-    } catch (error) {
-        logger.log(logger.level.ERROR, "IrisRtcSession", "updateEventType :: Failed", error);
     }
-}
+    /**
+     * 
+     */
+IrisRtcSession.prototype.reportStats = function() {
+        try {
+            var self = this;
+            if (this && this.sdkStats && this.peerconnection) {
 
-/**
- * Callback for succeffully created session
- * @param {string} roomId - roomId created
- * @public
- */
+                self.reportStatsInterval = setInterval(function() {
+                    var timeseries = self.getRealTimeStats(self.config.roomId);
+                    self.sendEvent("timeseries", timeseries);
+                    console.log("IrisRtcSession :: getRealTimeStats :: ", timeseries)
+                }, 10000)
+
+            }
+
+        } catch (error) {
+            logger.log(logger.level.ERROR, "IrisRtcSession", "reportStats :: Failed to collect stats", error);
+        }
+    }
+    /**
+     * Callback for succeffully created session
+     * @param {string} roomId - roomId created
+     * @public
+     */
 IrisRtcSession.prototype.onSessionCreated = function(roomId) {
 
 }
 
 /**
- * onSessionJoined is called when caller joins session.
- * @param {string} roomId - RoomId to which user has joined 
- * @param {string} myJid - Jid of the caller
+ * Callback for succeffully created session
+ * @param {string} rtcServer - rtcServer received
  * @public
  */
+IrisRtcSession.prototype.onRtcServer = function(rtcServer) {
+
+    }
+    /**
+     * onSessionJoined is called when caller joins session.
+     * @param {string} roomId - RoomId to which user has joined 
+     * @param {string} myJid - Jid of the caller
+     * @public
+     */
 IrisRtcSession.prototype.onSessionJoined = function(roomId, myJid) {
 
 };

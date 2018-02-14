@@ -1,4 +1,4 @@
-// Copyright 2016 Comcast Cable Communications Management, LLC
+// Copyright 2018 Comcast Cable Communications Management, LLC
 
 // RtcXmpp.js : Javascript code for managing the websocket connection with 
 //            XMPP server
@@ -45,7 +45,8 @@ function RtcXmpp() {
     this.pingexpiredtimer = null;
     this.keepAliveTimer = null;
     this.pingLocalCounter = 0;
-    this.prestimer = [];
+    this.prestimer = {};
+    this.sessionStore = {};
     this.token = null;
     this.jid = null;
     this.server = null; // Used for wss connection
@@ -332,7 +333,7 @@ RtcXmpp.prototype.disconnect = function disconnect() {
     this.pingexpiredtimer = null;
     this.keepAliveTimer = null;
     this.pingLocalCounter = 0;
-    this.prestimer = [];
+    this.prestimer = {};
     this.token = null;
     this.jid = null;
     this.server = null;
@@ -341,6 +342,7 @@ RtcXmpp.prototype.disconnect = function disconnect() {
     this.localSDP = null;
     this.isAlive = false;
     this.networkListeners = [];
+    this.disconnectWS = false;
 }
 
 function removeNetworkEventListener(self) {
@@ -394,9 +396,29 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
             // this.startPing();
         }
 
-        if (this.prestimer.length == 0 && this.disconnectWS) {
-            this.disconnect();
+        // if (this.prestimer.length == 0 && this.disconnectWS) {
+        //     this.disconnect();
+        // }
+        var self = this;
+        delete self.sessionStore[config.roomId];
+        if (self.disconnectWS) {
+            if (Object.keys(self.sessionStore).length == 0) {
+                self.disconnect();
+            } else {
+                var sessionFlag = false;
+                Object.keys(self.sessionStore).forEach(function(element) {
+                    if (self.sessionStore[element] !== "groupchat") {
+                        sessionFlag = true;
+                    }
+                });
+                if (sessionFlag == false) {
+                    Object.keys(self.sessionStore).forEach(function(element) {
+                        self.emit(element, "onDisconnectIQ");
+                    });
+                }
+            }
         }
+
 
     } else {
         // Join the room by sending the presence
@@ -596,7 +618,7 @@ RtcXmpp.prototype.sendSessionInitiate = function sendSessionInitiate(data) {
     var localSDP = new SDP(data.sdp);
 
     // get the xmpp element
-    initiate = localSDP.toJingle(initiate, 'initiator');
+    initiate = localSDP.toJingle(initiate, 'initiator', self.localStream);
 
     initiate = initiate.c('data', {
         'xmlns': "urn:xmpp:comcast:info",
@@ -781,13 +803,14 @@ RtcXmpp.prototype.sendAllocate = function sendAllocate(data) {
     conference = allocate.getChild("conference");
 
     // Add properties
-    conference.c('property', { "name": "bridge", "value": "jitsi-videobridge." + data.rtcServer });
-    conference.c('property', { "name": "call_control", "value": data.rtcServer.replace('xmpp', 'callcontrol') });
+    //  conference.c('property', { "name": "bridge", "value": "jitsi-videobridge." + data.rtcServer });
+    //  conference.c('property', { "name": "call_control", "value": data.rtcServer.replace('xmpp', 'callcontrol') });
     conference.c('property', { "name": "channelLastN", "value": data.channelLastN ? data.channelLastN : "-1" });
     conference.c('property', { "name": "adaptiveLastN", "value": "false" });
-    conference.c('property', { "name": "adaptiveSimulcast", "value": "false" });
-    conference.c('property', { "name": "openSctp", "value": "true" });
-    conference.c('property', { "name": "enableFirefoxHacks", "value": "false" });
+    // conference.c('property', { "name": "adaptiveSimulcast", "value": "false" });
+    // conference.c('property', { "name": "openSctp", "value": "true" });
+    conference.c('property', { "name": "enableLipSync", "value": "true" })
+        //    conference.c('property', { "name": "enableFirefoxHacks", "value": "false" });
     conference.c('property', { "name": "simulcastMode", "value": "rewriting" });
 
     var dataElem = {
@@ -807,6 +830,23 @@ RtcXmpp.prototype.sendAllocate = function sendAllocate(data) {
     if (data.sessionType == "upgrade" || data.sessionType == "downgrade") {
         if (data.eventType == 'groupchat') {
             dataElem.type = "deallocate";
+            var self = this;
+            self.sessionStore[config.roomId] = "groupchat";
+            if (self.disconnectWS) {
+
+                var sessionFlag = false;
+                Object.keys(self.sessionStore).forEach(function(element) {
+                    if (self.sessionStore[element] !== "groupchat") {
+                        sessionFlag = true;
+                    }
+                });
+                if (sessionFlag == false) {
+                    Object.keys(self.sessionStore).forEach(function(element) {
+                        self.emit(element, "onDisconnectIQ");
+                    });
+                }
+
+            }
         } else {
             dataElem.type = "allocate";
         }
@@ -1022,24 +1062,59 @@ RtcXmpp.prototype.sendUnHold = function sendUnHold(config, participantJid) {
 //
 RtcXmpp.prototype.sendMerge = function sendMerge(config, firstParticipantJid, secondParticipantJid) {
 
-    logger.log(logger.level.VERBOSE, "RtcXmpp", " sendMerge");
+        logger.log(logger.level.VERBOSE, "RtcXmpp", " sendMerge");
 
-    var roomJid = config.roomId + '@' + config.rtcServer.replace('xmpp', 'callcontrol');
+        var roomJid = config.roomId + '@' + config.rtcServer.replace('xmpp', 'callcontrol');
 
-    var merge = new xmppClient.Element(
-            'iq', { to: roomJid + "/" + firstParticipantJid, from: this.jid + '/' + this.xmppJid.resource, "type": "set", id: this.index.toString() + ':sendIQ' })
-        .c('merge', { 'xmlns': 'urn:xmpp:rayo:1' })
-        .c('header', { "name": "secondParticipant", "value": secondParticipantJid }).up().up();
+        var merge = new xmppClient.Element(
+                'iq', { to: roomJid + "/" + firstParticipantJid, from: this.jid + '/' + this.xmppJid.resource, "type": "set", id: this.index.toString() + ':sendIQ' })
+            .c('merge', { 'xmlns': 'urn:xmpp:rayo:1' })
+            .c('header', { "name": "secondParticipant", "value": secondParticipantJid }).up().up();
 
-    merge = merge.c('data', {
+        merge = merge.c('data', {
+            'xmlns': "urn:xmpp:comcast:info",
+            'traceid': config.traceId,
+            'host': this.server
+        }).up();
+
+        this.index++;
+        // send the rayo command
+        this.client.send(merge.tree());
+    }
+    // Method to send callStats through websocket
+    //
+    // @param {data} - Configuration
+    // @returns {retValue} 0 on success, negative value on error
+    //
+RtcXmpp.prototype.sendCallStats = function(data) {
+
+    logger.log(logger.level.INFO, "RtcXmpp",
+        " sendCallStats " + data);
+
+    var privateIq = new xmppClient.Element(
+            'iq', {
+                id: this.index.toString() + ':sendIQ',
+                "type": "set",
+
+            })
+        .c('query', {
+            'xmlns': 'jabber:iq:private',
+            'strict': false,
+        }).up();
+    // var myString = JSON.stringify(data.stats);
+    // myString = myString.replace(/\"/g, "");
+    // Add data element
+    privateIq.c('data', {
         'xmlns': "urn:xmpp:comcast:info",
-        'traceid': config.traceId,
-        'host': this.server
-    }).up();
+        'stats': JSON.stringify(data.stats),
+        'roomid': data.roomId,
+        'traceid': data.traceId,
+        'event': "callstats",
+        'action': "log"
 
-    this.index++;
-    // send the rayo command
-    this.client.send(merge.tree());
+    });
+    this.client.send(privateIq.tree());
+
 }
 
 
@@ -1586,24 +1661,39 @@ RtcXmpp.prototype._onPrivateIQ = function _onPrivateIQ(stanza) {
     if (data) {
 
         // Check if it has required config
-        if (!data.attrs.roomid || !data.attrs.routingid) {
-            logger.log(logger.level.ERROR, "RtcXmpp._onPrivateIQ",
-                "Ignoring private IQ as it doesnt have correct parameters");
-            return;
-        }
+        // if (!data.attrs.roomid || !data.attrs.routingid) {
+        //     logger.log(logger.level.ERROR, "RtcXmpp._onPrivateIQ",
+        //         "Ignoring private IQ as it doesnt have correct parameters");
+        //     return;
+        // }
 
         if (data.attrs.type) {
 
             if (data.attrs.type == "disconnect") {
 
                 logger.log(logger.level.INFO, "RtcXmpp._onPrivateIQ", "Disconnect WebSocket connection")
-
-                if (self.prestimer.length == 0) {
+                if (Object.keys(self.prestimer).length == 0) {
                     //end connection
                     self.disconnect();
                 } else {
                     self.disconnectWS = true;
+                    var sessionFlag = false;
+                    Object.keys(self.sessionStore).forEach(function(element) {
+                        if (self.sessionStore[element] !== "groupchat") {
+                            sessionFlag = true;
+                        }
+                    });
+                    if (sessionFlag == false) {
+                        Object.keys(self.sessionStore).forEach(function(element) {
+                            self.emit(element, "onDisconnectIQ");
+                        });
+                    }
+                    // self.emit(Object.keys(self.prestimer)[0], "onDisconnectIQ");
+
                 }
+
+            } else if (data.attrs.type == 'leave room') {
+                self.emit(data.attrs.roomid, 'leaveRoom');
             } else if (data.attrs.type == 'notify' || data.attrs.type == 'cancel' || data.attrs.type == 'chat') {
 
                 var incomingConfig = {

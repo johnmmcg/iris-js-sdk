@@ -1,4 +1,4 @@
-// Copyright 2016 Comcast Cable Communications Management, LLC
+// Copyright 2018 Comcast Cable Communications Management, LLC
 
 var logger = require('../RtcLogger.js');
 var SDPUtil = require("./SDPUtil.js");
@@ -149,7 +149,7 @@ SDP.prototype.removeMediaLines = function(mediaindex, prefix) {
 }
 
 // add content's to a jingle element
-SDP.prototype.toJingle = function(elem, thecreator) {
+SDP.prototype.toJingle = function(elem, thecreator, localStream) {
     var ssrcs = [];
     //    logger.log("SSRC" + ssrcs["audio"] + " - " + ssrcs["video"]);
     var self = this;
@@ -263,9 +263,25 @@ SDP.prototype.toJingle = function(elem, thecreator) {
                     elem = elem.up();
                     var msid = null;
                     if (mline.media == "audio") {
-                        msid = APP.RTC.localAudio.getId();
+                        localStream.getTracks().forEach(function(track) {
+
+                            if (track.kind == "audio") {
+                                msid = track.Id;
+                            }
+
+                            // logger.log(logger.level.VERBOSE, "IrisRtcSession", "Stream is successfully added to peerconnection ", track);
+                        });
+                        // msid = ;
                     } else {
-                        msid = APP.RTC.localVideo.getId();
+                        localStream.getTracks().forEach(function(track) {
+
+                            if (track.kind == "video") {
+                                msid = track.Id;
+                            }
+
+                            // logger.log(logger.level.VERBOSE, "IrisRtcSession", "Stream is successfully added to peerconnection ", track);
+                        });
+                        // msid = APP.RTC.localVideo.getId();
                     }
                     if (msid != null) {
                         msid = SDPUtil.filter_special_chars(msid);
