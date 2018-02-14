@@ -1,12 +1,12 @@
 {
     "name": "iris-js-sdk",
-    "version": "3.4.21",
+    "version": "3.4.22",
     "description": "JavaScript SDK for Iris Platform",
     "repository": {
         "type": "git",
         "url": "https://github.com/iris-platform/iris-js-sdk"
     },
-    "license": "MIT",
+    "license": "Apache-2.0",
     "main": "dist/iris-js-sdk.min.js",
     "keywords": [
         "Iris",

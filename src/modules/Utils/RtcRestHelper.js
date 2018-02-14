@@ -1,4 +1,4 @@
-// Copyright 2016 Comcast Cable Communications Management, LLC
+// Copyright 2018 Comcast Cable Communications Management, LLC
 
 // RtcRestHelper.js : Javascript code for making rest calls to backend
 

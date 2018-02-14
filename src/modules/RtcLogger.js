@@ -1,4 +1,4 @@
-// Copyright 2016 Comcast Cable Communications Management, LLC
+// Copyright 2018 Comcast Cable Communications Management, LLC
 
 // RtcLogger.js : Javascript code for storing the logs
 

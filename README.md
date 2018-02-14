@@ -32,7 +32,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   
   ```html
-  <script src="https://unpkg.com/iris-js-sdk@3.4.20/dist/iris-js-sdk.min.js"></script>
+  <script src="https://unpkg.com/iris-js-sdk@3.4.22/dist/iris-js-sdk.min.js"></script>
   ```
 
 
@@ -43,6 +43,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 - [Create Iris Rtc Stream](#create-stream)
 - [Create Iris Rtc Session](#create-session)
 - [Join Iris Rtc Session](#join-session)
+- [Reject Iris Rtc PSTN Session](#reject-session)
 - [Create Iris Rtc Chat Session](#create-chat-session)
 - [Join Iris Rtc Chat Session](#join-chat-session)
 - [Send Chat Messages](#send-chat-messages) 
@@ -276,6 +277,38 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 * **Events** <br />    
   * **onSessionCreated** event is triggered when the session is successfully created.
   * **onSessionConnected** event is triggered when the user joins the session.
+
+
+**Reject Session**
+----
+  This API is called to reject an incoming PSTN/Sip session. The notification object received in the incoming call notification will be used to reject the incoming PSTN call .
+
+* **API Name** <br />
+
+  ```javascript
+    IrisRtcSession.rejectSession
+  ```
+
+* **Parameters** <br />
+  Pass the following parameter in joinSession API call:
+
+  ```sh
+  -----------------------------------------------------------------------------
+  Property                Type              Description
+  -----------------------------------------------------------------------------
+  notificationPayload     json              (MANDATORY) This is the notification payload received through onNotifcation event
+                                                        Pass this notification as received - DON'T ALTER ANY PARAMETERS
+                                                                    
+  ```
+
+* **Example** <br />
+
+  ```javascript
+    irisRtcConnection.rejectSession(notificationPayload);
+  ```
+
+  * Call rejectSession API of Iris RTC Connection with notification payload of the incoming call.
+  
 
 **Create Chat Session**
 ----
@@ -929,7 +962,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   
   ```html
-  <script src="https://unpkg.com/iris-js-sdk@3.4.20/dist/iris-js-sdk.min.js"></script>
+  <script src="https://unpkg.com/iris-js-sdk@3.4.22/dist/iris-js-sdk.min.js"></script>
   ```
   
 ### Example for Using API's

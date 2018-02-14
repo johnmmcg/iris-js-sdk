@@ -1,4 +1,4 @@
-// Copyright 2016 Comcast Cable Communications Management, LLC
+// Copyright 2018 Comcast Cable Communications Management, LLC
 
 var logger = require('../RtcLogger.js');;
 var RtcBrowserType = require('./RtcBrowserType.js');
