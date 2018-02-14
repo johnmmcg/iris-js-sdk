@@ -866,8 +866,40 @@ RtcXmpp.prototype.sendPrivateAllocate = function(data) {
 
     this.client.send(privateIq.tree());
 
-}
+};
+// Method to send reject call
+//
+// @param {data} - Configuration 
+// @returns {retValue} 0 on success, negative value on error
+//
+RtcXmpp.prototype.sendRejectIQ = function(data) {
+    logger.log(logger.level.VERBOSE, "RtcXmpp",
+        " sendRejectIQ " + data);
 
+    var privateIq = new xmppClient.Element(
+        'iq', {
+            id: this.index.toString() + ':sendIQ',
+            "type": "set",
+            to: data.roomId + '@' + data.rtcserver.replace("xmpp", "control") + '/' + this.jid
+
+        }).c('query', {
+        'xmlns': 'jabber:iq:private',
+        'strict': false,
+    }).up();
+
+    // Add data element
+    privateIq.c('data', {
+        "action": "reject",
+        'xmlns': "urn:xmpp:comcast:info",
+        'roomid': data.roomId,
+        'traceid': data.traceId,
+        'event': "pstncall",
+        "rtcserver": data.rtcserver,
+        "to": data.roomId + '@' + data.rtcserver.replace("xmpp", "control") + '/' + this.jid
+    });
+
+    this.client.send(privateIq.tree());
+};
 // Method to send rayo command
 //
 // @param {data} - Configuration 

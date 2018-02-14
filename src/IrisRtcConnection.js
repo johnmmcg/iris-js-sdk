@@ -107,6 +107,24 @@ IrisRtcConnection.prototype.connect = function(irisToken, routingId, eventManage
 };
 
 /**
+ * This method is called to reconnect with websocket server. This method makes a call to event manager's API <code>/v1/wsturnserverinfo/routingid/:routingid</code>
+ * to get <code>websocket_server</code>, <code>websocket_server_token</code>, <code>websocket_server_token_expiry_time</code> and <code>turn_credentials</code> details.<br/>
+ *
+ * Establishes a web socket connection with the rtc server for the user with routingId.<br/>
+ *
+ * @private
+ */
+IrisRtcConnection.prototype._doreconnect = function() {
+    if (this.state == IrisRtcConnection.DISCONNECTED) {
+        this.state = IrisRtcConnection.CONNECTING;
+        this._getWSTurnServerInfo(this.token, this.userID);
+    } else {
+        logger.log(logger.level.ERROR, "IrisRtcConnection", "Iris Connection still active");
+    }
+
+};
+
+/**
  * API to disconnet from the rtc server connection
  * @public
  */
@@ -325,7 +343,7 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
             self.isAlive = false;
             self.onClose();
             self.sendEvent("SDK_WebSocketServerDisconnected", { message: "WS connection disconnected" });
-
+            self._doreconnect();
         });
         // Monitor onmessage method
         this.xmpp.on('onMessage', function(data, flags) {
@@ -483,4 +501,13 @@ IrisRtcConnection.prototype.onConnectionFailed = function(e) {
  */
 IrisRtcConnection.prototype.onNotification = function(notificationInfo) {
 
+};
+
+/**
+ * This API is called to Reject an incoming call 
+ * @param {json} notificationPayload - Notification payload having roomid, roomtoken, roomtokenexpirytime, rtcserver and traceid
+ * @public
+ */
+IrisRtcConnection.prototype.rejectSession = function(notification) {
+    this.xmpp.sendRejectIQ(notification);
 };
