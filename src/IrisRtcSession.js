@@ -3384,7 +3384,7 @@ IrisRtcSession.prototype.sendEvent = function(eventName, details) {
     } else {
         var eventdata = {
             "type": "session",
-            "event": event,
+            "event": eventName,
             "roomId": (this.config && this.config.roomId) ? this.config.roomId : details.roomId ? details.roomId : "00",
             "routingId": (this.config && this.config.routingId) ? this.config.routingId : details.routingId ? details.routingId : "00",
             "traceId": (this.config && this.config.traceId) ? this.config.traceId : details.traceId ? details.traceId : "00",
@@ -3395,7 +3395,7 @@ IrisRtcSession.prototype.sendEvent = function(eventName, details) {
 
         logger.log(logger.level.INFO, "IrisRtcSession", "RoomId: " + eventdata.roomId + " Data: " + JSON.stringify(eventdata));
 
-        this.sdkStats.eventLogs(event, eventdata);
+        this.sdkStats.eventLogs(eventName, eventdata);
     }
 };
 
@@ -3671,7 +3671,8 @@ function DTMFManager(self, audioTrack, peerconnection) {
 
         if (pc.getSenders) {
             self.dtmfSender = pc.getSenders()[0].dtmf;
-        } else {
+        }
+        if (!self.dtmfSender) {
             logger.log(logger.level.INFO, "IrisRtcSession", "DTMFManager :: " +
                 "Your browser doesn't support RTCPeerConnection.getSenders(), so " +
                 "falling back to use <strong>deprecated</strong> createDTMFSender() " +
@@ -3958,10 +3959,10 @@ IrisRtcSession.prototype.createSession = function(sessionConfig, connection, str
         }
 
         //If no codec is specified default to h264
-        if (!config.videoCodec)
+        // if (!config.videoCodec)
         // config.videoCodec = "h264";
 
-            config.sessionType = "create";
+        config.sessionType = "create";
 
         self.sendEvent("SDK_CreateSession", { roomId: config.roomId, routingId: config.routingId, traceId: config.traceId, type: config.type });
 
@@ -4486,8 +4487,14 @@ IrisRtcSession.prototype.getRealTimeStats = function(roomId) {
 
             if (roomId != this.config.roomId)
                 return;
+            if (this.config.sendStatsIQ) {
+                var realtimestats = this.sdkStats.getPeerStats(this.peerconnection, rtcConfig.json.statsInterval, false);
 
-            var realtimestats = this.sdkStats.getPeerStats(this.peerconnection, rtcConfig.json.statsInterval, false);
+            } else {
+                var realtimestats = this.sdkStats.getPeerStatsEndCall(this.peerconnection, rtcConfig.json.statsInterval, false);
+
+            }
+
             return realtimestats;
         } else {
             logger.log(logger.level.ERROR, "IrisRtcSession", "getRealTimeStats :: Failed : Check for RtcStats and peerconnection initialization");
