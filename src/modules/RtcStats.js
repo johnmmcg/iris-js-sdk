@@ -1487,6 +1487,7 @@ RtcStats.prototype.getPeerStats = function(conn, statsInterval, timerFlag) {
 
                 //Print the stats 
                 logger.log(logger.level.VERBOSE, "RtcStats", "Stats ", self.timeseries);
+
             });
 
             if (timerFlag) {
@@ -1505,6 +1506,7 @@ RtcStats.prototype.getPeerStats = function(conn, statsInterval, timerFlag) {
             if (cb) {
                 cb(self.timeseries);
             }
+
         }
         if (timerFlag) {
             statsTimer = setInterval(callStatsTimer, self.localStatInterval);
