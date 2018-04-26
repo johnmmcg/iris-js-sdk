@@ -176,7 +176,8 @@ WSConnection.prototype.send = function(stanza) {
 
     if (stanza.root) stanza = stanza.root()
 
-    if (stanza.attrs && !stanza.attrs.xmlns && ((stanza.is('iq')) || stanza.is('presence') || stanza.is('message') || stanza.is('stream'))) {
+    if (stanza.attrs && !stanza.attrs.xmlns && ((stanza.is('iq')) ||
+            stanza.is('presence') || stanza.is('message') || stanza.is('stream'))) {
         stanza.attrs.xmlns = 'jabber:client'
     }
 
@@ -184,7 +185,8 @@ WSConnection.prototype.send = function(stanza) {
         stanza = stanza.toString()
         logger.log(logger.level.VERBOSE, "WS", "TX --> " + stanza)
     } else {
-        stanza = stanza.toString()
+        stanza = stanza.toString();
+        // stanza = stanza.replace(/&quot;/g, "\'");
         logger.log(logger.level.INFO, "WS", "TX --> " + stanza)
     }
     this.websocket.send(stanza);

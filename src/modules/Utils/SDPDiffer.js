@@ -103,7 +103,7 @@ SDPDiffer.prototype.getNewMedia = function() {
 /**
  * TODO: document!
  */
-SDPDiffer.prototype.toJingle = function(modify) {
+SDPDiffer.prototype.toJingle = function(modify, srcAdd, myJid) {
     var sdpMediaSsrcs = this.getNewMedia();
 
     var modified = false;
@@ -122,20 +122,31 @@ SDPDiffer.prototype.toJingle = function(modify) {
             modify.attr("ssrc", mediaSsrc.ssrc);
             // iterate over ssrc lines
             mediaSsrc.lines.forEach(function(line) {
-                var idx = line.indexOf(' ');
-                var kv = line.substr(idx + 1);
-                modify = modify.c('parameter');
-                if (kv.indexOf(':') == -1) {
-                    modify.attr("name", kv);
-                } else {
-                    var nv = kv.split(':', 2);
-                    var name = nv[0];
-                    var value = SDPUtil.filter_special_chars(nv[1]);
-                    modify.attr("name", name);
-                    modify.attr("value", value);
+                if (srcAdd) {
+                    var idx = line.indexOf(' ');
+                    var kv = line.substr(idx + 1);
+                    modify = modify.c('parameter');
+                    if (kv.indexOf(':') == -1) {
+                        modify.attr("name", kv);
+                    } else {
+                        var nv = kv.split(':', 2);
+                        var name = nv[0];
+                        var value = SDPUtil.filter_special_chars(nv[1]);
+                        modify.attr("name", name);
+                        modify.attr("value", value);
+                    }
+                    modify = modify.up(); // end of parameter
                 }
-                modify = modify.up(); // end of parameter
             });
+
+            if (!srcAdd) {
+                modify = modify.c('ssrc-info');
+                modify.attr("xmlns", "http://jitsi.org/jitmeet");
+                if (myJid)
+                    modify.attr("owner", myJid);
+                modify = modify.up(); // end of ssrc-info
+            }
+
             modify = modify.up(); // end of source
         });
 

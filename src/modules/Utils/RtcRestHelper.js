@@ -136,13 +136,22 @@ RtcRestHelper.EventManager = {
             logger.log(logger.level.VERBOSE, "RtcRestHelper.EventManager", "sendStartMucWithRoomId :: Ignore userData for groupchat calls");
 
             // JSON body 
-            var jsonBody = {
-                "from": config.routingId,
-                "event_type": config.eventType,
-                "time_posted": Date.now(),
-                "userdata": userData
-            };
-
+            if (config.rtcServer) {
+                var jsonBody = {
+                    "from": config.routingId,
+                    "event_type": config.eventType,
+                    "time_posted": Date.now(),
+                    "userdata": userData,
+                    "rtc_server": config.rtcServer
+                };
+            } else {
+                var jsonBody = {
+                    "from": config.routingId,
+                    "event_type": config.eventType,
+                    "time_posted": Date.now(),
+                    "userdata": userData
+                };
+            }
             logger.log(logger.level.INFO, "RtcRestHelper.EventManager",
                 " startmuc with roomid with options " + JSON.stringify(options) +
                 " & body " + JSON.stringify(jsonBody));
