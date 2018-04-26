@@ -115,13 +115,25 @@ IrisRtcConnection.prototype.connect = function(irisToken, routingId, eventManage
  * @private
  */
 IrisRtcConnection.prototype._doreconnect = function() {
+    var self = this;
     if (this.state == IrisRtcConnection.DISCONNECTED) {
         this.state = IrisRtcConnection.CONNECTING;
-        this._getWSTurnServerInfo(this.token, this.userID);
+        var delay = 10000;
+        self.reconTimer = setInterval(function() {
+            logger.log(logger.level.INFO, "IrisRtcConnection",
+                " doreconnect::Reconnecting... with delay: " + delay);
+
+            self._getWSTurnServerInfo(self.token, self.userID);
+
+        }, delay);
+
     } else {
+        clearInterval(self.reconTimer);
         logger.log(logger.level.ERROR, "IrisRtcConnection", "Iris Connection still active");
     }
-
+    self.reconTimeout = setTimeout(function() {
+        clearInterval(self.reconTimer);
+    }, config.json.reconnectInterval);
 };
 
 /**
@@ -329,6 +341,8 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
             logger.log(logger.level.INFO, "IrisRtcConnection",
                 " onOpened");
             self.state = IrisRtcConnection.CONNECTED;
+            clearInterval(self.reconTimer);
+            clearTimeout(self.reconTimeout);
             self.isAlive = true;
             self.myJid = jid.toString();
             self.onOpen();

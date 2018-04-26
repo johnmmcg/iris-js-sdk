@@ -1,6 +1,6 @@
 {
     "name": "iris-js-sdk",
-    "version": "3.4.22.2",
+    "version": "3.4.25",
     "description": "JavaScript SDK for Iris Platform",
     "repository": {
         "type": "git",

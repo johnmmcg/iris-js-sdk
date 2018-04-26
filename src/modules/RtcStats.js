@@ -358,7 +358,7 @@ function getStats(peerconnection, callback, errback) {
 
 RtcStats.prototype.getPeerStatsEndCall = function(conn, statsInterval, timerFlag) {
 
-    logger.log(logger.level.INFO, "IrisRtcStats",
+    logger.log(logger.level.VERBOSE, "IrisRtcStats",
         "inside getPeerStats", conn);
     var timeseriesResult = null;
     var self = this;
@@ -1288,7 +1288,7 @@ RtcStats.prototype.getPeerStats = function(conn, statsInterval, timerFlag) {
     if (pc) {
         self.callStartTime = new Date();
         var arrayIndex = 0;
-        logger.log(logger.level.INFO, "IrisRtcStats", "self.callStartTime  >>>> " + self.callStartTime.toString());
+        logger.log(logger.level.VERBOSE, "IrisRtcStats", "self.callStartTime  >>>> " + self.callStartTime.toString());
 
 
 

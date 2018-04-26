@@ -913,6 +913,7 @@ RtcXmpp.prototype.sendPrivateAllocate = function(data) {
 // @returns {retValue} 0 on success, negative value on error
 //
 RtcXmpp.prototype.sendRejectIQ = function(data) {
+
     logger.log(logger.level.VERBOSE, "RtcXmpp",
         " sendRejectIQ " + data);
 
@@ -920,7 +921,7 @@ RtcXmpp.prototype.sendRejectIQ = function(data) {
         'iq', {
             id: this.index.toString() + ':sendIQ',
             "type": "set",
-            to: data.roomId + '@' + data.rtcserver.replace("xmpp", "control") + '/' + this.jid
+            to: data.roomId + '@' + data.rtcserver.replace("xmpp", "callcontrol") + '/' + this.jid
 
         }).c('query', {
         'xmlns': 'jabber:iq:private',
@@ -935,7 +936,7 @@ RtcXmpp.prototype.sendRejectIQ = function(data) {
         'traceid': data.traceId,
         'event': "pstncall",
         "rtcserver": data.rtcserver,
-        "to": data.roomId + '@' + data.rtcserver.replace("xmpp", "control") + '/' + this.jid
+        "to": data.roomId + '@' + data.rtcserver.replace("xmpp", "callcontrol") + '/' + this.jid
     });
 
     this.client.send(privateIq.tree());
@@ -1003,6 +1004,40 @@ RtcXmpp.prototype.sendHangup = function sendHangup(config, participantJid) {
     // send the rayo command
     this.client.send(hangup.tree());
 }
+
+/**
+ * Method to send private iq to hold
+ */
+RtcXmpp.prototype.sendMessageHold = function(config, participantJid, hold) {
+
+    logger.log(logger.level.VERBOSE, "RtcXmpp",
+        " sendMessageHold ");
+
+    this.index++;
+
+    var roomJid = config.roomId + '@' + config.rtcServer.replace('xmpp', 'conference');
+
+    var holdIQ = new xmppClient.Element(
+            'message', {
+                id: 'pstnHold',
+                from: this.jid + '/' + this.xmppJid.resource,
+                to: roomJid + "/" + participantJid,
+                type: 'chat',
+            })
+        .c('body').t(hold ? "hold" : "unhold").up();
+
+    holdIQ = holdIQ.c('data', {
+        'xmlns': "urn:xmpp:comcast:info",
+        'traceid': config.traceId,
+        'host': this.server,
+        'roomid': config.roomId
+    }).up();
+
+    // send the hold/unhold private message
+    this.client.send(holdIQ.tree());
+
+}
+
 
 // Method to send Hold command
 //
@@ -1089,7 +1124,7 @@ RtcXmpp.prototype.sendMerge = function sendMerge(config, firstParticipantJid, se
 RtcXmpp.prototype.sendCallStats = function(data) {
 
     logger.log(logger.level.INFO, "RtcXmpp",
-        " sendCallStats " + data);
+        " sendCallStats : " + data.stats.n);
 
     var privateIq = new xmppClient.Element(
             'iq', {
@@ -1113,7 +1148,8 @@ RtcXmpp.prototype.sendCallStats = function(data) {
         'action': "log"
 
     });
-    this.client.send(privateIq.tree());
+    if (this.client)
+        this.client.send(privateIq.tree());
 
 }
 
@@ -1133,7 +1169,7 @@ RtcXmpp.prototype.sendSourceAdd = function sendSourceAdd(sdpDiffer, data) {
         })
 
     // Check if new ssrcs are available to send source-add
-    var isNewSsrc = sdpDiffer.toJingle(add);
+    var isNewSsrc = sdpDiffer.toJingle(add, true, this.xmppJid.toString());
 
     add = add.up();
 
@@ -1167,7 +1203,12 @@ RtcXmpp.prototype.sendSourceRemove = function sendSourceRemove(sdpDiffer, data) 
             initiator: data.to,
             responder: this.xmppJid.toString(),
             sid: this.sid
-        }).up();
+        });
+
+    // get the xmpp element
+    sdpDiffer.toJingle(remove, false, this.xmppJid.toString());
+
+    remove = remove.up();
 
     remove = remove.c('data', {
         'xmlns': "urn:xmpp:comcast:info",
@@ -1175,8 +1216,6 @@ RtcXmpp.prototype.sendSourceRemove = function sendSourceRemove(sdpDiffer, data) 
         'host': this.server
     }).up();
 
-    // get the xmpp element
-    sdpDiffer.toJingle(remove);
 
     this.index++;
 
@@ -1811,6 +1850,14 @@ RtcXmpp.prototype._onChat = function(stanza) {
                 } else if (message == 'audioUnmute') {
                     self.emit(roomId, 'onAudioMute', { "mute": false, "roomId": roomId });
                 }
+            } else if (id && id == "pstnHold") {
+
+                if (message == "hold")
+                    self.emit(roomId, 'onPSTNHold', { 'hold': true, from: from, roomId: roomId });
+                else if (message == "unhold")
+                    self.emit(roomId, 'onPSTNHold', { 'hold': false, from: from, roomId: roomId });
+
+
             } else {
                 // For handling chat messages
             }
