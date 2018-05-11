@@ -10,6 +10,8 @@ function copyProps(src, target) {
     Object.defineProperties(target, props);
 }
 
+window.AudioContext = require('web-audio-api').AudioContext
+
 global.window = window;
 global.document = window.document;
 global.navigator = {

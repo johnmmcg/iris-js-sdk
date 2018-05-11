@@ -1,6 +1,6 @@
 {
     "name": "iris-js-sdk",
-    "version": "3.4.25",
+    "version": "3.4.26",
     "description": "JavaScript SDK for Iris Platform",
     "repository": {
         "type": "git",
@@ -24,7 +24,8 @@
         "minimist": "^1.2.0",
         "sdp-interop": "^0.1.11",
         "sdp-transform": "^1.6.2",
-        "uuid": "3.0.1"
+        "uuid": "3.0.1",
+        "web-audio-api": "^0.2.2"
     },
     "devDependencies": {
         "browserify": "^14.1.0",
@@ -40,7 +41,8 @@
         "mongoreporter": "^0.2.1",
         "request": "^2.79.0",
         "uglify-es": "^3.0.0",
-        "utf-8-validate": "^3.0.0"
+        "utf-8-validate": "^3.0.0",
+        "web-audio-api": "^0.2.2"
     },
     "scripts": {
         "build": "npm run browserify  && npm run uglifyjs",

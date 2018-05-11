@@ -150,25 +150,25 @@ describe('IrisRtcSession.createSession', () => {
         }, irisRtcConnection, { stream: "stream" });
     });
 
-    it('should throw error with no stream for video call', (done) => {
+    // it('should throw error with no stream for video call', (done) => {
 
-        var irisRtcSession = new IrisRtcSession();
-        var irisRtcConnection = new IrisRtcConnection();
-        irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+    //     var irisRtcSession = new IrisRtcSession();
+    //     var irisRtcConnection = new IrisRtcConnection();
+    //     irisRtcConnection.xmpp = { "Dummy": "Dummy" }
 
-        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
-            if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Local media stream is not available") {
-                done();
-            }
-        }
-        irisRtcSession.createSession({
-            "roomId": "123456789",
-            "type": "video",
-            "irisToken": "irisToken",
-            "routingId": "routingId",
-        }, irisRtcConnection, "");
-    });
+    //     irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+    //         if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
+    //             errorMessage == "Local media stream is not available") {
+    //             done();
+    //         }
+    //     }
+    //     irisRtcSession.createSession({
+    //         "roomId": "123456789",
+    //         "type": "video",
+    //         "irisToken": "irisToken",
+    //         "routingId": "routingId",
+    //     }, irisRtcConnection, "");
+    // });
 
     it('should throw error with no stream for audio call', (done) => {
 
@@ -317,25 +317,25 @@ describe('IrisRtcSession.createSession', () => {
     });
 
 
-    it('should throw error with no video track for video call', (done) => {
+    // it('should throw error with no video track for video call', (done) => {
 
-        var irisRtcSession = new IrisRtcSession();
-        var irisRtcConnection = new IrisRtcConnection();
-        irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+    //     var irisRtcSession = new IrisRtcSession();
+    //     var irisRtcConnection = new IrisRtcConnection();
+    //     irisRtcConnection.xmpp = { "Dummy": "Dummy" }
 
-        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
-            if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "For video call, video stream is required") {
-                done();
-            }
-        }
-        irisRtcSession.createSession({
-            "roomId": "123456789",
-            "type": "video",
-            "irisToken": "irisToken",
-            "routingId": "routingId",
-        }, irisRtcConnection, { "stream": "stream" });
-    });
+    //     irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+    //         if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
+    //             errorMessage == "For video call, video stream is required") {
+    //             done();
+    //         }
+    //     }
+    //     irisRtcSession.createSession({
+    //         "roomId": "123456789",
+    //         "type": "video",
+    //         "irisToken": "irisToken",
+    //         "routingId": "routingId",
+    //     }, irisRtcConnection, { "stream": "stream" });
+    // });
 
     it('should throw error with stream for chat call', (done) => {
 
@@ -407,6 +407,229 @@ describe('IrisRtcSession.createSession', () => {
     after(() => {
 
     });
+});
+
+describe('IrisRtcSession.createSessionWithTN', () => {
+    before(() => {
+
+    });
+
+    it('should throw error with no irisRtcStream', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+        var irisRtcConnection = new IrisRtcConnection();
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            console.log("Nija", errorCode);
+            if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
+                errorMessage == "Media stream is required to make a call") {
+                done();
+            }
+        }
+
+        irisRtcSession.createSessionWithTN("", "", "");
+    });
+
+    it('should throw error with no config', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+        var irisRtcConnection = new IrisRtcConnection();
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
+                errorMessage == "Invalid user config or rtc connection") {
+                done();
+            }
+        }
+
+        var irisRtcStream = { localStream: "localStream" };
+
+        irisRtcSession.createSessionWithTN("", irisRtcConnection, irisRtcStream);
+    });
+
+    it('should throw error with no connection', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
+                errorMessage == "Invalid user config or rtc connection") {
+                done();
+            }
+        }
+        var irisRtcStream = { localStream: "localStream" };
+
+        irisRtcSession.createSessionWithTN({ "a": "123456789" }, "", irisRtcStream);
+    });
+
+    it('should throw error with connection not having xmpp', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+        var irisRtcConnection = new IrisRtcConnection();
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
+                errorMessage == "Invalid user config or rtc connection") {
+                done();
+            }
+        }
+        var irisRtcStream = { localStream: "localStream" };
+
+        irisRtcSession.createSessionWithTN({ "a": "123456789" }, irisRtcConnection, irisRtcStream);
+    });
+
+    it('should throw error with useAnonymousLogin true', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+        var irisRtcConnection = new IrisRtcConnection();
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
+                errorMessage == "Anonymous PSTN call is not allowed") {
+                done();
+            }
+        }
+        var irisRtcConnection = new IrisRtcConnection();
+        irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        var irisRtcStream = { localStream: "MediaStream" }
+        var config = { useAnonymousLogin: true }
+
+        irisRtcSession.createSessionWithTN(config, irisRtcConnection, irisRtcStream);
+    });
+
+    it('should throw error with no type in config', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+        var irisRtcConnection = new IrisRtcConnection();
+        irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        var irisRtcStream = { localStream: "MediaStream" }
+        var config = { useAnonymousLogin: false }
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
+                errorMessage == "Invalid type") {
+                done();
+            }
+        }
+
+        irisRtcSession.createSessionWithTN(config, irisRtcConnection, irisRtcStream);
+    });
+
+    it('should throw error if type in config is not pstn', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+        var irisRtcConnection = new IrisRtcConnection();
+        irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        var irisRtcStream = { localStream: "MediaStream" }
+
+        var config = { useAnonymousLogin: false, type: "video" }
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
+                errorMessage == "Invalid type") {
+                done();
+            }
+        }
+
+        irisRtcSession.createSessionWithTN(config, irisRtcConnection, irisRtcStream);
+    });
+
+
+    it('should throw error with no irisToken', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+        var irisRtcConnection = new IrisRtcConnection();
+        irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        var irisRtcStream = { localStream: "MediaStream" }
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
+                errorMessage == "Invalid irisToken") {
+                done();
+            }
+        }
+        var config = {
+            useAnonymousLogin: false,
+            type: "pstn",
+        }
+
+
+        irisRtcSession.createSessionWithTN(config, irisRtcConnection, irisRtcStream);
+    });
+
+    it('should throw error with no routingId', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+        var irisRtcConnection = new IrisRtcConnection();
+        irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        var irisRtcStream = { localStream: "MediaStream" }
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
+                errorMessage == "Invalid routingId") {
+                done();
+            }
+        }
+
+        var config = {
+            useAnonymousLogin: false,
+            type: "pstn",
+            "irisToken": "irisToken"
+        }
+
+        irisRtcSession.createSessionWithTN(config, irisRtcConnection, irisRtcStream);
+    });
+
+
+    it('should throw error with no fromTN', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+        var irisRtcConnection = new IrisRtcConnection();
+        irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        var irisRtcStream = { localStream: "MediaStream" }
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
+                errorMessage == "For pstn calls toTN and fromTN are mandatory parameters") {
+                done();
+            }
+        }
+
+        var config = {
+            useAnonymousLogin: false,
+            type: "pstn",
+            "irisToken": "irisToken",
+            "routingId": "routingId"
+        }
+
+        irisRtcSession.createSessionWithTN(config, irisRtcConnection, irisRtcStream);
+    });
+
+    it('should throw error with no toTN', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+        var irisRtcConnection = new IrisRtcConnection();
+        irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        var irisRtcStream = { localStream: "MediaStream" }
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
+                errorMessage == "For pstn calls toTN and fromTN are mandatory parameters") {
+                done();
+            }
+        }
+
+        var config = {
+            useAnonymousLogin: false,
+            type: "pstn",
+            "irisToken": "irisToken",
+            "routingId": "routingId",
+            "fromTN": "fromTN"
+        }
+
+        irisRtcSession.createSessionWithTN(config, irisRtcConnection, irisRtcStream);
+    });
+
 });
 
 
@@ -522,26 +745,26 @@ describe('IrisRtcSession.joinSession', () => {
         });
     });
 
-    it('should throw error no stream for video call', (done) => {
+    // it('should throw error no stream for video call', (done) => {
 
-        var irisRtcSession = new IrisRtcSession();
-        var irisRtcConnection = new IrisRtcConnection();
-        irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+    //     var irisRtcSession = new IrisRtcSession();
+    //     var irisRtcConnection = new IrisRtcConnection();
+    //     irisRtcConnection.xmpp = { "Dummy": "Dummy" }
 
-        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
-            if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Local media stream cannot be null for audio or video call") {
-                done();
-            }
-        }
+    //     irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+    //         if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
+    //             errorMessage == "Local media stream cannot be null for audio or video call") {
+    //             done();
+    //         }
+    //     }
 
-        irisRtcSession.joinSession({ "type": "video" }, irisRtcConnection, "", {
-            "roomId": "roomId",
-            "roomtoken": "roomtoken",
-            "roomtokenexpirytime": "roomtokenexpirytime",
-            "traceId": "traceId"
-        });
-    });
+    //     irisRtcSession.joinSession({ "type": "video" }, irisRtcConnection, "", {
+    //         "roomId": "roomId",
+    //         "roomtoken": "roomtoken",
+    //         "roomtokenexpirytime": "roomtokenexpirytime",
+    //         "traceId": "traceId"
+    //     });
+    // });
 
     it('should throw error no stream for audio call', (done) => {
 
