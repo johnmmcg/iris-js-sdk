@@ -704,7 +704,7 @@ RtcStats.prototype.getPeerStatsEndCall = function(conn, statsInterval, timerFlag
     if (pc) {
         self.callStartTime = new Date();
         var arrayIndex = 0;
-        logger.log(logger.level.INFO, "IrisRtcStats", "self.callStartTime  >>>> " + self.callStartTime.toString());
+        logger.log(logger.level.VERBOSE, "IrisRtcStats", "self.callStartTime  :: " + self.callStartTime.toString());
 
 
 
