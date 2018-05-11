@@ -171,7 +171,7 @@ RtcRestHelper.EventManager = {
                         " Received server response  " + body);
 
                     // check if the status code is correct
-                    if (response.statusCode != 200) {
+                    if (response.statusCode < 200 || response.statusCode > 300 || response.statusCode == 204) {
 
                         logger.log(logger.level.ERROR, "RtcRestHelper.EventManager",
                             " Start muc with roomid failed with status code  " +

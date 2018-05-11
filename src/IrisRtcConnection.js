@@ -391,6 +391,7 @@ IrisRtcConnection.prototype._connectXmpp = function(xmpptoken, xmppServer, token
                     );
                 } catch (e) {
                     logger.log(logger.level.ERROR, "IrisRtcConnection", " onIncoming JSON parse failed");
+                    self.onConnectionError(RtcErrors.ERR_API_PARAMETERS, "onIncoming JSON parse failed");
                 }
             }
             config = response;
