@@ -150,8 +150,11 @@ RtcXmpp.prototype.connect = function connect(server, path, jid, resourceId, trac
 
     // Error event
     this.client.on('error', function(e) {
-        logger.log(logger.level.INFO, "RtcXmpp.connect error ", e);
-        self.emit('onError', e);
+        if (e.type == 'error') {
+            logger.log(logger.level.INFO, "RtcXmpp.connect error ", e);
+            self.emit('onError', "XMPP connection failed");
+
+        }
     });
 }
 
