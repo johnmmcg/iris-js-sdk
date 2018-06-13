@@ -105,11 +105,11 @@ RtcRestHelper.EventManager = {
      * @param {function} successCallback - 
      * @param {function} failureCallback - 
      */
-    sendStartMucWithRoomId: function(config, successCallback, failureCallback) {
+    sendStartMuc: function(config, successCallback, failureCallback) {
         try {
 
             logger.log(logger.level.INFO, "RtcRestHelper.EventManager",
-                "sendStartMucWithRoomId called ");
+                "sendStartMuc called ");
 
             var options = {
                 host: Rtcconfig.json.urls.eventManager,
@@ -122,36 +122,50 @@ RtcRestHelper.EventManager = {
                 }
             };
 
-            //For PSTN calls use "/v1.1/pstn/startmuc/room/" API
+            //For PSTN calls
             if (config.eventType == "pstncall") {
+
                 options.path = '/v1.1/pstn/startmuc/room/' + config.roomId;
+
+                //For PSTN Calls - With only fromTN and toTN
+                if (config.useNewApiForPSTN)
+                    options.path = '/v1.1/pstn/startmuc/federation/pstn';
             }
 
+            //Fot Anonymous Video Calls
             if (config.useAnonymousLogin) {
                 options.path = "/v1.1/anonymoususers/startmuc/room/" + config.roomName
             }
 
             var userData = (config.userData && config.eventType != "groupchat") ? config.userData : "";
 
-            logger.log(logger.level.VERBOSE, "RtcRestHelper.EventManager", "sendStartMucWithRoomId :: Ignore userData for groupchat calls");
+            logger.log(logger.level.VERBOSE, "RtcRestHelper.EventManager", "sendStartMuc :: Ignore userData for groupchat calls");
 
-            // JSON body 
-            if (config.rtcServer) {
-                var jsonBody = {
-                    "from": config.routingId,
+            var jsonBody = ""
+
+            if (config.eventType == "pstncall" && config.useNewApiForPSTN) {
+                jsonBody = {
+                    "inbound": false,
+                    "from": config.fromTN,
+                    'to': config.toTN,
                     "event_type": config.eventType,
                     "time_posted": Date.now(),
-                    "userdata": userData,
-                    "rtc_server": config.rtcServer
+                    "userdata": userData
                 };
             } else {
-                var jsonBody = {
+                jsonBody = {
                     "from": config.routingId,
                     "event_type": config.eventType,
                     "time_posted": Date.now(),
                     "userdata": userData
                 };
             }
+
+            // JSON body 
+            if (config.rtcServer) {
+                jsonBody.rtc_server = config.rtcServer;
+            }
+
             logger.log(logger.level.INFO, "RtcRestHelper.EventManager",
                 " startmuc with roomid with options " + JSON.stringify(options) +
                 " & body " + JSON.stringify(jsonBody));
@@ -210,7 +224,7 @@ RtcRestHelper.EventManager = {
 
         } catch (e) {
             logger.log(logger.level.ERROR, "RtcRestHelper.EventManager",
-                "sendStartMucWithRoomId :: xmpp create room failed with error  ", e);
+                "sendStartMuc :: xmpp create room failed with error  ", e);
             failureCallback(e);
         }
     },

@@ -255,7 +255,7 @@ RtcStats.prototype.eventLogs = function(eventName, json) {
  * This function uploads the statistics(JSON object) of the current call to backend server
  * @type {Function}
  */
-RtcStats.prototype.submitStats = function() {
+RtcStats.prototype.submitStats = function(cb) {
 
     logger.log(logger.level.INFO, "IrisRtcStats",
         " Submitting the stats ");
@@ -334,7 +334,7 @@ RtcStats.prototype.submitStats = function() {
     var statsServer = self.options.UEStatsServer ? self.options.UEStatsServer : "webrtcstats.g.comcast.net";
 
     if (statsServer) {
-        sendRequest(statsServer, statsPayload);
+        sendRequest(statsServer, statsPayload, function(status) { cb(status) });
     } else {
         logger.log(logger.level.ERROR, "IrisRtcStats",
             "config.urls.UEStatsServer is not available");
@@ -1531,7 +1531,7 @@ RtcStats.prototype.getPeerStats = function(conn, statsInterval, timerFlag) {
  * @param {method, targetUrl, data, content-type}
  * @private
  */
-function sendRequest(url, json) {
+function sendRequest(url, json, cb) {
 
     var options = {
         host: url,
@@ -1565,6 +1565,8 @@ function sendRequest(url, json) {
             response.on('end', function() {
                 logger.log(logger.level.INFO, "IrisRtcStats",
                     " Successfully Posted Stats to Server  ");
+
+                cb("Successfully Posted Stats to Server")
             });
         });
 
@@ -1572,6 +1574,8 @@ function sendRequest(url, json) {
         req.on('error', function(e) {
             logger.log(logger.level.ERROR, "IrisRtcStats",
                 "   Posting Stats to Server failed with error  " + e);
+            cb("Failed to post stats")
+
         });
 
         // Write json
