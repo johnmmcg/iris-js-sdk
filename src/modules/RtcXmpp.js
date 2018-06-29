@@ -123,7 +123,9 @@ RtcXmpp.prototype.connect = function connect(server, path, jid, resourceId, trac
         self.xmppJid = data.jid;
 
         self.emit('onOpen', data.jid);
-
+        Object.keys(self.sessionStore).forEach(function(element) {
+            self.emit(element, "onNetworkDisconnect");
+        });
         self.isAlive = true;
 
         //Start a ping<->pong for every three seconds
@@ -143,7 +145,7 @@ RtcXmpp.prototype.connect = function connect(server, path, jid, resourceId, trac
         self.client.removeAllListeners();
         self.client = null;
         self.isAlive = false;
-        removeNetworkEventListener(self);
+        // removeNetworkEventListener(self);
 
         self.emit('onClose');
     });
@@ -188,6 +190,7 @@ RtcXmpp.prototype.updateOnlineOfflineStatus = function(event) {
         self.stopPresenceAlive("");
         self.client = null;
         self.isAlive = false;
+
     }
 }
 
@@ -195,10 +198,10 @@ RtcXmpp.prototype.startPingPong = function() {
     var self = this;
 
     logger.log(logger.level.VERBOSE, "RtcXmpp",
-        " RtcXmpp :: startPingPong");
+        " startPingPong");
 
     self.keepAliveTimer = setTimeout(function() {
-        logger.log(logger.level.INFO, "RtcXmpp",
+        logger.log(logger.level.VERBOSE, "RtcXmpp",
             " RtcXmpp :: startPingPong : isAlive : " + self.isAlive);
 
         if (self.isAlive) {
@@ -215,7 +218,7 @@ RtcXmpp.prototype.startPingPong = function() {
             logger.log(logger.level.ERROR, "RtcXmpp",
                 " PingPong  failed : close the socket connection");
 
-            removeNetworkEventListener(self);
+            // removeNetworkEventListener(self);
             // self.client.removeAllListeners();
             clearTimeout(self.keepAliveTimer);
             clearInterval(self.pingtimer);
@@ -235,7 +238,7 @@ RtcXmpp.prototype.closeWebSocket = function closeSocket() {
     logger.log(logger.level.INFO, "RtcXmpp",
         " RtcXmpp::closeWebSocket called ");
 
-    removeNetworkEventListener(this);
+    // removeNetworkEventListener(this);
 
     // Check the websocket state: CONNECTING =0, OPEN=1, CLOSING=2, CLOSED=3
     if (this.client && this.client.connection && this.client.connection.websocket && this.client.connection.websocket.readyState == 1) {
@@ -284,7 +287,7 @@ RtcXmpp.prototype.startPing = function startPing() {
                 logger.log(logger.level.ERROR, "RtcXmpp",
                     " PingPong  failed : close the socket connection");
 
-                removeNetworkEventListener(self);
+                // removeNetworkEventListener(self);
                 // self.client.removeAllListeners();
                 clearTimeout(self.keepAliveTimer);
                 clearInterval(self.pingtimer);
@@ -328,6 +331,10 @@ RtcXmpp.prototype.disconnect = function disconnect() {
 
     if (this.client)
         this.client.end();
+    // if (this.client && this.client.connection.websocket && this.client.connection.websocket.readyState == 1) {
+    //     this.client.connection.websocket.close();
+
+    // }
     this.stopPing();
     clearTimeout(self.keepAliveTimer);
     this.isAlive = false;
@@ -357,6 +364,11 @@ function removeNetworkEventListener(self) {
 }
 
 function addNetworkEventListener(self) {
+    if (window && self.networkListeners) {
+        for (var property in self.networkListeners) {
+            window.removeEventListener(property, self.networkListeners[property], false);
+        }
+    }
     if (window) {
         window.addEventListener('online', self.networkListeners['online'] = self.updateOnlineOfflineStatus.bind(self));
         window.addEventListener('offline', self.networkListeners['offline'] = self.updateOnlineOfflineStatus.bind(self));
@@ -964,7 +976,8 @@ RtcXmpp.prototype.sendRayo = function sendRayo(data) {
         })
         .c('header', { 'name': 'JvbRoomName', "value": data.roomId + '@' + data.rtcServer.replace('xmpp', 'conference') }).up().up();
 
-    rayo.c('data', {
+
+    var dataElem = {
         xmlns: 'urn:xmpp:comcast:info',
         event: data.eventType,
         traceid: data.traceId,
@@ -974,7 +987,13 @@ RtcXmpp.prototype.sendRayo = function sendRayo(data) {
         toroutingid: data.toRoutingId,
         roomtoken: data.roomtoken,
         roomtokenexpirytime: data.roomtokenexpirytime
-    }).up();
+    }
+
+    if (data.toDomain) {
+        dataElem.todomain = data.toDomain;
+    }
+
+    rayo.c('data', dataElem).up();
 
     this.index++;
     // send the rayo command
