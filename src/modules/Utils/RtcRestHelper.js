@@ -59,7 +59,7 @@ RtcRestHelper.EventManager = {
                         " Received server response  " + body);
 
                     // check if the status code is correct
-                    if (response.statusCode != 200) {
+                    if (response.statusCode != 200 && response.statusCode != 201) {
 
                         logger.log(logger.level.ERROR, "RtcRestHelper.EventManager",
                             " Start muc with roomid failed with status code  " +
@@ -132,9 +132,15 @@ RtcRestHelper.EventManager = {
                     options.path = '/v1.1/pstn/startmuc/federation/pstn';
             }
 
-            //Fot Anonymous Video Calls
+            //For Anonymous Video Calls
             if (config.useAnonymousLogin) {
                 options.path = "/v1.1/anonymoususers/startmuc/room/" + config.roomName
+
+                //Anonymous room with limited number of participants
+                if (config.maxParticipants) {
+                    options.path = "/v1.1/anonymoususers/startmuc/room/" + config.roomName +
+                        "?maxparticipants=" + config.maxParticipants;
+                }
             }
 
             var userData = (config.userData && config.eventType != "groupchat") ? config.userData : "";
@@ -185,14 +191,17 @@ RtcRestHelper.EventManager = {
                         " Received server response  " + body);
 
                     // check if the status code is correct
-                    if (response.statusCode < 200 || response.statusCode > 300 || response.statusCode == 204) {
+                    if (response.statusCode == 400) {
+                        failureCallback("Invalid value for max participants", response.statusCode);
+                        return;
+                    } else if (response.statusCode != 200 && response.statusCode != 201) {
 
                         logger.log(logger.level.ERROR, "RtcRestHelper.EventManager",
                             " Start muc with roomid failed with status code  " +
                             response.statusCode + " & response " + body);
 
                         failureCallback("Start muc with roomid failed with status code  " +
-                            response.statusCode + " & response " + body);
+                            response.statusCode + " & response " + body, response.statusCode);
 
                         return;
 

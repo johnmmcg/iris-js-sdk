@@ -53,6 +53,38 @@ describe('IrisRtcSession.createSession', () => {
         irisRtcSession.createSession({ "a": "123456789" }, irisRtcConnection, "");
     });
 
+    it('should throw error with useAnonymousLogin true and no room name', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+        var irisRtcConnection = new IrisRtcConnection();
+        irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
+                errorMessage == "Invalid roomName") {
+                done();
+            }
+        }
+        irisRtcSession.createSession({ "useAnonymousLogin": true }, irisRtcConnection, "");
+    });
+
+
+    it('should throw error with max particpants less than 1', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+        var irisRtcConnection = new IrisRtcConnection();
+        irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
+                errorMessage == "Invalid number of participants") {
+                done();
+            }
+        }
+        irisRtcSession.createSession({ "useAnonymousLogin": true, "roomName": "hello", "maxParticipants": "q" }, irisRtcConnection, "");
+    });
+
+
     it('should throw error with no roomId', (done) => {
 
         var irisRtcSession = new IrisRtcSession();
@@ -133,6 +165,8 @@ describe('IrisRtcSession.createSession', () => {
 
         var irisRtcSession = new IrisRtcSession();
         var irisRtcConnection = new IrisRtcConnection();
+        var irisRtcStream = new IrisRtcStream();
+        irisRtcStream.localStream = "MediaStream";
         irisRtcConnection.xmpp = { "Dummy": "Dummy" }
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
@@ -147,7 +181,7 @@ describe('IrisRtcSession.createSession', () => {
             "irisToken": "irisToken",
             "routingId": "routingId",
             "stream": "recvonly"
-        }, irisRtcConnection, { stream: "stream" });
+        }, irisRtcConnection, irisRtcStream);
     });
 
     // it('should throw error with no stream for video call', (done) => {
@@ -216,6 +250,8 @@ describe('IrisRtcSession.createSession', () => {
 
         var irisRtcSession = new IrisRtcSession();
         var irisRtcConnection = new IrisRtcConnection();
+        var irisRtcStream = new IrisRtcStream();
+        irisRtcStream.localStream = "MediaStream";
         irisRtcConnection.xmpp = { "Dummy": "Dummy" }
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
@@ -229,7 +265,7 @@ describe('IrisRtcSession.createSession', () => {
             "type": "pstn",
             "irisToken": "irisToken",
             "routingId": "routingId",
-        }, irisRtcConnection, { "stream": "stream" });
+        }, irisRtcConnection, irisRtcStream);
     });
 
     it('should throw error with no fromTN for a pstn call', (done) => {
@@ -237,6 +273,8 @@ describe('IrisRtcSession.createSession', () => {
         var irisRtcSession = new IrisRtcSession();
         var irisRtcConnection = new IrisRtcConnection();
         irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        var irisRtcStream = new IrisRtcStream();
+        irisRtcStream.localStream = "MediaStream";
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
@@ -250,7 +288,7 @@ describe('IrisRtcSession.createSession', () => {
             "irisToken": "irisToken",
             "routingId": "routingId",
             "toTN": "123456"
-        }, irisRtcConnection, { "stream": "stream" });
+        }, irisRtcConnection, irisRtcStream);
     });
 
 
@@ -259,6 +297,8 @@ describe('IrisRtcSession.createSession', () => {
         var irisRtcSession = new IrisRtcSession();
         var irisRtcConnection = new IrisRtcConnection();
         irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        var irisRtcStream = new IrisRtcStream();
+        irisRtcStream.localStream = "MediaStream";
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
@@ -273,7 +313,7 @@ describe('IrisRtcSession.createSession', () => {
             "routingId": "routingId",
             "toTN": "123456",
             "fromTN": "123457"
-        }, irisRtcConnection, { "stream": "stream" });
+        }, irisRtcConnection, irisRtcStream);
     });
 
     it('should throw error with no audio track for a audio call', (done) => {
@@ -281,6 +321,8 @@ describe('IrisRtcSession.createSession', () => {
         var irisRtcSession = new IrisRtcSession();
         var irisRtcConnection = new IrisRtcConnection();
         irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        var irisRtcStream = new IrisRtcStream();
+        irisRtcStream.localStream = "MediaStream";
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
@@ -293,7 +335,7 @@ describe('IrisRtcSession.createSession', () => {
             "type": "audio",
             "irisToken": "irisToken",
             "routingId": "routingId",
-        }, irisRtcConnection, { "stream": "stream" });
+        }, irisRtcConnection, irisRtcStream);
     });
 
     it('should throw error with no audio track for a pstn call', (done) => {
@@ -301,6 +343,8 @@ describe('IrisRtcSession.createSession', () => {
         var irisRtcSession = new IrisRtcSession();
         var irisRtcConnection = new IrisRtcConnection();
         irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        var irisRtcStream = new IrisRtcStream();
+        irisRtcStream.localStream = "MediaStream";
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
@@ -313,7 +357,7 @@ describe('IrisRtcSession.createSession', () => {
             "type": "audio",
             "irisToken": "irisToken",
             "routingId": "routingId",
-        }, irisRtcConnection, { "stream": "stream" });
+        }, irisRtcConnection, irisRtcStream);
     });
 
 
@@ -342,6 +386,8 @@ describe('IrisRtcSession.createSession', () => {
         var irisRtcSession = new IrisRtcSession();
         var irisRtcConnection = new IrisRtcConnection();
         irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        var irisRtcStream = new IrisRtcStream();
+        irisRtcStream.localStream = "MediaStream";
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
@@ -354,7 +400,7 @@ describe('IrisRtcSession.createSession', () => {
             "type": "chat",
             "irisToken": "irisToken",
             "routingId": "routingId",
-        }, irisRtcConnection, { "stream": "stream" });
+        }, irisRtcConnection, irisRtcStream);
     });
 
 
@@ -813,6 +859,8 @@ describe('IrisRtcSession.joinSession', () => {
         var irisRtcSession = new IrisRtcSession();
         var irisRtcConnection = new IrisRtcConnection();
         irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        var irisRtcStream = new IrisRtcStream();
+        irisRtcStream.localStream = "MediaStream";
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
@@ -821,7 +869,7 @@ describe('IrisRtcSession.joinSession', () => {
             }
         }
 
-        irisRtcSession.joinSession({ "type": "video", "stream": "recvonly" }, irisRtcConnection, { "Stream": "Stream" }, {
+        irisRtcSession.joinSession({ "type": "video", "stream": "recvonly" }, irisRtcConnection, irisRtcStream, {
             "roomId": "roomId",
             "roomtoken": "roomtoken",
             "roomtokenexpirytime": "roomtokenexpirytime",
@@ -834,6 +882,8 @@ describe('IrisRtcSession.joinSession', () => {
         var irisRtcSession = new IrisRtcSession();
         var irisRtcConnection = new IrisRtcConnection();
         irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        var irisRtcStream = new IrisRtcStream();
+        irisRtcStream.localStream = "MediaStream";
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
@@ -842,7 +892,7 @@ describe('IrisRtcSession.joinSession', () => {
             }
         }
 
-        irisRtcSession.joinSession({ "type": "video" }, irisRtcConnection, { "Stream": "Stream" }, { "Notification": "Notification" });
+        irisRtcSession.joinSession({ "type": "video" }, irisRtcConnection, irisRtcStream, { "Notification": "Notification" });
     });
 
 
@@ -883,6 +933,8 @@ describe('IrisRtcSession.joinSession', () => {
         var irisRtcSession = new IrisRtcSession();
         var irisRtcConnection = new IrisRtcConnection();
         irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        var irisRtcStream = new IrisRtcStream();
+        irisRtcStream.localStream = "MediaStream";
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
@@ -891,7 +943,7 @@ describe('IrisRtcSession.joinSession', () => {
             }
         }
 
-        irisRtcSession.joinSession({ "type": "video" }, irisRtcConnection, { "Stream": "Stream" }, {
+        irisRtcSession.joinSession({ "type": "video" }, irisRtcConnection, irisRtcStream, {
             "roomId": "roomId",
             "roomtoken": "roomtoken",
             "roomtokenexpirytime": "roomtokenexpirytime",
@@ -904,6 +956,8 @@ describe('IrisRtcSession.joinSession', () => {
         var irisRtcSession = new IrisRtcSession();
         var irisRtcConnection = new IrisRtcConnection();
         irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        var irisRtcStream = new IrisRtcStream();
+        irisRtcStream.localStream = "MediaStream";
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
@@ -912,7 +966,7 @@ describe('IrisRtcSession.joinSession', () => {
             }
         }
 
-        irisRtcSession.joinSession({ "type": "video" }, irisRtcConnection, { "Stream": "Stream" }, {
+        irisRtcSession.joinSession({ "type": "video" }, irisRtcConnection, irisRtcStream, {
             "roomId": "roomId",
             "roomtoken": "roomtoken",
             "roomtokenexpirytime": "roomtokenexpirytime",
@@ -926,6 +980,8 @@ describe('IrisRtcSession.joinSession', () => {
         var irisRtcSession = new IrisRtcSession();
         var irisRtcConnection = new IrisRtcConnection();
         irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        var irisRtcStream = new IrisRtcStream();
+        irisRtcStream.localStream = "MediaStream";
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_CREATE_SESSION_FAILED &&
@@ -934,7 +990,7 @@ describe('IrisRtcSession.joinSession', () => {
             }
         }
 
-        irisRtcSession.joinSession({ "type": "chat" }, irisRtcConnection, { "Stream": "Stream" }, {
+        irisRtcSession.joinSession({ "type": "chat" }, irisRtcConnection, irisRtcStream, {
             "roomId": "roomId",
             "roomtoken": "roomtoken",
             "roomtokenexpirytime": "roomtokenexpirytime",

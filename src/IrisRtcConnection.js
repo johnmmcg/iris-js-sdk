@@ -117,14 +117,16 @@ IrisRtcConnection.prototype.connect = function(irisToken, routingId, eventManage
 IrisRtcConnection.prototype._doreconnect = function() {
     var self = this;
     if (this.state == IrisRtcConnection.DISCONNECTED) {
-        this.state = IrisRtcConnection.CONNECTING;
-        var delay = 10000;
+
+        var delay = 1000;
         self.reconTimer = setInterval(function() {
-            logger.log(logger.level.INFO, "IrisRtcConnection",
-                " doreconnect::Reconnecting... with delay: " + delay);
+            if (self.state != IrisRtcConnection.CONNECTING) {
+                self.state = IrisRtcConnection.CONNECTING;
+                logger.log(logger.level.INFO, "IrisRtcConnection",
+                    " doreconnect::Reconnecting... with delay: " + delay);
 
-            self._getWSTurnServerInfo(self.token, self.userID);
-
+                self._getWSTurnServerInfo(self.token, self.userID);
+            }
         }, delay);
 
     } else {

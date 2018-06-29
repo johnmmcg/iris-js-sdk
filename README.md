@@ -32,7 +32,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   
   ```html
-  <script src="https://unpkg.com/iris-js-sdk@3.4.27/dist/iris-js-sdk.min.js"></script>
+  <script src="https://unpkg.com/iris-js-sdk@3.4.28/dist/iris-js-sdk.min.js"></script>
   ```
 
 
@@ -213,15 +213,15 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
                                                         roomId - Room id received from create room call
                                                         userData - Data and Notification payload to be sent to the createrootevent API
   connection              object            (MANDATORY) IrisRtcConnection object
-  stream                  object            (MANDATORY) Local media stream object received on onLocalStream
-                                                        when createStream API is called                                                                                            
+  irisRtcStream           object            (MANDATORY) Instance of IrisRtcStream after createStream API is called
+                                                        and stream is created.                                                                                            
   ```
 
 * **Example** <br />
 
   ```javascript
     var irisRtcSession = new IrisRtcSession();
-    irisRtcSession.createSession(userConfig, connection, stream);
+    irisRtcSession.createSession(userConfig, connection, irisRtcStream);
   ```
 
   * Initialize Iris Rtc Session object.
@@ -257,8 +257,8 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
                                                         roomId - Room id received from create room call
                                                         userData - Data and Notification payload to be sent to the createrootevent API
   connection              object            (MANDATORY) IrisRtcConnection object
-  streamObject            object            (MANDATORY) Local media stream object received when createStream API is called
-
+  irisRtcStream           object            (MANDATORY) Instance of IrisRtcStream after createStream API is called
+                                                        and stream is created.  
   notificationPayload     json              (MANDATORY) This is the notification payload received through onNotifcation event
                                                         pass this notification as received - DONT ALTER ANY PARAMETERS                                                               
   ```
@@ -267,11 +267,11 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 
   ```javascript
     var irisRtcSession = new IrisRtcSession();
-    irisRtcSession.joinSession(config, connection, stream, notificationPayload);
+    irisRtcSession.joinSession(config, connection, irisRtcStream, notificationPayload);
   ```
 
   * Initialize Iris Rtc Session object.
-  * Call joinSession API of Iris RTC Session with streamObject which has local meida tracks which are received in onLocalStream, userConfig with callType and notification payload in case of incoming call.
+  * Call joinSession API of Iris RTC Session with Instance of IrisRtcStream once the stream is created after calling createStream, userConfig with callType and notification payload in case of incoming call.
   * Wait for irisRtcSession.onSessionCreated and irisRtcSession.onSessionConnected to receive on successfull session creatd notifications.
 
 * **Events** <br />    
@@ -962,7 +962,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   
   ```html
-  <script src="https://unpkg.com/iris-js-sdk@3.4.27/dist/iris-js-sdk.min.js"></script>
+  <script src="https://unpkg.com/iris-js-sdk@3.4.28/dist/iris-js-sdk.min.js"></script>
   ```
   
 ### Example for Using API's
@@ -1098,11 +1098,11 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
     // Call createSession API of Iris Session with 
     // "userConfig" userConfig object created above with type, roomId and userData
     // "connection" Iris rtc connection object
-    // "stream" having local media tracks received from onLocalStream
+    // "irisRtcStream" - Instance of IrisRtcStream after creating stream using createStream API
     // Session manages audio call, video call, pstn calls, chat messages
     
     var irisRtcSession = new IrisRtcSession();
-    irisRtcSession.createSession(userConfig, connection, stream);
+    irisRtcSession.createSession(userConfig, connection, irisRtcStream);
 
     // Wait for irisRtcSession.onSessionCreated callback event 
     irisRtcSession.onSessionCreated = function(roomId) {

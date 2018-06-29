@@ -141,6 +141,102 @@ function RtcStats(options) {
     this.statsInterval = 10000;
 };
 
+
+RtcStats.prototype.reset = function() {
+
+    this.RxVideoStatsFlag = false;
+    this.RxAudioStatsFlag = false;
+    this.TxVideoStatsFlag = false;
+    this.TxAudioStatsFlag = false;
+    this.genericFlag = false;
+    this.ReceiveBandwidth = [];
+    this.SendBandwidth = [];
+    this.TransmitBitrate = [];
+    this.rxbytesReceived = [];
+    this.FrameHeightReceived = [];
+    this.FrameRateReceived = [];
+    this.FrameWidthReceived = [];
+    this.rxpacketsLost = [];
+    this.rxpacketsReceived = [];
+    this.audioOutputLevel = [];
+    this.rxAudioBytesReceived = [];
+    this.rxAudiopacketsLost = [];
+    this.rxAudiopacketsReceived = [];
+    this.googDecodingPLCCNG = [];
+    this.googDecodingCNG = [];
+    this.googJitterBufferMs = [];
+    this.rxgoogJitterBufferMs = [];
+    this.googPreferredJitterBufferMs = [];
+    this.googDecodingPLC = [];
+    this.googDecodingNormal = [];
+    this.googJitterReceived = [];
+    this.googDecodingCTSG = [];
+    this.googDecodingCTN = [];
+    this.googCurrentDelayMs = [];
+    this.googCaptureStartNtpTimeMs = [];
+    this.rxgoogCaptureStartNtpTimeMs = [];
+    this.txbytesSent = [];
+    this.EncodeUsagePercent = [];
+    this.FrameHeightSent = [];
+    this.FrameRateSent = [];
+    this.FrameWidthSent = [];
+    this.txRtt = [];
+    this.txApacketsLost = [];
+    this.txApacketsSent = [];
+    this.audioInputLevel = [];
+    this.txAbytesSent = [];
+    this.googFrameWidthInput = [];
+    this.googPlisReceived = [];
+    this.googAvgEncodeMs = [];
+    this.googFrameHeightInput = [];
+    this.googFrameWidthSent = [];
+    this.txpacketsLost = [];
+    this.txpacketsSent = [];
+    this.timestamp = 0;
+    this.rxCurrentDelayMs = [];
+    this.googFirsReceived = [];
+    this.googFrameRateSent = [];
+    this.googAdaptationChanges = [];
+    this.googFrameRateInput = [];
+    this.txAgoogRtt = [];
+    this.googNacksReceived = [];
+    this.googCodecName = "";
+    this.googEchoCancellationReturnLoss = [];
+    this.googEchoCancellationEchoDelayStdDev = [];
+    this.googEchoCancellationQualityMin = [];
+    this.txAgoogCodecName = "";
+    this.googEchoCancellationReturnLossEnhancement = [];
+    this.googEchoCancellationEchoDelayMedian = [];
+    this.rxgoogJitterReceived = [];
+    this.googFirsSent = [];
+    this.googFrameRateDecoded = [];
+    this.googMaxDecodeMs = [];
+    this.googRenderDelayMs = [];
+    this.googFrameRateOutput = [];
+    this.googMinPlayoutDelayMs = [];
+    this.googNacksSent = [];
+    this.googTargetDelayMs = [];
+    this.googDecodeMs = [];
+    this.googPlisSent = [];
+    this.googRetransmitBitrate = [];
+    this.googActualEncBitrate = [];
+    this.timeseries;
+    this.aQuery = [];
+    this.RxTimestamp = 0;
+    this.TxTimeStamp = 0
+    this.rttArray = [];
+    this.packetLossArray = [];
+    this.RecvBWArray = [];
+    this.arrayIndex = 0;
+    this.currentRecvBwvalue = 0;
+    this.newRecvBwvalue = 0;
+
+    this.currentPacketLossvalue = 0;
+    this.newPacketLossvalue = 0;
+
+
+};
+
 /**
  * This function decide the signal strength of the current call
  * @type {Function}
@@ -241,7 +337,43 @@ RtcStats.prototype.updateReceiveBWLevel = function(recvBWValue) {
     }
 
 };
+RtcStats.prototype.submitRtp = function(cb) {
+    logger.log(logger.level.INFO, "IrisRtcStats",
+        " Submitting the stats ");
+    var self = this;
+    var statsPayload = {
+        "meta": {
+            "sdkVersion": self.options.sdkVersion,
+            "sdkType": "iris-js-sdk",
+            "userAgent": self.userAgent,
+            "browser": self.browserName,
+            "browserVersion": self.browserVersion
+        },
+        "streaminfo": {
+            "UID": self.options.UID,
+            "wsServer": self.options.wsServer,
+            "rtcServer": self.options.rtcServer,
+            "turnIP": "",
+            "turnUsed": "0",
+            "roomId": self.options.roomId,
+            "routingId": self.options.routingId,
+            "traceId": self.options.traceId
+        },
+        "timeseries": self.timeseries
+    };
 
+    logger.log(logger.level.INFO, "IrisRtcStats",
+        "submitRtp :: " + JSON.stringify(statsPayload));
+
+    var statsServer = self.options.UEStatsServer ? self.options.UEStatsServer : "webrtcstats.g.comcast.net";
+
+    if (statsServer) {
+        sendRequest(statsServer, statsPayload, function(status) { cb(status) });
+    } else {
+        logger.log(logger.level.ERROR, "IrisRtcStats",
+            "config.urls.UEStatsServer is not available");
+    }
+};
 /**
  * This function saves the event details
  * @type {Function}
