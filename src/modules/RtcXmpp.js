@@ -14,6 +14,7 @@ var Rtcconfig = require('./RtcConfig.js');
 var SDPUtil = require("./Utils/SDPUtil.js");
 var SDP = require("./Utils/SDP.js");
 var RtcEvents = require("./RtcEvents.js").Events;
+var async = require("async");
 
 // Features for disco
 var features = [
@@ -58,6 +59,12 @@ function RtcXmpp() {
     this.userAgent = (navigator && navigator.userAgent) ? navigator.userAgent : "Iris JS SDK -v" + Rtcconfig.json.sdkVersion;
     this.isAlive = false;
     this.networkListeners = [];
+    this.sendMessageQueue = async.queue(_processQueueTasks.bind(this), 1);
+
+}
+
+_processQueueTasks = function(task, finishedCallback) {
+    task(finishedCallback);
 }
 
 // Setup an event emitter
@@ -485,7 +492,6 @@ RtcXmpp.prototype.sendPresence = function sendPresence(config) {
             'roomtoken': config.roomtoken,
             'roomtokenexpirytime': config.roomtokenexpirytime,
             'userdata': config.userData,
-            'maxparticipants': config.maxParticipants
         }).up();
 
         if (this.client)
@@ -838,8 +844,11 @@ RtcXmpp.prototype.sendAllocate = function sendAllocate(data) {
         'roomtoken': data.roomtoken,
         'roomtokenexpirytime': data.roomtokenexpirytime,
         'userdata': data.userData,
-        'maxparticipants': data.maxParticipants
 
+    }
+
+    if (data.useAnonymousLogin && data.isRoomModerated) {
+        dataElem.type = "allocate";
     }
 
     if (data.sessionType == "upgrade" || data.sessionType == "downgrade") {
@@ -1119,62 +1128,173 @@ RtcXmpp.prototype.sendUnHold = function sendUnHold(config, participantJid) {
 //
 RtcXmpp.prototype.sendMerge = function sendMerge(config, firstParticipantJid, secondParticipantJid) {
 
-        logger.log(logger.level.VERBOSE, "RtcXmpp", " sendMerge");
+    logger.log(logger.level.VERBOSE, "RtcXmpp", " sendMerge");
 
-        var roomJid = config.roomId + '@' + config.rtcServer.replace('xmpp', 'callcontrol');
+    var roomJid = config.roomId + '@' + config.rtcServer.replace('xmpp', 'callcontrol');
 
-        var merge = new xmppClient.Element(
-                'iq', { to: roomJid + "/" + firstParticipantJid, from: this.jid + '/' + this.xmppJid.resource, "type": "set", id: this.index.toString() + ':sendIQ' })
-            .c('merge', { 'xmlns': 'urn:xmpp:rayo:1' })
-            .c('header', { "name": "secondParticipant", "value": secondParticipantJid }).up().up();
+    var merge = new xmppClient.Element(
+            'iq', { to: roomJid + "/" + firstParticipantJid, from: this.jid + '/' + this.xmppJid.resource, "type": "set", id: this.index.toString() + ':sendIQ' })
+        .c('merge', { 'xmlns': 'urn:xmpp:rayo:1' })
+        .c('header', { "name": "secondParticipant", "value": secondParticipantJid }).up().up();
 
-        merge = merge.c('data', {
-            'xmlns': "urn:xmpp:comcast:info",
-            'traceid': config.traceId,
-            'host': this.server
-        }).up();
+    merge = merge.c('data', {
+        'xmlns': "urn:xmpp:comcast:info",
+        'traceid': config.traceId,
+        'host': this.server
+    }).up();
 
-        this.index++;
-        // send the rayo command
-        this.client.send(merge.tree());
-    }
-    // Method to send callStats through websocket
-    //
-    // @param {data} - Configuration
-    // @returns {retValue} 0 on success, negative value on error
-    //
+    this.index++;
+    // send the rayo command
+    this.client.send(merge.tree());
+}
+
+// Method to send callStats through websocket
+//
+// @param {data} - Configuration
+// @returns {retValue} 0 on success, negative value on error
+//
 RtcXmpp.prototype.sendCallStats = function(data) {
 
-    logger.log(logger.level.INFO, "RtcXmpp",
-        " sendCallStats : " + data.stats.n);
+    var self = this;
 
-    var privateIq = new xmppClient.Element(
-            'iq', {
-                id: this.index.toString() + ':sendIQ',
-                "type": "set",
+    const workFunction = finishedCallback => {
+        logger.log(logger.level.INFO, "RtcXmpp",
+            " sendCallStats : " + data.stats.n);
 
-            })
-        .c('query', {
-            'xmlns': 'jabber:iq:private',
-            'strict': false,
-        }).up();
-    // var myString = JSON.stringify(data.stats);
-    // myString = myString.replace(/\"/g, "");
-    // Add data element
-    privateIq.c('data', {
-        'xmlns': "urn:xmpp:comcast:info",
-        'stats': JSON.stringify(data.stats),
-        'roomid': data.roomId,
-        'traceid': data.traceId,
-        'event': "callstats",
-        'action': "log"
+        var privateIq = new xmppClient.Element(
+                'iq', {
+                    id: this.index.toString() + ':sendStatsIQ',
+                    "type": "set",
 
-    });
-    if (this.client)
-        this.client.send(privateIq.tree());
+                })
+            .c('query', {
+                'xmlns': 'jabber:iq:private',
+                'strict': false,
+            }).up();
+        // var myString = JSON.stringify(data.stats);
+        // myString = myString.replace(/\"/g, "");
+        // Add data element
+        privateIq.c('data', {
+            'xmlns': "urn:xmpp:comcast:info",
+            'stats': JSON.stringify(data.stats),
+            'roomid': data.roomId,
+            'traceid': data.traceId,
+            'event': "callstats",
+            'action': "log"
+
+        });
+
+        this.index++;
+
+        if (this.client) {
+            this.client.send(privateIq.tree());
+            self.sendMessageQueue.pause()
+            finishedCallback();
+        }
+    }
+
+    self.sendMessageQueue.push(workFunction);
 
 }
 
+/**
+ * 
+ * @param {json} config - Config from session
+ * @param {string} participantJid - Jid of the participant to be kicked
+ * @param {string} participantName - Name of the participant
+ */
+RtcXmpp.prototype.kickParticipant = function(config, participantJid, participantName) {
+
+    logger.log(logger.level.VERBOSE, "RtcXmpp",
+        " kickParticipant :: " + participantJid);
+
+    var kick = new xmppClient.Element(
+            'iq', {
+                id: this.index.toString() + ':sendIQ',
+                from: this.jid + '/' + this.xmppJid.resource,
+                to: config.roomId + '@' + config.rtcServer.replace('xmpp', 'conference'),
+                type: 'set',
+            })
+        .c('query', {
+            'xmlns': 'http://jabber.org/protocol/muc#admin',
+        })
+        .c('item', { 'nick': participantJid, 'role': 'none' })
+        .c('reason').t("Ohh Sorry!! You are kicked out of room").up().up().up()
+
+    kick.c('data', {
+        'xmlns': "urn:xmpp:comcast:info",
+        'traceid': config.traceId,
+        'host': this.server
+    });
+
+    this.index++;
+    // Send kick iq to a participant
+    this.client.send(kick.tree());
+}
+
+/**
+ * Call this API to a lock a room
+ * @param {json} config - User config from session
+ */
+RtcXmpp.prototype.lockRoom = function(config) {
+
+    logger.log(logger.level.VERBOSE, "RtcXmpp",
+        " lockRoom :: " + config.roomId);
+
+    var lockRoom = new xmppClient.Element(
+            'iq', {
+                id: this.index.toString() + ':sendIQ',
+                from: this.jid + '/' + this.xmppJid.resource,
+                to: config.roomId + '@' + config.rtcServer.replace('xmpp', 'conference'),
+                type: 'set',
+            })
+        .c('query', {
+            'xmlns': 'http://jabber.org/protocol/muc#admin',
+        })
+        .c('item', { 'lock': true, 'rejoin': config.rejoin ? config.rejoin : false }).up().up()
+
+    lockRoom.c('data', {
+        'xmlns': "urn:xmpp:comcast:info",
+        'traceid': config.traceId,
+        'host': this.server
+    });
+
+    this.index++;
+    // Send lockRoom iq to a participant
+    this.client.send(lockRoom.tree());
+}
+
+/**
+ * Call this API to unlock the room
+ * @param {json} config - User config from sessiom
+ */
+RtcXmpp.prototype.unlockRoom = function(config) {
+
+    logger.log(logger.level.VERBOSE, "RtcXmpp",
+        " unlockRoom :: " + config.roomId);
+
+    var unlockRoom = new xmppClient.Element(
+            'iq', {
+                id: this.index.toString() + ':sendIQ',
+                from: this.jid + '/' + this.xmppJid.resource,
+                to: config.roomId + '@' + config.rtcServer.replace('xmpp', 'conference'),
+                type: 'set',
+            })
+        .c('query', {
+            'xmlns': 'http://jabber.org/protocol/muc#admin',
+        })
+        .c('item', { 'lock': false }).up().up()
+
+    unlockRoom.c('data', {
+        'xmlns': "urn:xmpp:comcast:info",
+        'traceid': config.traceId,
+        'host': this.server
+    });
+
+    this.index++;
+    // Send unlockRoom iq to a participant
+    this.client.send(unlockRoom.tree());
+}
 
 RtcXmpp.prototype.sendSourceAdd = function sendSourceAdd(sdpDiffer, data) {
     logger.log(logger.level.VERBOSE, "RtcXmpp",
@@ -1211,6 +1331,75 @@ RtcXmpp.prototype.sendSourceAdd = function sendSourceAdd(sdpDiffer, data) {
         // Send the source-add
         this.client.send(add.tree());
     }
+}
+
+/**
+ * 
+ * @param {json} config - Config from session
+ * @param {string} participantJid - Jid of the participant to be made as moderator
+ * @param {string} participantName - Name of the participant
+ */
+RtcXmpp.prototype.grantModeratorPrivilege = function(config, participantJid) {
+
+    logger.log(logger.level.VERBOSE, "RtcXmpp",
+        " grantModeratorPrivilege :: " + participantJid);
+
+    var moderator = new xmppClient.Element(
+            'iq', {
+                id: this.index.toString() + ':sendIQ',
+                from: this.jid + '/' + this.xmppJid.resource,
+                to: config.roomId + '@' + config.rtcServer.replace('xmpp', 'conference'),
+                type: 'set',
+            })
+        .c('query', {
+            'xmlns': 'http://jabber.org/protocol/muc#admin',
+        })
+        .c('item', { 'nick': participantJid, 'role': 'moderator' }).up().up()
+
+    moderator.c('data', {
+        'xmlns': "urn:xmpp:comcast:info",
+        'traceid': config.traceId,
+        'host': this.server
+    });
+
+    this.index++;
+    // Send kick iq to a participant
+    this.client.send(moderator.tree());
+}
+
+
+/**
+ * 
+ * @param {json} config - Config from session
+ * @param {string} participantJid - Jid of the participant whose moderator rights being revoked
+ * @param {string} participantName - Name of the participant
+ */
+RtcXmpp.prototype.revokeModeratorPrivilege = function(config, participantJid) {
+
+    logger.log(logger.level.VERBOSE, "RtcXmpp",
+        " revokeModeratorPrivilege :: " + participantJid);
+
+    var moderator = new xmppClient.Element(
+            'iq', {
+                id: this.index.toString() + ':sendIQ',
+                from: this.jid + '/' + this.xmppJid.resource,
+                to: config.roomId + '@' + config.rtcServer.replace('xmpp', 'conference'),
+                type: 'set',
+            })
+        .c('query', {
+            'xmlns': 'http://jabber.org/protocol/muc#admin',
+        })
+        .c('item', { 'nick': participantJid, 'role': 'participant' }).up().up()
+
+    moderator.c('data', {
+        'xmlns': "urn:xmpp:comcast:info",
+        'traceid': config.traceId,
+        'host': this.server
+    });
+
+    this.index++;
+    // Send kick iq to a participant
+    this.client.send(moderator.tree());
 }
 
 RtcXmpp.prototype.sendSourceRemove = function sendSourceRemove(sdpDiffer, data) {
@@ -1309,11 +1498,28 @@ RtcXmpp.prototype._onIQ = function _onIQ(stanza) {
     }
 
 
-    // Check if this is ack from focus
-    if (stanza.attrs && stanza.attrs.type == "result" &&
-        stanza.getChild("conference")) {
-        this._onConference(stanza);
+
+    if (stanza.attrs && stanza.attrs.type == "result") {
+
+        if (stanza.id.includes('sendStatsIQ')) {
+
+            self.sendMessageQueue.resume();
+
+        } else if (stanza.getChild("conference")) {
+
+            this._onConference(stanza);
+
+        }
     }
+
+
+    // Check if this is ack from focus
+    // if (stanza.attrs && stanza.attrs.type == "result" &&
+    //     stanza.getChild("conference")) {
+
+    //     this._onConference(stanza);
+
+    // }
 
     // Check if this is ack from focus
     if (stanza.attrs && stanza.attrs.type == "error") {
@@ -1625,6 +1831,13 @@ RtcXmpp.prototype._onPresence = function _onPresence(stanza) {
                 "from": stanza.attrs.from,
                 "dataElement": dataElement
             };
+
+
+            var reason = item.getChild('reason');
+            if (reason && reason.children && reason.children[0]) {
+                reason = reason.children[0];
+                presenceConfig.reason = reason;
+            }
 
             // send the presence message
             self.emit(roomId, 'onPresence', presenceConfig);

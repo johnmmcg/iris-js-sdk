@@ -32,7 +32,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   
   ```html
-  <script src="https://unpkg.com/iris-js-sdk@3.4.28/dist/iris-js-sdk.min.js"></script>
+  <script src="https://unpkg.com/iris-js-sdk@3.4.29/dist/iris-js-sdk.min.js"></script>
   ```
 
 
@@ -52,9 +52,12 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
 - [Mute Local Video](#video-mute)
 - [Mute Remote Participant Audio](#mute-remote-participant-audio)
 - [Mute Remote Participant Video](#mute-remote-participant-video)
+- [Switch Streams](#switch-streams)
+- [Kick Participant](#kick-participant)
+- [Lock Room](#lock-room)
+- [Unlock Room](#unlock-room)
 - [End Rtc Session](#end-the-call)
 - [End Rtc Connection](#disconnect-rtc-connection)
-- [Switch Streams](#switch-streams)
 - [How to use IrisRtcSdk](#how-to-use-irisrtcsdk)
 
 
@@ -691,6 +694,65 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   * Call switchStream API of to change the stream user is streaming
 
 
+**Kick Participant**
+----
+  This API allows room moderator to kick other participants out of the room. Kicked out pariticpant won't be able to rejoin the current session. 
+  And only a moderator can kick participants.
+
+* **API Name** <br />
+
+  ```javascript 
+    IrisRtcSession.kickParticipant
+  ```
+
+* **Example** <br />
+
+  ```javascript
+    irisRtcSession.kickParticipant(roomId, participantJid, participantName);
+  ```
+  * Call kickParticipant API to evict a participant from ongoing session.
+
+
+**Lock Room**
+----
+  This API allows room moderator to lock the room with exitsing number of participants in an ongoing sesison.
+  Once room is locked no new participants are allowed to join the room. 
+  During a session if any participant gets disconnected because of some reason, moderator can 
+  control whether or not disconnected participant to be allowed to join the room again by setting rejoin 
+  attribute to true/false while calling this API.
+
+* **API Name** <br />
+
+  ```javascript 
+    IrisRtcSession.lockRoom
+  ```
+
+* **Example** <br />
+
+  ```javascript
+    irisRtcSession.lockRoom(roomId, rejoin);
+  ```
+  * Call lockRoom API to lock an ongoing session with existing number of participants.
+
+
+**Unlock Room**
+----
+  This API allows room moderator to unlock the already locked room, Once room is unlocked new participants can join the room.
+
+* **API Name** <br />
+
+  ```javascript 
+    IrisRtcSession.unlockRoom
+  ```
+
+* **Example** <br />
+
+  ```javascript
+    irisRtcSession.unlockRoom(roomId);
+  ```
+  * Call lockRoom API to unlock an already locked session.
+
+
 # Callback Event Handlers
 
 **onConnected**
@@ -962,7 +1024,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   
   ```html
-  <script src="https://unpkg.com/iris-js-sdk@3.4.28/dist/iris-js-sdk.min.js"></script>
+  <script src="https://unpkg.com/iris-js-sdk@3.4.29/dist/iris-js-sdk.min.js"></script>
   ```
   
 ### Example for Using API's

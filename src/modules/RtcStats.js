@@ -941,7 +941,7 @@ RtcStats.prototype.getPeerStatsEndCall = function(conn, statsInterval, timerFlag
                     self.googCodecName = "0";
                     self.googFirsReceived.push("0");
                 }
-                if (this.generalFlag == false) {
+                if (this.genericFlag == false) {
                     self.ReceiveBandwidth.push("0");
                     self.SendBandwidth.push("0");
                     self.googRetransmitBitrate.push("0");
@@ -1525,7 +1525,7 @@ RtcStats.prototype.getPeerStats = function(conn, statsInterval, timerFlag) {
                     self.googCodecName = "0";
                     self.googFirsReceived.push("0");
                 }
-                if (this.generalFlag == false) {
+                if (this.genericFlag == false) {
                     self.ReceiveBandwidth.push("0");
                     self.SendBandwidth.push("0");
                     self.googRetransmitBitrate.push("0");

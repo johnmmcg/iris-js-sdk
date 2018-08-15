@@ -2305,10 +2305,30 @@ describe('IrisRtcSession.sendChatMessage', () => {
 
     });
 
+    it('Anonymous moderated room - should throw error with admin not joined yet ', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+        irisRtcSession.config = {};
+        irisRtcSession.config.useAnonymousLogin = true;
+        irisRtcSession.isRoomModerated = true;
+        irisRtcSession.isSessionAdministratorJoined = false;
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_SESSION_ADMIN_NOT_JOINED &&
+                errorMessage == "sendChatMessage :: Admin hasn't joined room yet") {
+                done();
+            }
+        }
+
+        irisRtcSession.sendChatMessage("", "", "");
+
+    });
 
     it('should throw error with no roomId, no id and no message', (done) => {
 
         var irisRtcSession = new IrisRtcSession();
+        irisRtcSession.config = {};
+        irisRtcSession.config.useAnonymousLogin = true;
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
@@ -2324,6 +2344,8 @@ describe('IrisRtcSession.sendChatMessage', () => {
     it('should throw error with no id and no message', (done) => {
 
         var irisRtcSession = new IrisRtcSession();
+        irisRtcSession.config = {};
+        irisRtcSession.config.useAnonymousLogin = true;
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
@@ -2340,6 +2362,8 @@ describe('IrisRtcSession.sendChatMessage', () => {
     it('should throw error with no message', (done) => {
 
         var irisRtcSession = new IrisRtcSession();
+        irisRtcSession.config = {};
+        irisRtcSession.config.useAnonymousLogin = true;
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
@@ -2356,6 +2380,8 @@ describe('IrisRtcSession.sendChatMessage', () => {
     it('should throw error with no config in session ', (done) => {
 
         var irisRtcSession = new IrisRtcSession();
+        irisRtcSession.config = {};
+        irisRtcSession.config.useAnonymousLogin = true;
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
@@ -2367,8 +2393,6 @@ describe('IrisRtcSession.sendChatMessage', () => {
         irisRtcSession.sendChatMessage("1234", "id", "Hello");
 
     });
-
-
 
     it('should throw error with no roomId in session config', (done) => {
 
@@ -2478,6 +2502,9 @@ describe('IrisRtcSession.sendChatState', () => {
     it('should throw error with no roomId and no chatState', (done) => {
 
         var irisRtcSession = new IrisRtcSession();
+        irisRtcSession.config = {
+            "eventType": "videocall"
+        }
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
@@ -2493,6 +2520,9 @@ describe('IrisRtcSession.sendChatState', () => {
     it('should throw error with no chatState', (done) => {
 
         var irisRtcSession = new IrisRtcSession();
+        irisRtcSession.config = {
+            "eventType": "videocall"
+        }
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
@@ -2509,6 +2539,9 @@ describe('IrisRtcSession.sendChatState', () => {
     it('should throw error with no roomId', (done) => {
 
         var irisRtcSession = new IrisRtcSession();
+        irisRtcSession.config = {
+            "eventType": "videocall"
+        }
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
@@ -2525,6 +2558,9 @@ describe('IrisRtcSession.sendChatState', () => {
     it('should throw error with no config in session', (done) => {
 
         var irisRtcSession = new IrisRtcSession();
+        irisRtcSession.config = {
+            "eventType": "videocall"
+        }
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
@@ -2541,7 +2577,8 @@ describe('IrisRtcSession.sendChatState', () => {
 
         var irisRtcSession = new IrisRtcSession();
         irisRtcSession.config = {
-            "config": "config"
+            "config": "config",
+            "eventType": "videocall"
         }
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {

@@ -195,6 +195,9 @@ function getUserMedia(constraints) {
         });
     } catch (error) {
         logger.log(logger.level.ERROR, "IrisRtcStream", " Failed to getUserMedia ", error);
+        self.onStreamError(RtcErrors.ERR_CREATE_STREAM_FAILED,
+            "Failed to create stream");
+
     }
 };
 

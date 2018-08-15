@@ -22,6 +22,7 @@ var SDPMangler = require('./modules/Utils/SDPMangler.js');
 var RestHelper = require('./modules/Utils/RtcRestHelper.js');
 var WebRTC = require('./modules/RtcWebrtcAdapter.js');
 var dialtone = require('./modules/Utils/dialtone.js');
+var ModeratorControls = require('./modules/Utils/ModeratorControls.js');
 
 // States
 ["NONE", "CONNECTING", "OUTGOING", "INCOMING", "INPROGRESS", "CONNECTED",
@@ -70,6 +71,9 @@ function IrisRtcSession() {
     this.isAudioMuted = false;
     this.sessionInitiateSdp = null;
     this.isPSTNOnHold = false;
+    this.isSessionAdministratorJoined = false;
+    this.isRoomModerated = false;
+    this.moderatorRights = {};
     // Add the entry
     this.interop = new Interop();
     // Stats Init
@@ -137,7 +141,8 @@ IrisRtcSession.prototype.create = function(config, connection) {
         self.initWebRTC(connection.iceServerJson, this.config.type);
 
         // Add stream to peer connection
-        self._addStream(self.localStream);
+        if (self.localStream)
+            self._addStream(self.localStream);
     }
 
     // Create a DTMF Manager
@@ -153,7 +158,7 @@ IrisRtcSession.prototype.create = function(config, connection) {
     if (config.sessionType != "join" || (config.sessionType == "join" && config.type == "chat" && !config.rtcServer)) {
         self.sendEvent("SDK_StartMucRequest", { message: "Start Muc for create session or joining chat session" });
 
-        if (config.type == "chat") {
+        if (config.type == "chat" && config.stream != 'nostream') {
             RestHelper.EventManager.sendChatMucWithRoomId(self.config, function(response) {
                 logger.log(logger.level.INFO, "IrisRtcSession",
                     " StartMucResponse " + JSON.stringify(response));
@@ -231,7 +236,17 @@ IrisRtcSession.prototype.create = function(config, connection) {
                         self.state = IrisRtcSession.CONNECTING;
                     }
 
-                    if ((self.config.useBridge || self.config.type == "pstn" || self.config.sessionType == "downgrade" ||
+                    self.isRoomModerated = response.is_moderated;
+
+                    if (self.config.useAnonymousLogin && self.isRoomModerated) {
+
+                        logger.log(logger.level.INFO, "IrisRtcSession", "Join the room and wait for admin");
+                        self.connection.xmpp.sendPresence(self.config);
+
+                        // Send presence Alive
+                        connection.xmpp.sendPresenceAlive(self.config);
+
+                    } else if ((self.config.useBridge || self.config.type == "pstn" || self.config.sessionType == "downgrade" ||
                             self.config.sessionType == "upgrade") && (self.config.type != "chat")) {
                         if (!self.config.channelLastN)
                             self.config.channelLastN = rtcConfig.json.channelLastN;
@@ -247,9 +262,9 @@ IrisRtcSession.prototype.create = function(config, connection) {
                     if (self.config.useAnonymousLogin || self.config.useNewApiForPSTN)
                         self.connection.xmpp.on(self.config.roomId, self.roomEventListener.bind(this));
 
-                    if (self.config.maxParticipants && self.config.maxParticipants != response.maxparticipants) {
+                    if (self.config.maxParticipants && response.maxparticipants && self.config.maxParticipants != response.maxparticipants) {
 
-                        var msg = "Room is already live with maximum participants of " + self.config.maxParticipants + ". You can't overwrite maximum participants value"
+                        var msg = "Room is already live with maximum participants of " + response.maxparticipants + ". You can't overwrite maximum participants value"
 
                         self.onCreated(self.config.roomId, msg);
                     } else {
@@ -267,6 +282,10 @@ IrisRtcSession.prototype.create = function(config, connection) {
                         self.onSessionError(self.config ? self.config.roomId : "RoomId", RtcErrors.ERR_BACKEND_ERROR,
                             "Invalid value for max participants");
                         return;
+                    } else if (statusCode && statusCode == 403 && error && error.code && error.code == "EVM-0001") {
+
+                        self.onSessionError(self.config ? self.config.roomId : "RoomId", RtcErrors.ERR_BACKEND_ERROR,
+                            "Only moderator can set max participants value for this room");
                     }
 
                     self.onSessionError(self.config ? self.config.roomId : "RoomId", RtcErrors.ERR_BACKEND_ERROR,
@@ -303,7 +322,6 @@ IrisRtcSession.prototype.create = function(config, connection) {
     if (!self.config.useAnonymousLogin && !self.config.useNewApiForPSTN) {
         connection.xmpp.removeAllListeners(self.config.roomId);
         connection.xmpp.on(self.config.roomId, self.roomEventListener.bind(this));
-
     }
 
     // connection.xmpp.on('onError', self.onXMPPError.bind(this));
@@ -373,6 +391,7 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
                 " Room : " + self.config.roomId + " Event : " + event + " response : " + JSON.stringify(response));
 
         }
+
         if (event === "onDisconnectIQ") {
             logger.log(logger.level.INFO, "IrisRtcSession", "DisconnectIQ is received, end the call when it's done")
             if (self.connection.xmpp.disconnectWS == true) {
@@ -392,6 +411,7 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
             self.restartIce();
             return;
         }
+
         if (self.config.roomId != response.roomId) {
             logger.log(logger.level.ERROR, "IrisRtcSession", "RoomId mismatch : Listening event to " +
                 self.config.roomId + " Received event for " + response.roomId);
@@ -407,11 +427,18 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
 
             self.focusJid = response.focusJid;
 
-            // Send the presence if room is created
-            connection.xmpp.sendPresence(self.config);
+            if (self.config.useAnonymousLogin && self.isRoomModerated) {
 
-            // Send presence Alive
-            connection.xmpp.sendPresenceAlive(self.config);
+                logger.log(logger.level.VERBOSE, "IrisRtcSession",
+                    " onAllocateSuccess " + "This is an anonymous Moderated room");
+
+            } else {
+                // Send the presence if room is created
+                connection.xmpp.sendPresence(self.config);
+
+                // Send presence Alive
+                connection.xmpp.sendPresenceAlive(self.config);
+            }
 
         } else if (event === "onCapabilityRequest") {
             logger.log(logger.level.VERBOSE, "IrisRtcSession",
@@ -452,10 +479,6 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
                         if (self.presenceState == IrisRtcSession.PRESENCE_JOINED) {
                             // This is just an update so ignore
 
-                            // Check if we have become moderator
-                            if (response.role == "moderator" && self.config.focusJid) {
-                                // What to do?
-                            }
                             if (response.videomuted) {
                                 self.onVideoMuted(response.jid, response.videomuted);
                             }
@@ -465,6 +488,22 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
                             if (response.nick) {
                                 self.onDisplayNameChange(response.jid, response.nick);
                             }
+
+                            // Check if we have become moderator
+                            if (response.role && response.role != self.myRole) {
+                                self.myRole = response.role;
+
+                                if (self.myRole == "moderator")
+                                    self.moderatorRights.screenShare = true;
+
+                                self.onUserProfileChange(self.config.roomId, response.jid, { "participantRole": self.myRole });
+                            }
+
+                            if (response.affiliation && response.affiliation != self.myAffiliation) {
+                                self.myAffiliation = response.affiliation;
+                                self.onAffiliationChange(response.jid, { "affiliation": self.myAffiliation });
+                            }
+
                             return;
                         }
 
@@ -475,6 +514,25 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
 
                         logger.log(logger.level.INFO, "IrisRtcSession",
                             " onPresence " + JSON.stringify(response));
+
+                        // Check if we have become moderator
+                        if (response.role && response.role != self.myRole) {
+                            self.myRole = response.role;
+
+                            if (self.myRole == "moderator")
+                                self.moderatorRights.screenShare = true;
+
+                            self.onUserProfileChange(self.config.roomId, response.jid, { "participantRole": self.myRole });
+                        }
+                        // Check if we have become owner
+                        if (response.affiliation && response.affiliation != self.myAffiliation) {
+                            self.myAffiliation = response.affiliation;
+
+                            if (response.affiliation == "owner") {
+                                self.onAdministratorJoined(self.config.roomId, response.jid);
+                            }
+
+                        }
 
                         // Send events
                         self.sendEvent("SDK_XMPPJoined", { myJid: response.jid });
@@ -525,7 +583,7 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
 
                             // We were the first ones to join so go with createoffer flow
                             // Only for non bridge case we generate the offer first
-                            if (!self.config.useBridge && (self.config.sessionType != "join") && (self.config.type != "pstn")) {
+                            if (!self.config.useBridge && (self.config.sessionType != "join") && (self.config.type != "pstn") && (self.config.type != "chat")) {
                                 self.state = IrisRtcSession.OUTGOING;
                                 try {
                                     self.createOffer(self.config.type);
@@ -538,8 +596,16 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
                         }
                     } else if (response.type == "unavailable") {
 
-                        logger.log(logger.level.INFO, "IrisRtcSession", " onPresence :: unavailable for my self ingoring," +
+                        logger.log(logger.level.INFO, "IrisRtcSession", " onPresence :: unavailable for my self, Ending Session  ," +
                             " roomId : " + self.config.roomId);
+
+                        var reason = response.reason ? response.reason : "End Session"
+
+                        self.onSessionError(self.config ? self.config.roomId : "RoomId", RtcErrors.ERR_BACKEND_ERROR,
+                            "IrisRtcSession :: " + reason);
+
+                        self.endSession(self.config.roomId);
+
                     }
                 } else {
 
@@ -632,6 +698,12 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
                         if (response.status) {
                             self.onUserStatusChange(response.jid, response.status);
                         }
+                        if (response.role) {
+                            self.onParticipantRoleChange(response.jid, response.role);
+                        }
+                        if (response.affiliation) {
+                            self.onAffiliationChange(response.jid, response.affiliation)
+                        }
 
                         if (response.dataElement && response.dataElement.event) {
                             if (self.participants[response.jid] && self.participants[response.jid].eventType != response.dataElement.event) {
@@ -678,8 +750,19 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
                         }
                     } else if (response.type == "unavailable") {
 
+                        // Send events
+                        self.sendEvent("SDK_XMPPOccupantLeft", { participantJid: response.jid });
+
+                        var isAdminLeft = false;
+
                         Object.keys(self.participants).forEach(function(jid) {
                             if (jid == response.jid) {
+
+                                if (self.participants[jid].participantAffiliation == "owner") {
+
+                                    isAdminLeft = true;
+                                }
+
                                 delete self.participants[jid];
                             }
                         });
@@ -689,9 +772,19 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
                             clearInterval(self.presenceMonitorInterval);
                         }
 
-                        self.onParticipantLeft(response.roomId, response.jid, closeSession);
-                        // Send events
-                        self.sendEvent("SDK_XMPPOccupantLeft", { participantJid: response.jid });
+                        if (isAdminLeft) {
+
+                            self.onAdministratorLeft(response.roomId, response.jid);
+
+                            self.onSessionError(self.config ? self.config.roomId : "RoomId", RtcErrors.ERR_BACKEND_ERROR,
+                                "IrisRtcSession :: " + "Call Ended as Admin left the room");
+
+                            self.endSession(self.config.roomId);
+
+                        } else {
+                            self.onParticipantLeft(response.roomId, response.jid, closeSession);
+                        }
+
                     }
                 }
             }
@@ -702,12 +795,22 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
 
             if (response.error && response.error[0] && response.error[0].attrs && response.error[0].attrs.code && response.error[0].attrs.code) {
 
-                var errorCode = response.error[0].attrs.code;
+                self.connection.xmpp.stopPresenceAlive(self.config.roomId);
 
-                if (errorCode == 403) {
-                    self.onSessionError(self.config ? self.config.roomId : "", RtcErrors.ERR_BACKEND_ERROR, response.error[0].attrs.type);
-                } else {
-                    self.onSessionError(self.config ? self.config.roomId : "", RtcErrors.ERR_BACKEND_ERROR, "Presence error");
+                var errorCode = response.error[0].attrs.code;
+                var errorMsg = response.error[0].attrs.type;
+
+                if (errorCode && errorMsg) {
+
+                    self.sendEvent("SDK_PresenceError", { message: errorMsg });
+
+                    if (errorMsg == "participant not allowed to join because room has reached full capacity") {
+                        self.onSessionError(self.config ? self.config.roomId : "RoomId", RtcErrors.ERR_SESSION_ROOM_FULL, response.error[0].attrs.type);
+                    } else if (errorMsg == "room locked") {
+                        self.onSessionError(self.config ? self.config.roomId : "RoomId", RtcErrors.ERR_SESSION_ROOM_LOCKED, "Room is locked");
+                    } else {
+                        self.onSessionError(self.config ? self.config.roomId : "RoomId", RtcErrors.ERR_BACKEND_ERROR, "Presence error");
+                    }
                 }
             } else {
                 self.sendEvent("SDK_PresenceError", { message: "Error in presence message" });
@@ -715,7 +818,6 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
             }
 
             clearInterval(self.presenceMonitorInterval);
-            self.connection.xmpp.stopPresenceAlive(self.config.roomId);
 
         } else if (event === "onCandidate") {
 
@@ -962,16 +1064,16 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
                 if (response.hold) {
                     self.isPSTNOnHold = true;
                     self.peerconnection.removeStream(self.localStream);
-                    self.onUserProfileChange(self.config.roomId, response.from, { "status": "Remotely On Hold" });
+                    self.onUserProfileChange(self.config.roomId, response.from, { "pstnStatus": "Remotely On Hold" });
                 } else {
                     self.isPSTNOnHold = false;
                     self.peerconnection.addStream(self.localStream);
-                    self.onUserProfileChange(self.config.roomId, response.from, { "status": "Connected" });
+                    self.onUserProfileChange(self.config.roomId, response.from, { "pstnStatus": "Connected" });
                 }
             }
         } else if (event === "onIQError") {
 
-            logger.log(logger.level.VERBOSE, "IrisRtcSession",
+            logger.log(logger.level.ERROR, "IrisRtcSession",
                 " onIQError " + " Error : " + response.error);
 
             // self.onSessionError(self.config ? self.config.roomId : "", RtcErrors.ERR_BACKEND_ERROR, "IQ message error");
@@ -979,7 +1081,7 @@ IrisRtcSession.prototype.roomEventListener = function(event, response) {
         }
     } catch (error) {
         logger.log(logger.level.VERBOSE, "IrisRtcSession", "Failed in room event listener : error : ", error);
-        self.onSessionError(self.config.roomId, RtcErrors.ERR_INVALID_STATE, error.toString());
+        self.onSessionError(self.config ? self.config.roomId : "RooomId", RtcErrors.ERR_INVALID_STATE, error.toString());
     }
 }
 
@@ -1039,9 +1141,9 @@ IrisRtcSession.prototype.sendRootEventWithRoomId = function(config) {
 
 /**
  * Mute remote participant's video
- * @param {string} roomId - Unique Id for participants in a room
- * @param {string} jid - Remote participant's id
- * @param {boolean} mute - true -> mute, false -> unmute
+ * @param {string} roomId   - (MANDATORY) Unique Id for participants in a room
+ * @param {string} jid      - (MANDATORY) Remote participant's id
+ * @param {boolean} mute    - (MANDATORY) true -> mute, false -> unmute
  * @public
  */
 IrisRtcSession.prototype.muteParticipantVideo = function(roomId, jid, mute) {
@@ -1073,9 +1175,9 @@ IrisRtcSession.prototype.muteParticipantVideo = function(roomId, jid, mute) {
 
 /**
  * Mute remote participant's audio
- * @param {string} roomId - Unique Id for participants in a room
- * @param {string} jid - Remote participant's id
- * @param {boolean} mute - true -> mute, false -> unmute
+ * @param {string} roomId   - (MANDATORY) Unique Id for participants in a room
+ * @param {string} jid      - (MANDATORY) Remote participant's id
+ * @param {boolean} mute    - (MANDATORY) true -> mute, false -> unmute
  * @public
  */
 IrisRtcSession.prototype.muteParticipantAudio = function(roomId, jid, mute) {
@@ -1108,14 +1210,22 @@ IrisRtcSession.prototype.muteParticipantAudio = function(roomId, jid, mute) {
 
 /**
  * This API is called to send a chat message.
- * @param {string} roomId - Room ID
- * @param {string} id - Unique Id for each message sent.
- * @param {string} message - Chat message to be sent
- * @param {string} topic - Notification topic that user subscribed for chat 
- *                         Format: appdomain/type, ex: abcd.comcast.com/chat
+ * @param {string} roomId   - (MANDATORY) Room ID
+ * @param {string} id       - (MANDATORY) Unique Id for each message sent.
+ * @param {string} message  - (MANDATORY) Chat message to be sent
+ * @param {string} topic    - (OPTIONAL) Notification topic that user subscribed for chat 
+ *                                       Format: appdomain/type, ex: abcd.comcast.com/chat
  * @public
  */
 IrisRtcSession.prototype.sendChatMessage = function(roomId, id, message, topic) {
+
+    if (this.config.useAnonymousLogin && this.isRoomModerated && !this.isSessionAdministratorJoined) {
+        logger.log(logger.level.ERROR, "IrisRtcSession", "sendChatMessage :: Admin hasn't joined room yet");
+
+        this.onSessionError(this.config ? this.config.roomId : "RoomId", RtcErrors.ERR_SESSION_ADMIN_NOT_JOINED,
+            "sendChatMessage :: Admin hasn't joined room yet")
+        return;
+    }
 
     if (!roomId || !id || !message || (typeof id != 'string') || (typeof message != 'string') || !message.trim() ||
         !this.config || (this.config && !this.config.roomId)) {
@@ -1147,12 +1257,23 @@ IrisRtcSession.prototype.sendChatMessage = function(roomId, id, message, topic) 
 
 /**
  * This API is called to set chat state like active, composing, paused inactive, gone
- * @param {string} roomId - Room Id
- * @param {string} chatState - Chat state string - permitted values are active, composing, paused, inactive  or gone 
+ * @param {string} roomId       - (MANDATORY) Room Id
+ * @param {string} chatState    - (MANDATORY) Permitted chatState values are active, composing, paused, inactive  or gone 
  * @public
  */
 IrisRtcSession.prototype.sendChatState = function(roomId, chatState) {
     try {
+
+        if (this.config && this.config.eventType && this.config.eventType == "pstncall")
+            return;
+
+        if (this.config.useAnonymousLogin && this.isRoomModerated && !this.isSessionAdministratorJoined) {
+            logger.log(logger.level.ERROR, "IrisRtcSession", "sendChatState :: Admin hasn't joined room yet");
+
+            this.onSessionError(this.config ? this.config.roomId : "RoomId", RtcErrors.ERR_SESSION_ADMIN_NOT_JOINED,
+                "sendChatState :: Admin hasn't joined room yet")
+            return;
+        }
 
         if (!roomId || !chatState || !this.config || (this.config && !this.config.roomId)) {
             this.onSessionError(this.config ? this.config.roomId : "RoomId", RtcErrors.ERR_API_PARAMETERS,
@@ -1194,6 +1315,7 @@ IrisRtcSession.prototype.sendChatState = function(roomId, chatState) {
         this.onSessionError(this.config ? this.config.roomId : "RoomId", RtcErrors.ERR_INCORRECT_PARAMETERS, "IrisRtcSession::sendChatState :: Failed to send chat state ", error);
     }
 }
+
 
 /**
  * This callback is called when chat state of a participant is changed
@@ -1525,17 +1647,21 @@ IrisRtcSession.prototype.onIceConnectionStateChange = function(event) {
     }
 };
 
+/**
+ * 
+ * @param {*} data 
+ * @private
+ */
 IrisRtcSession.prototype.restartIce = function(data) {
     var self = this;
 
-    self.irisRtcStream.stopMediaStream(self.localStream);
+    if (self.localStream)
+        self.irisRtcStream.stopMediaStream(self.localStream);
     self.peerconnection.close();
     self.peerconnection = null;
     self.initWebRTC(self.connection.iceServerJson, self.config.type);
 
     if (self.connection) {
-
-
         // Create a new stream with new config
         self.irisRtcStream.createStream(self.irisRtcStream.streamConfig).then(function(stream) {
             self.localStream = stream;
@@ -1548,43 +1674,6 @@ IrisRtcSession.prototype.restartIce = function(data) {
 
 };
 
-/**
- * onSignalingStateChange callback from peerconnection
- * @param
- * @private
- */
-IrisRtcSession.prototype.onSignalingStateChange = function(event) {
-    if (this.peerconnection) {
-        logger.log(logger.level.INFO, "IrisRtcSession",
-            " onSignalingStateChange " + this.peerconnection.signalingState);
-
-        var signalState = this.peerconnection.signalingState ? this.peerconnection.signalingState.toString() : "NA";
-
-        switch (signalState) {
-            case "stable":
-                this.sendEvent("SDK_SignalingStateStable", { message: signalState });
-                break;
-            case "have-local-offer":
-                this.sendEvent("SDK_SignalingStateHaveLocalOffer", { message: signalState });
-                break;
-            case "have-remote-offer":
-                this.sendEvent("SDK_SignalingStateHaveRemoteOffer", { message: signalState });
-                break;
-            case "have-local-pranswer":
-                this.sendEvent("SDK_SignalingStateHaveLocalPranswer", { message: signalState });
-                break;
-            case "have-remote-pranswer":
-                this.sendEvent("SDK_SignalingStateHaveRemotePranswer", { message: signalState });
-                break;
-            case "closed":
-                this.sendEvent("SDK_SignalingStateClosed", { message: signalState });
-                break;
-            default:
-                this.sendEvent("SDK_SignalingState", { message: signalState });
-
-        }
-    }
-};
 /**
  * onSignalingStateChange callback from peerconnection
  * @param
@@ -1789,8 +1878,8 @@ IrisRtcSession.prototype.onDataChannel = function(event) {
 /**
  * Elects the participant with the given id to be the selected participant in
  * order to receive higher video quality.
- * @param {string} roomId - Room ID
- * @param {string} participantId the identifier of the participant
+ * @param {string} roomId           - (MANDATORY) Room ID
+ * @param {string} participantId    - (MANDATORY) the identifier of the participant
  * @public
  */
 IrisRtcSession.prototype.selectParticipant = function(roomId, participantId) {
@@ -1819,9 +1908,9 @@ IrisRtcSession.prototype.selectParticipant = function(roomId, participantId) {
  * Elects the participant with the given id to be the pinned participant in
  * order to always receive video for this participant (even when last n is
  * enabled).
- * @param {string} roomId
- * @param {string} participantId - Jid of the participant
- * @public
+ * @param {string} roomId           - (MANDATORY) Room Id
+ * @param {string} participantId    - (MANDATORY) Jid of the participant
+ * @private
  */
 IrisRtcSession.prototype.pinParticipant = function(roomId, participantId) {
 
@@ -1854,8 +1943,8 @@ IrisRtcSession.prototype.pinParticipant = function(roomId, participantId) {
  * Selects a new value for "lastN". The requested amount of videos are going
  * to be delivered after the value is in effect. Set to -1 for unlimited or
  * all available videos.
- * @param {string} roomId - Room ID
- * @param lastN the new number of videos the user would like to receive.
+ * @param {string} roomId   - (MANDATORY) Room ID
+ * @param {integer} lastN   - (MANDATORY) the new number of videos the user would like to receive.
  * @public
  */
 IrisRtcSession.prototype.setLastN = function(roomId, value) {
@@ -1899,9 +1988,9 @@ IrisRtcSession.prototype.setLastN = function(roomId, value) {
 
 /**
  * Sends a message through data channel
- * @param {string} roomId - Room ID
- * @param {string} to - Participant jid
- * @param {string} msg - Message to be sent
+ * @param {string} roomId   - (MANDATORY) Room ID
+ * @param {string} to       - (MANDATORY) Participant jid
+ * @param {string} msg      - (MANDATORY) Message to be sent
  * @private
  */
 IrisRtcSession.prototype.sendChannelMessage = function(roomId, participantJid, msg) {
@@ -2839,36 +2928,10 @@ IrisRtcSession.prototype._removeStream = function(localStream) {
 
 /**
  * Removes streams from conference
- * @public
- */
-IrisRtcSession.prototype.stopScreenShare = function() {
-    logger.log(logger.level.INFO, "IrisRtcSession", "stopScreenShare called");
-    var self = this;
-
-    try {
-
-        if (this.peerconnection.removeStream) {
-            this.peerconnection.removeStream(self.localStream);
-        }
-
-        self.localStream = "";
-
-        // Send source remove
-        self.sendSourceRemove();
-
-    } catch (error) {
-        logger.log(logger.level.ERROR, "IrisRtcSession",
-            " Error while remove stream from conference ");
-        self.onSessionError(self.config ? self.config.roomId : "", RtcErrors.ERR_INCORRECT_PARAMETERS, "Error while remove stream from conference");
-    }
-};
-
-/**
- * Removes streams from conference
  * @param {object} localStream - Stream to be removed from the conference
  * @public
  */
-IrisRtcSession.prototype.removeStream = function(localStream) {
+IrisRtcSession.prototype.removeStream = function() {
     logger.log(logger.level.INFO, "IrisRtcSession", "removeStream called");
     var self = this;
 
@@ -2898,15 +2961,15 @@ IrisRtcSession.prototype.removeStream = function(localStream) {
 /**
  * This API allows user to switch the stream between the camera, this can used for
  * screen share with the constraints having source id for desktop sourceid
- * @param {string} roomId - 
- * @param {object} irisRtcStream - IrisRtcStream object
- * @param {json} streamConfig  - Stream config json example as mentioned above
- * @param {string} streamConfig.streamType - Type of stream audio or video
- * @param {string} streamConfig.resolution - Resolution for the video
- * @param {json} streamConfig.constraints - Media Constraints 
- * @param {string} streamConfig.constraints.audio - Media constrainsts for audio
- * @param {string} streamConfig.constraints.video - Media constrainsts for video
- * @param {string} streamConfig.screenShare - True if it is a screen share call
+ * @param {string} roomId                           - (MANDATORY) Room Id
+ * @param {object} irisRtcStream                    - (MANDATORY) IrisRtcStream object
+ * @param {json} streamConfig                       - (MANDATORY) Stream config json example as mentioned above
+ * @param {string} streamConfig.streamType          - (MANDATORY) Type of stream audio or video
+ * @param {string} streamConfig.resolution          - (MANDATORY) Resolution for the video
+ * @param {json} streamConfig.constraints           - (MANDATORY) Media Constraints 
+ * @param {string} streamConfig.constraints.audio   - (MANDATORY) Media constrainsts for audio
+ * @param {string} streamConfig.constraints.video   - (MANDATORY) Media constrainsts for video
+ * @param {string} streamConfig.screenShare         - (MANDATORY) True if it is a screen share call
  * @public
  */
 IrisRtcSession.prototype.switchStream = function(roomId, irisRtcStream, streamConfig) {
@@ -2936,7 +2999,8 @@ IrisRtcSession.prototype.switchStream = function(roomId, irisRtcStream, streamCo
         self.sendSourceRemove();
 
         // Stop the present stream
-        irisRtcStream.stopMediaStream(self.localStream);
+        if (self.localStream)
+            irisRtcStream.stopMediaStream(self.localStream);
 
         // Create a new stream with new config
         irisRtcStream.createStream(streamConfig).then(function(stream) {
@@ -2976,24 +3040,47 @@ IrisRtcSession.prototype.switchStream = function(roomId, irisRtcStream, streamCo
     }
 };
 
-
 /**
- * This API allows user to switch the stream between the camera, this can used for
- * screen share with the constraints having source id for desktop sourceid
- * @param {string} roomId - 
- * @param {object} irisRtcStream - IrisRtcStream object
- * @param {json} streamConfig  - Stream config json example as mentioned above
- * @param {string} streamConfig.streamType - Type of stream audio or video
- * @param {string} streamConfig.resolution - Resolution for the video
- * @param {json} streamConfig.constraints - Media Constraints 
- * @param {string} streamConfig.constraints.audio - Media constrainsts for audio
- * @param {string} streamConfig.constraints.video - Media constrainsts for video
- * @param {string} streamConfig.screenShare - True if it is a screen share call
+ * This API allows user to share desktop screen.
+ * Example for streamConfig to be sent while sharing screen
+ * @param {string} roomId - Room Id 
+ * @param {object} irisRtcStream                    - (MANDATORY) IrisRtcStream object
+ * @param {json} streamConfig                       - (MANDATORY) Stream config json example as mentioned above
+ * @param {json} streamConfig.constraints           - (MANDATORY) Media Constraints 
+ * @param {string} streamConfig.constraints.audio   - (MANDATORY) Media constrainsts for audio
+ * @param {string} streamConfig.constraints.video   - (MANDATORY) Media constrainsts for video
+ * @param {string} streamConfig.screenShare         - (MANDATORY) True if it is a screen share call
+ * @example
+ * var streamConfig = {
+ * 
+ * constraints: {
+ *       audio: false,
+ *       video: {
+ *           mandatory: {
+ *               chromeMediaSource: "desktop",
+ *               chromeMediaSourceId: streamId,
+ *               maxWidth: window.screen.width,
+ *               maxHeight: window.screen.height,
+ *               minFrameRate: 15,
+ *               maxFrameRate: 15,
+ *           },
+ *           optional: []
+ *       }
+ *   },
+ *   screenShare: true
+ *  }
+ * 
  * @public
  */
 IrisRtcSession.prototype.screenShare = function(roomId, irisRtcStream, streamConfig) {
     try {
         var self = this;
+
+        if ((self.myRole && self.myRole != "moderator") || !self.moderatorRights.screenShare) {
+            self.onSessionError(self.config ? self.config.roomId : "RoomId", RtcErrors.ERR_SESSION_NO_MODERATOR_PRIVILEGE,
+                "You don't have privilege share to screen");
+            return;
+        }
 
         if (!roomId || !irisRtcStream || !streamConfig || (typeof streamConfig.screenShare !== "boolean") ||
             (!streamConfig.streamType && !streamConfig.constraints) || !self.peerconnection || roomId != self.config.roomId) {
@@ -3008,19 +3095,21 @@ IrisRtcSession.prototype.screenShare = function(roomId, irisRtcStream, streamCon
         logger.log(logger.level.INFO, "IrisRtcSession", "screen share stream with new stream for config " + JSON.stringify(streamConfig));
 
         // Remove the present stream from the conference
-        self._removeStream(self.localStream);
+        if (self.localStream)
+            self._removeStream(self.localStream);
 
         // Send source remove
         self.sendSourceRemove();
 
         // Stop the present stream
-        irisRtcStream.stopMediaStream(self.localStream);
+        if (self.localStream)
+            irisRtcStream.stopMediaStream(self.localStream);
 
         // Create a new stream with new config
         irisRtcStream.createStream(streamConfig).then(function(stream) {
             if (stream) {
                 self.localStream = stream;
-                if (streamConfig.screenShare) {
+                if (streamConfig.constraints.audio) {
                     logger.log(logger.level.INFO, "IrisRtcSession", "screenShare : Sharing the screen");
                     irisRtcStream.createStream({ streamType: "audio" }).then(function(audioStream) {
                         if (audioStream) {
@@ -3030,17 +3119,18 @@ IrisRtcSession.prototype.screenShare = function(roomId, irisRtcStream, streamCon
                                 stream.addTrack(audioTrack);
                                 self._addStream(stream);
                                 self.localStream = stream;
-                                self.sendEvent("SDK_ScreenShare", streamConfig);
                                 self.sendSwitchStreamAdd();
                             }
                         }
                     });
                 } else {
-                    logger.log(logger.level.INFO, "IrisRtcSession", "screenShare : Swicthing to local media stream");
+                    logger.log(logger.level.INFO, "IrisRtcSession", "screenShare : Sharing desktop screen");
                     self._addStream(stream);
                     self.localStream = stream;
                     self.sendSwitchStreamAdd();
                 }
+                self.sendEvent("SDK_ScreenShare", streamConfig);
+
             }
         }).catch(function(error) {
             logger.log(logger.level.ERROR, "IrisRtcSession",
@@ -3055,6 +3145,35 @@ IrisRtcSession.prototype.screenShare = function(roomId, irisRtcStream, streamCon
     }
 };
 
+/**
+ * Call this API once screen share is stopped. 
+ * This is API removes desktop stream from conference.
+ * @param {string} roomId   - (MANDATORY) Room Id
+ * @public
+ */
+IrisRtcSession.prototype.stopScreenShare = function(roomId) {
+    logger.log(logger.level.INFO, "IrisRtcSession", "stopScreenShare called");
+    var self = this;
+
+    try {
+        self.config.screenShare = false;
+
+        if (this.peerconnection.removeStream) {
+            this.peerconnection.removeStream(self.localStream);
+        }
+
+        self.localStream = "";
+
+        // Send source remove
+        self.sendSourceRemove();
+
+    } catch (error) {
+        logger.log(logger.level.ERROR, "IrisRtcSession",
+            " Error while remove stream from conference ");
+        self.onSessionError(self.config ? self.config.roomId : "", RtcErrors.ERR_INCORRECT_PARAMETERS, "Error while remove stream from conference");
+    }
+};
+
 
 /**
  * @private
@@ -3065,6 +3184,11 @@ IrisRtcSession.prototype.sendSwitchStreamAdd = function() {
     var self = this;
 
     var remoteSDP = self.peerconnection.remoteDescription.sdp;
+
+    // If session-initiate not received yet, remote description will be null.
+    // This happens we start sharing our screen and other participant not yet upgraded to video from chat
+    if (!remoteSDP)
+        return;
 
     var remoteDesc = new RTCSessionDescription({ "sdp": remoteSDP, "type": "offer" });
 
@@ -3243,8 +3367,8 @@ IrisRtcSession.prototype.onLocalVideoMuted = function(muted) {
 
 /**
  * API to set dispaly name for the user
- * @param {string} roomId - Room ID
- * @param {string} name - Name for the user
+ * @param {string} roomId   - (MANDATORY) Room ID
+ * @param {string} name     - (MANDATORY) Name for the user
  * @public
  */
 IrisRtcSession.prototype.setDisplayName = function(roomId, name) {
@@ -3485,7 +3609,7 @@ IrisRtcSession.prototype.pstnHold = function(roomId, participantJid) {
 
                 this.connection.xmpp.sendMessageHold(this.config, participantJid, true);
 
-                this.onUserProfileChange(this.config.roomId, participantJid, { "status": "Locally On Hold" });
+                this.onUserProfileChange(this.config.roomId, participantJid, { "pstnStatus": "Locally On Hold" });
 
             } else {
                 this.connection.xmpp.sendHold(this.config, participantJid);
@@ -3502,8 +3626,8 @@ IrisRtcSession.prototype.pstnHold = function(roomId, participantJid) {
 
 /**
  * This API allows user to unhold a PSTN call
- * @param {string} roomId - room id
- * @param {string} participantJid - Jid of the pstn participant 
+ * @param {string} roomId           - (MANDATORY) Room id
+ * @param {string} participantJid   - (MANDATORY) Jid of the pstn participant 
  * @public
  */
 IrisRtcSession.prototype.pstnUnHold = function(roomId, participantJid) {
@@ -3546,7 +3670,7 @@ IrisRtcSession.prototype.pstnUnHold = function(roomId, participantJid) {
 
                 this.connection.xmpp.sendMessageHold(this.config, participantJid, false);
 
-                this.onUserProfileChange(this.config.roomId, participantJid, { "status": "Connected" });
+                this.onUserProfileChange(this.config.roomId, participantJid, { "pstnStatus": "Connected" });
 
             } else {
                 this.connection.xmpp.sendUnHold(this.config, participantJid);
@@ -3563,10 +3687,10 @@ IrisRtcSession.prototype.pstnUnHold = function(roomId, participantJid) {
 
 /**
  * This API allows user to merge two pstn calls
- * @param {string} roomId - Room Id
- * @param {string} firstParticipantJid - Jid of the participant in first call
- * @param {object} secondSession - IrisRtcSession of the second participant
- * @param {string} secondParticipantJid - Jid of the participant in second call
+ * @param {string} roomId                   - (MANDATORY) Room Id
+ * @param {string} firstParticipantJid      - (MANDATORY) Jid of the participant in first call
+ * @param {object} secondSession            - (MANDATORY) IrisRtcSession of the second participant
+ * @param {string} secondParticipantJid     - (MANDATORY) Jid of the participant in second call
  * @public
  */
 IrisRtcSession.prototype.pstnMerge = function(roomId, firstParticipantJid, secondSession, secondParticipantJid) {
@@ -3648,8 +3772,8 @@ IrisRtcSession.prototype.pstnMerge = function(roomId, firstParticipantJid, secon
 
 /**
  * This API allows to user to hang up the PSTN call
- * @param {string} roomId - Room ID
- * @param {string} participantJid -  Jid of the pstn participant
+ * @param {string} roomId           - (MANDATORY) Room ID
+ * @param {string} participantJid   - (MANDATORY) Jid of the pstn participant
  * @public
  */
 IrisRtcSession.prototype.pstnHangup = function(roomId, participantJid) {
@@ -3686,9 +3810,9 @@ IrisRtcSession.prototype.pstnHangup = function(roomId, participantJid) {
 
 /**
  * This API allows user to add a participant to the ongoing PSTN call
- * @param {string} roomId - Unique id for the room
- * @param {E.164} toTN - Telephone number of callee in e.164 format
- * @param {string} toRoutingId - Routing id of the callee
+ * @param {string} roomId           - (MANDATORY) Unique id for the room
+ * @param {E.164} toTN              - (MANDATORY) Telephone number of callee in e.164 format
+ * @param {string} toRoutingId      - (MANDATORY) Routing id of the callee
  * @public
  */
 IrisRtcSession.prototype.addPSTNParticipant = function(roomId, toTN, toRoutingId) {
@@ -3844,8 +3968,8 @@ IrisRtcSession.prototype.onParticipantVideoMuted = function(roomId, jid, videoMu
 };
 
 /**
- * Called when participant's auido is muted
- * @param {string} roomId - Unique Id for participants
+ * Called when participant's auido is muted or unmuted
+ * @param {string} roomId - Room Id of curret session
  * @param {string} jid - Unique jid of the participant
  * @param {string} audioMute - Status of audio. True - Muted. False - Not muted
  * @public
@@ -3853,7 +3977,7 @@ IrisRtcSession.prototype.onParticipantVideoMuted = function(roomId, jid, videoMu
 IrisRtcSession.prototype.onSessionParticipantAudioMuted = function(roomId, jid, audioMute) {};
 
 /**
- * Called when participant's video is muted
+ * Called when participant's video is muted or unmuted
  * @param {string} roomId - Unique Id for participants
  * @param {string} jid - Unique jid of the participant
  * @param {string} videoMute - Status of video. True - Muted. False - Not muted
@@ -3862,7 +3986,7 @@ IrisRtcSession.prototype.onSessionParticipantAudioMuted = function(roomId, jid, 
 IrisRtcSession.prototype.onSessionParticipantVideoMuted = function(roomId, jid, videoMute) {};
 
 /**
- * @param {string} roomId - Unique Id for participants
+ * @param {string} roomId - Room Id of current session.
  * @param {object} stream - Media stream of remote participant
  * 
  */
@@ -3885,6 +4009,34 @@ IrisRtcSession.prototype.onDisplayNameChange = function(id, nick) {
     });
 };
 
+IrisRtcSession.prototype.onParticipantRoleChange = function(id, role) {
+    var self = this;
+    Object.keys(this.participants).forEach(function(jid) {
+        if (jid == id) {
+            if (!(self.participants[jid].participantRole == role)) {
+                self.participants[jid].participantRole = role;
+
+                self.onUserProfileChange(self.config.roomId, id, { "participantRole": role });
+            }
+        }
+    });
+}
+
+IrisRtcSession.prototype.onAffiliationChange = function(id, affiliation) {
+    var self = this;
+    Object.keys(this.participants).forEach(function(jid) {
+        if (jid == id) {
+            if (!(self.participants[jid].participantAffiliation == affiliation)) {
+                self.participants[jid].participantAffiliation = affiliation;
+
+                if (self.participants[jid].participantAffiliation == "owner") {
+                    self.onAdministratorJoined(self.config.roomId, id);
+                }
+            }
+        }
+    });
+}
+
 /**
  * @private
  */
@@ -3903,23 +4055,79 @@ IrisRtcSession.prototype.onUserStatusChange = function(id, status) {
                 self.isPSTNOnHold = true;
             }
 
-            self.onUserProfileChange(self.config.roomId, id, { "status": status });
+            self.onUserProfileChange(self.config.roomId, id, { "pstnStatus": status });
         }
     });
 };
 
 /**
- * Called when there is a change in uset profile. ex.Dispalyname
+ * Called when there is a change in user profile. ex. Dispaly name
  * @param {string} roomId - Unique Id for room
  * @param {string} jid - Unique jid of the user
  * @param {json} profileJson - Json with user profile 
  * @param {string} profileJson.displayName - Name of the participant
- * @param {string} profileJson.status - Status of pstn call
+ * @param {string} profileJson.pstnStatus - Status of pstn call
+ * @param {string} profileJson.participantRole - Role of the participant in room, he can be a moderator or a participant
  * @public
  */
 IrisRtcSession.prototype.onUserProfileChange = function(roomId, jid, profileJson) {
     //
 };
+
+/**
+ * 
+ * @param {*} roomId 
+ * @param {*} jid 
+ * @private
+ */
+IrisRtcSession.prototype.onAdministratorJoined = function(roomId, jid) {
+
+    if (this.config.useAnonymousLogin && this.isRoomModerated) {
+
+        this.config.isRoomModerated = this.isRoomModerated;
+
+        this.connection.xmpp.sendAllocate(this.config);
+
+        if (jid == this.connection.myJid) {
+            this.admin = new ModeratorControls(this);
+        }
+    }
+
+    this.isSessionAdministratorJoined = true;
+    this.onSessionAdministratorJoined(roomId, jid);
+}
+
+/**
+ * This callback is triggered when room Admin is joined.
+ * @param {string} roomId - Room Id of the current session
+ * @param {string} adminJid - Jid of the Administrator
+ * @public
+ */
+IrisRtcSession.prototype.onSessionAdministratorJoined = function(roomId, adminJid) {
+
+}
+
+/**
+ * 
+ * @param {*} roomId 
+ * @param {*} adminJid 
+ * @private
+ */
+IrisRtcSession.prototype.onAdministratorLeft = function(roomId, adminJid) {
+    this.isSessionAdministratorJoined = false;
+    this.onSessionAdministratorLeft(roomId, adminJid);
+}
+
+/**
+ * This is callback is triggered when a room admin leaves, and session will be ended 
+ * as soon as Admin leaves the room.
+ * @param {string} roomId - Room Id of the session where admin is left the room
+ * @param {string} adminJid - Jid of the admin
+ * @public
+ */
+IrisRtcSession.prototype.onSessionAdministratorLeft = function(roomId, adminJid) {
+
+}
 
 
 /**
@@ -4011,7 +4219,7 @@ IrisRtcSession.prototype.sendEvent = function(eventName, details) {
 
         this.onEvent(eventdata.roomId, eventdata);
 
-        // logger.log(logger.level.INFO, "IrisRtcSession", "RoomId: " + eventdata.roomId + " Data: " + JSON.stringify(eventdata));
+        logger.log(logger.level.INFO, "IrisRtcSession", "RoomId: " + eventdata.roomId + " Data: " + JSON.stringify(eventdata));
 
         this.sdkStats.eventLogs(eventName, eventdata);
     }
@@ -4376,10 +4584,10 @@ IrisRtcSession.prototype.presenceMonitor = function() {
 
 /**
  * This API allows user to send DTMF tones
- * @param {string} roomId - Room Id
- * @param {string} tone - DTMF tone
- * @param {string} duration - duration of the tone
- * @param {string} interToneGap - inter tone gap 
+ * @param {string} roomId       - (MANDATORY) Room Id
+ * @param {string} tone         - (MANDATORY) DTMF tone
+ * @param {string} duration     - (OPTIONAL) duration of the tone
+ * @param {string} interToneGap - (OPTIONAL) inter tone gap 
  * @public
  */
 IrisRtcSession.prototype.sendDTMFTone = function(roomId, tone, duration, interToneGap) {
@@ -4433,37 +4641,41 @@ IrisRtcSession.prototype.sendDTMFTone = function(roomId, tone, duration, interTo
 
 
 /**
- * This API is called to create a new Iris Rtc session or to join a incoming call. 
- * In case of anonymous call client application should pass <code>stream</code> having local media tracks for creating/joining a session.
- * In case of non-anonymous call client application should pass <code>config</code>, <code>connection</code> and <code>stream</code>.
- * For incoming calls client should pass notification information in <code>config</code> with the 
- * required parameters to join session.
+ * Creating new session, A session represents a real time audio or video session where number of 
+ * participants are allowed to share their video or audio with each other to create a conference.
+ * It can be a one-to-one conversation or a multiparty conference.
  * 
- * This method makes call to event manager APIs /v1/xmpp/startmuc to get required roomId to join session. 
- * IrisToken is must for calling any event manager APIs.
- * For anonymous call <code>/v1/xmpp/startmuc</code> is called with <code>roomId</code>, <code>irisToken</code>, <code>routingId</code> of caller.<br/>
- * For non-anonymous calls <code>/v1/xmpp/startmuc</code> is called with <code>irisToken</code>, <code>routingId</code> of caller
- * and array of routingId's of <code>participants</code>.
- *
- * Internally /v1/xmpp/startmuc of event manager is responsible for posting notifications to server.<br/>
- *
- * @param {json} config - A json object having all parameters required to create a room
- * @param {string} config.type - Call type 'chat', 'video', 'audio' and 'pstn'
- * @param {string} config.roomId - Unique id of room between participants for non-anonymous calls
- * @param {string} config.irisToken - Iris JWT token
- * @param {string} config.routingId - Routing id of the caller
- * @param {string} config.toTN - Telephone number of caller in E.164 fromat (Mandatory for pstn calls)
- * @param {string} config.fromTN - Telephone number of callee in E.164 fromat  (Mandatory for pstn calls)
- * @param {string} config.toRoutingId - Routing Id of callee (Mandatory for pstn calls)
- * @param {string} config.stream - 'sendonly' - For send only call, caller will not receive participant video
- *                                 'recvonly' - For receive only call, caller will receive participant video but can't send his video
- * @param {string} config.traceId - Unique time based UUID to identify call uniquely 
- * @param {string} config.sessionType - Session type 'create'
- * @param {string} config.publicId - Public id of the caller
- * @param {boolean} config.useAnonymousLogin - true for anonymous user calls
- * @param {string} config.roomName - a random string as room name for anonymous calls
- * @param {object} connection - IrisRtcConnection object
- * @param {object} irisRtcStream - Instance of IrisRtcStream after stream is created.
+ * There are two types of session, Anonymous and Non-Anonymous session.
+ * In case of anonymous session, a participant may not be a registered user with Iris Platform, 
+ * he uses a random id as his unique identfier known as routing Id.
+ * 
+ * Incase of a Non-anonymous session, a participant must be a registered user with Iris Platform, 
+ * Iris will assign a routing id to the user.
+ * 
+ * A session created with this API can be Audio, Video or Screen Share
+ * 
+ * This API takes three attributes a <code>sessionConfig</code> JSON object as described below, 
+ * a <code>connection</code> object which is an instance of IrisRtcConnection and 
+ * a <code>irisRtcStream</code> object which is an instance of IrisRtcStream.
+ * 
+ * @param {json} sessionConfig                         - (MANDATORY) A json object having all parameters required to create a session
+ * @param {string} sessionConfig.type                  - (MANDATORY) Call type 'chat', 'video' or 'audio' 
+ * @param {string} sessionConfig.roomId                - (MANDATORY) Unique id of room between participants for non-anonymous calls
+ * @param {string} sessionConfig.irisToken             - (MANDATORY) Iris JWT token
+ * @param {string} sessionConfig.routingId             - (MANDATORY) Routing id of the caller
+ * @param {boolean} sessionConfig.useAnonymousLogin    - (MANDATORY) true for anonymous user calls
+ * @param {string} sessionConfig.roomName              - (MANDATORY for Anonymous) a random string as room name for anonymous calls
+ * @param {string} sessionConfig.stream                - (OPTIONAL) 'sendrecv' - Local participant share his media and receives media from other participants as well</br>
+ *                                                                  'sendonly' - Local particpant will not receive any media from other participants, but share his media.</br>
+ *                                                                  'recvonly' - Local participant receives media from other participant but he can't share his own media</br>
+ *                                                                  'nostream' - Local participant will neither sends nor recieves any media.
+ * @param {string} sessionConfig.traceId               - (OPTIONAL) Unique time based UUID to identify call uniquely 
+ * @param {string} sessionConfig.sessionType           - (OPTIONAL) Session type 'create'
+ * @param {string} sessionConfig.name                  - (OPTIONAL) User name of the caller
+ * @param {string} sessionConfig.publicId              - (OPTIONAL) Public id of the caller
+ * @param {integer} sessionConfig.maxParticipants      - (OPTIONAL) A integer value to limit number of participants in an anonymous room.
+ * @param {object} connection                          - (MANDATORY) IrisRtcConnection object
+ * @param {object} irisRtcStream                       - (MANDATORY) Instance of IrisRtcStream after stream is created.
  * @public
  */
 IrisRtcSession.prototype.createSession = function(sessionConfig, connection, irisRtcStream) {
@@ -4474,6 +4686,7 @@ IrisRtcSession.prototype.createSession = function(sessionConfig, connection, iri
     }
     // var config = Object.assign({}, sessionConfig);
     // var config = sessionConfig;
+
     var config = JSON.parse(JSON.stringify(sessionConfig));
 
     logger.log(logger.level.INFO, "IrisRtcSession",
@@ -4541,7 +4754,7 @@ IrisRtcSession.prototype.createSession = function(sessionConfig, connection, iri
             "Stream is not required for recvonly calls");
         return;
     } else if (( /*config.type == "video" ||*/ config.type == "audio" ||
-            config.type == "pstn") && !stream && config.stream != "recvonly") {
+            config.type == "pstn") && !stream && config.stream != "recvonly" && config.stream != "nostream") {
         logger.log(logger.level.ERROR, "IrisRtcSession",
             "Local media stream is not available");
 
@@ -4626,25 +4839,29 @@ IrisRtcSession.prototype.createSession = function(sessionConfig, connection, iri
 
 
 /**
- * This API is called to create a new Iris Rtc session for PSTN outbound call
- * In case of non-anonymous call client application should pass <code>config</code>, <code>connection</code> and <code>stream</code>.
+ * Creating new PSTN session, A real time audio session with a PSTN participant of outside world or
+ * another iris participant.
  * 
- * This method makes call to event manager APIs to get required roomId and rtc server to join session. 
- * IrisToken is must for calling any event manager APIs.
+ * To create a PSTN session, user must be a registered with Iris and must have a valid Telephone number associated 
+ * with the account.
  * 
- * @param {json} config - A json object having all parameters required to create a room
- * @param {string} config.type - Call type 'chat', 'video', 'audio' and 'pstn'
- * @param {string} config.irisToken - Iris JWT token
- * @param {string} config.routingId - Routing id of the caller
- * @param {string} config.toTN - Telephone number of caller in E.164 fromat (Mandatory for pstn calls)
- * @param {string} config.fromTN - Telephone number of callee in E.164 fromat  (Mandatory for pstn calls)
- * @param {string} config.stream - 'sendonly' - For send only call, caller will not receive participant video
- *                                 'recvonly' - For receive only call, caller will receive participant video but can't send his video
- * @param {string} config.traceId - Unique time based UUID to identify call uniquely 
- * @param {string} config.sessionType - Session type 'create'
- * @param {string} config.publicId - Public id of the caller
- * @param {object} connection - IrisRtcConnection object
- * @param {object} irisRtcStream - IrisRtcStream instance after the stream is created.
+ * PSTN session supports features like call hold/unhold, swap and merge.
+ * 
+ * This API takes three attributes a <code>sessionConfig</code> JSON object as described below, 
+ * a <code>connection</code> object which is an instance of IrisRtcConnection and 
+ * a <code>irisRtcStream</code> object which is an instance of IrisRtcStream where local audio stream is created.
+ * 
+ * @param {json} sessionConfig                 - (MANDATORY) A json object having all parameters required to create a room
+ * @param {string} sessionConfig.type          - (MANDATORY) Call type must be `pstn`
+ * @param {string} sessionConfig.irisToken     - (MANDATORY) Iris JWT token
+ * @param {string} sessionConfig.routingId     - (MANDATORY) Routing id of the caller
+ * @param {string} sessionConfig.toTN          - (MANDATORY) Telephone number of caller in E.164 fromat (Mandatory for pstn calls)
+ * @param {string} sessionConfig.fromTN        - (MANDATORY) Telephone number of callee in E.164 fromat  (Mandatory for pstn calls)
+ * @param {string} sessionConfig.traceId       - (OPTIONAL) Unique time based UUID to identify call uniquely 
+ * @param {string} sessionConfig.sessionType   - (OPTIONAL) Session type 'create'
+ * @param {string} sessionConfig.publicId      - (OPTIONAL) Public id of the caller
+ * @param {object} connection                  - (MANDATORY) IrisRtcConnection object
+ * @param {object} irisRtcStream               - (MANDATORY) IrisRtcStream instance after the stream is created.
  * @public
  */
 IrisRtcSession.prototype.createSessionWithTN = function(sessionConfig, connection, irisRtcStream) {
@@ -4770,10 +4987,11 @@ IrisRtcSession.prototype.createSessionWithTN = function(sessionConfig, connectio
  * This API is called to join a Iris Rtc session incase of non-anonymous call.
  * For incoming calls client should pass notification information having required parameters to join session.<br/>
  * notification payload sent to this API must have <code>roomid</code>, <code>roomtoken</code> and <code>roomtokenexpirytime</code>.
- * @param {json} config - A json object having all parameters required to create a room
- * @param {object} connection - IrisRtcConnection object
- * @param {object} irisRtcStream - Instance of IrisRtcStream after stream is created.
- * @param {json} notificationPayload - Notification payload having roomid, roomtoken and roomtokenexpirytime
+ * 
+ * @param {json} config                 - (MANDATORY) A json object having all parameters required to create a room
+ * @param {object} connection           - (MANDATORY) IrisRtcConnection object
+ * @param {object} irisRtcStream        - (MANDATORY) Instance of IrisRtcStream after stream is created.
+ * @param {json} notificationPayload    - (MANDATORY) Notification payload having roomid, roomtoken and roomtokenexpirytime
  * @public
  */
 IrisRtcSession.prototype.joinSession = function(sessionConfig, connection, irisRtcStream, notificationPayload) {
@@ -4894,14 +5112,11 @@ IrisRtcSession.prototype.joinSession = function(sessionConfig, connection, irisR
 }
 
 /**
- * This API is called to create a new Iris Rtc session or to join a incoming call. 
- * In case of anonymous call client application should pass having local media tracks for creating/joining a session.
- * In case of non-anonymous call client application should pass <code>config</code>, <code>connection</code>.
- * For incoming calls client should pass notification information in <code>config</code> with the 
- * required parameters to join session.
+ * This API creates new Iris chat only session, where number of participants share chat messages
+ * over a conference.
  * 
- * @param {json} config - Session config params requied to create a chat session
- * @param {object} connection - Rtc connection object
+ * @param {json} config         - (MANDATORY) Session config params requied to create a chat session
+ * @param {object} connection   - (MANDATORY) Rtc connection object
  * @public
  */
 IrisRtcSession.prototype.createChatSession = function(sessionConfig, connection) {
@@ -4971,12 +5186,11 @@ IrisRtcSession.prototype.createChatSession = function(sessionConfig, connection)
 };
 
 /**
- * This API is called to join a Iris Rtc session incase of  non-anonymous chat call.
- * For incoming calls client should pass notification information having required parameters to join session.<br/>
- * notification payload sent to this API must have <code>roomid</code>, <code>roomtoken</code> and <code>roomtokenexpirytime</code>.
- * @param {json} config - A json object having all parameters required to create a room
- * @param {object} connection - IrisRtcConnection object
- * @param {json} notificationPayload - Notification payload having roomid, roomtoken and roomtokenexpirytime
+ * This API allows to join a chat only session when participant gets an invitation for chat session.
+ * 
+ * @param {json} config                 - (MANDATORY) A json object having all parameters required to create a room
+ * @param {object} connection           - (MANDATORY) IrisRtcConnection object
+ * @param {json} notificationPayload    - (MANDATORY) Notification payload having roomid, roomtoken and roomtokenexpirytime
  * @public
  */
 IrisRtcSession.prototype.joinChatSession = function(sessionConfig, connection, notificationPayload) {
@@ -5052,8 +5266,8 @@ IrisRtcSession.prototype.joinChatSession = function(sessionConfig, connection, n
 
 /**
  * Downgrade existing video/audio session to chat session
- * @param {json} downgradeConfig - user config for downgrading a session to chat
- * @param {json} notificationPayload - notification data for joining a chat session
+ * @param {json} downgradeConfig        - (MANDATORY) user config for downgrading a session to chat
+ * @param {json} notificationPayload    - (MANDATORY) notification data for joining a chat session
  * @public 
  */
 IrisRtcSession.prototype.downgradeToChat = function(downgradeConfig, notificationPayload) {
@@ -5118,9 +5332,9 @@ IrisRtcSession.prototype.downgradeToChat = function(downgradeConfig, notificatio
 
 /**
  * Move to a video session from chat session
- * @param {object} stream = Local media stream
- * @param {json} upgradeConfig - user config for upgrading to a video session
- * @param {json} notificationPayload - notification data for joining a chat session * 
+ * @param {object} stream               - (MANDATORY) Local media stream
+ * @param {json} upgradeConfig          - (MANDATORY) user config for upgrading to a video session
+ * @param {json} notificationPayload    - (MANDATORY) notification data for joining a chat session * 
  * @public
  */
 IrisRtcSession.prototype.upgradeToVideo = function(stream, upgradeConfig, notificationPayload) {
@@ -5215,7 +5429,7 @@ IrisRtcSession.prototype.upgradeToVideo = function(stream, upgradeConfig, notifi
 
 /**
  * Move to a audio session from chat session
- * @param {object} stream = Local media stream - audio
+ * @param {object} stream   - (MANDATORY) Local media stream - audio
  * @public
  */
 IrisRtcSession.prototype.upgradeToAudio = function(stream, upgradeConfig, notificationPayload) {
@@ -5282,7 +5496,7 @@ IrisRtcSession.prototype.upgradeToAudio = function(stream, upgradeConfig, notifi
 
 /**
  * This API gets real time media stats
- * @param {string} roomId - Unique Id for participants in a room
+ * @param {string} roomId   - (MANDATORY) Unique Id for participants in a room
  * @public
  */
 IrisRtcSession.prototype.getRealTimeStats = function(roomId) {
@@ -5317,34 +5531,35 @@ IrisRtcSession.prototype.getRealTimeStats = function(roomId) {
  * @private
  */
 IrisRtcSession.prototype.updateEventType = function() {
-        try {
-            if (this && this.config && this.config.type) {
-                switch (this.config.type) {
-                    case "video":
-                        this.config.eventType = "videocall";
-                        break;
-                    case "audio":
-                        this.config.eventType = "audiocall";
-                        break;
-                    case "pstn":
-                        this.config.eventType = "pstncall";
-                        break;
-                    case "chat":
-                        this.config.eventType = "groupchat";
-                        break;
-                    default:
-                        //
-                }
+    try {
+        if (this && this.config && this.config.type) {
+            switch (this.config.type) {
+                case "video":
+                    this.config.eventType = "videocall";
+                    break;
+                case "audio":
+                    this.config.eventType = "audiocall";
+                    break;
+                case "pstn":
+                    this.config.eventType = "pstncall";
+                    break;
+                case "chat":
+                    this.config.eventType = "groupchat";
+                    break;
+                default:
+                    //
             }
-            logger.log(logger.level.INFO, "IrisRtcSession", "updateEventType :: eventType : " + this.config.eventType);
-        } catch (error) {
-            logger.log(logger.level.ERROR, "IrisRtcSession", "updateEventType :: Failed", error);
-            this.onSessionError(this.config ? this.config.roomId : "RoomId", RtcErrors.ERR_INCORRECT_PARAMETERS, "updateEventType :: Failed");
         }
+        logger.log(logger.level.INFO, "IrisRtcSession", "updateEventType :: eventType : " + this.config.eventType);
+    } catch (error) {
+        logger.log(logger.level.ERROR, "IrisRtcSession", "updateEventType :: Failed", error);
+        this.onSessionError(this.config ? this.config.roomId : "RoomId", RtcErrors.ERR_INCORRECT_PARAMETERS, "updateEventType :: Failed");
     }
-    /**
-     * 
-     */
+}
+
+/**
+ * @private
+ */
 IrisRtcSession.prototype.reportStats = function() {
     try {
         var self = this;
@@ -5368,26 +5583,29 @@ IrisRtcSession.prototype.reportStats = function() {
 /**
  * Callback for succeffully created session
  * @param {string} roomId - roomId created
+ * @param {string} msg - A message string for any warning from backend, ex. Max participants, if max participants
+ *                       value is already set by someone, it can't be overrriden but session is still created.
  * @public
  */
-IrisRtcSession.prototype.onSessionCreated = function(roomId) {
+IrisRtcSession.prototype.onSessionCreated = function(roomId, msg) {
 
 }
 
 /**
  * Callback for succeffully created session
  * @param {string} rtcServer - rtcServer received
- * @public
+ * @private
  */
 IrisRtcSession.prototype.onRtcServer = function(rtcServer) {
 
-    }
-    /**
-     * onSessionJoined is called when caller joins session.
-     * @param {string} roomId - RoomId to which user has joined 
-     * @param {string} myJid - Jid of the caller
-     * @public
-     */
+}
+
+/**
+ * onSessionJoined is called when caller joins session.
+ * @param {string} roomId - RoomId to which user has joined 
+ * @param {string} myJid - Jid of the caller
+ * @public
+ */
 IrisRtcSession.prototype.onSessionJoined = function(roomId, myJid) {
 
 };
@@ -5545,7 +5763,7 @@ IrisRtcSession.prototype.onDataChannelMessage = function(colibriClass, obj) {
 
 /**
  * API to end the session 
- * @param roomId - Room ID
+ * @param roomId    - (MANDATORY) Room ID
  * @public
  */
 IrisRtcSession.prototype.endSession = function(roomId) {
