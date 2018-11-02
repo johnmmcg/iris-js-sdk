@@ -134,10 +134,16 @@ RtcRestHelper.EventManager = {
 
             //For Anonymous Video Calls
             if (config.useAnonymousLogin) {
-                options.path = "/v1.1/anonymoususers/startmuc/room/" + config.roomName
 
-                //Anonymous room with limited number of participants
-                if (config.maxParticipants) {
+                if (config.roomId) {
+                    options.path = "/v1.1/anonymoususers/startmuc/roomid/" + config.roomId;
+                } else if (config.roomName) {
+                    options.path = "/v1.1/anonymoususers/startmuc/room/" + config.roomName;
+
+                }
+
+                // Anonymous room with limited number of participants
+                if (config.maxParticipants && config.roomName) {
                     options.path = "/v1.1/anonymoususers/startmuc/room/" + config.roomName +
                         "?maxparticipants=" + config.maxParticipants;
                 }
@@ -153,7 +159,7 @@ RtcRestHelper.EventManager = {
                 jsonBody = {
                     "inbound": false,
                     "from": config.fromTN,
-                    'to': config.toTN,
+                    'to': config.mucTN ? config.mucTN : config.toTN,
                     "event_type": config.eventType,
                     "time_posted": Date.now(),
                     "userdata": userData
@@ -200,8 +206,10 @@ RtcRestHelper.EventManager = {
                             " Start muc with roomid failed with status code  " +
                             response.statusCode + " & response " + body);
 
+                        var responseBody = JSON.parse(body);
+
                         failureCallback("Start muc with roomid failed with status code  " +
-                            response.statusCode + " & response " + body, response.statusCode);
+                            response.statusCode + " & response " + body, response.statusCode, responseBody);
 
                         return;
 

@@ -183,7 +183,6 @@ function setParamsToConstraints(streamConfig, constraints) {
 function getUserMedia(constraints) {
     try {
         logger.log(logger.level.VERBOSE, "IrisRtcStream", " getUserMedia");
-
         return new Promise(function(resolve, reject) {
             WebRTC.getUserMedia(constraints, function(stream) {
                 if (stream) {

@@ -60,6 +60,7 @@ function RtcXmpp() {
     this.isAlive = false;
     this.networkListeners = [];
     this.sendMessageQueue = async.queue(_processQueueTasks.bind(this), 1);
+    this.roomIds = {};
 
 }
 
@@ -167,7 +168,44 @@ RtcXmpp.prototype.connect = function connect(server, path, jid, resourceId, trac
     });
 }
 
+RtcXmpp.prototype.sendIQ = function(msg, roomId) {
 
+    var self = this;
+
+    if (!self.roomIds[roomId]) {
+        self.roomIds[roomId] = { sentIQs: 0, responseFailedIQs: 0 }
+
+    }
+
+    self.roomIds[roomId].sentIQs = self.roomIds[roomId].sentIQs + 1;
+
+    const workFunction = finishedCallback => {
+
+        self.iqResponseReceived = false;
+
+        self.iQWaitingTimer = setTimeout(function() {
+            if (!self.iqResponseReceived) {
+
+                self.roomIds[roomId].responseFailedIQs = self.roomIds[roomId].responseFailedIQs + 1;
+
+                self.iqResponseReceived = false;
+
+                self.sendMessageQueue.resume();
+                self.emit(roomId, 'onXMPPNOACK');
+
+            } else {
+                clearTimeout(self.iQWaitingTimer);
+            }
+        }, 5000)
+
+        if (self.client) {
+            self.client.send(msg);
+            self.sendMessageQueue.pause();
+            finishedCallback();
+        }
+    }
+    self.sendMessageQueue.push(workFunction);
+}
 
 RtcXmpp.prototype.updateOnlineOfflineStatus = function(event) {
     logger.log(logger.level.VERBOSE, "RtcXmpp",
@@ -270,7 +308,7 @@ RtcXmpp.prototype.startPing = function startPing() {
     self.pingtimer = setInterval(function() {
 
         logger.log(logger.level.INFO, "RtcXmpp",
-            " RtcXmpp :: startPing : isAlive : " + self.isAlive);
+            " startPing : isAlive : " + self.isAlive);
 
         // Send a ping message
         var ping = new Stanza(
@@ -605,7 +643,7 @@ RtcXmpp.prototype.sendSessionAccept = function sendSessionAccept(data) {
     }).up();
 
     // Send the session-initiate
-    this.client.send(accept.tree());
+    this.sendIQ(accept.tree(), data.roomId);
 }
 
 // Method to send session-initiate
@@ -648,7 +686,7 @@ RtcXmpp.prototype.sendSessionInitiate = function sendSessionInitiate(data) {
     }).up();
 
     // Send the session-initiate
-    this.client.send(initiate.tree());
+    this.sendIQ(initiate.tree(), data.roomId);
 }
 
 RtcXmpp.prototype.sendSessionTerminate = function(data) {
@@ -672,7 +710,6 @@ RtcXmpp.prototype.sendTransportInfo = function sendTransportInfo(data) {
             'xmlns': 'urn:xmpp:jingle:1',
             action: 'transport-info',
             initiator: data.to,
-            //                                  responder: this.xmppJid.toString(),
             sid: this.sid
         });
 
@@ -724,7 +761,7 @@ RtcXmpp.prototype.sendTransportInfo = function sendTransportInfo(data) {
 
 
     // Send the session-initiate
-    this.client.send(transportinfo.tree());
+    this.sendIQ(transportinfo.tree(), data.roomId);
 }
 
 // Method to send capabilities
@@ -738,8 +775,11 @@ RtcXmpp.prototype.sendCapabilities = function sendCapabilities(data) {
     logger.log(logger.level.INFO, "RtcXmpp._onDiscoInfo",
         " Received query for disco, lets respond");
 
-    var discoResult = new xmppClient.Element(
-            'iq', { id: data.id, to: data.to, type: 'result' })
+    var discoResult = new xmppClient.Element('iq', {
+            type: 'result',
+            id: data.id,
+            to: data.to,
+        })
         .c('query', { 'xmlns': 'http://jabber.org/protocol/disco#info' }).up();
     this.index++;
 
@@ -757,7 +797,9 @@ RtcXmpp.prototype.sendCapabilities = function sendCapabilities(data) {
         'traceid': data.traceId,
         'host': this.server
     });
-    this.client.send(discoResult.tree());
+
+    if (this.client)
+        this.client.send(discoResult.tree());
 }
 
 // Method to request capabilities
@@ -783,7 +825,9 @@ RtcXmpp.prototype.requestCapabilities = function requestCapabilities(data) {
         'traceid': data.traceId,
         'host': this.server
     });
-    this.client.send(caps.tree());
+
+    if (this.client)
+        this.sendIQ(caps.tree(), data.roomId);
 }
 
 // Method to send allocate request
@@ -879,7 +923,7 @@ RtcXmpp.prototype.sendAllocate = function sendAllocate(data) {
     // Add data element
     allocate.c('data', dataElem);
 
-    this.client.send(allocate.tree());
+    this.sendIQ(allocate.tree(), data.roomId);
 }
 
 // <?xml version="1.0"?>
@@ -928,7 +972,7 @@ RtcXmpp.prototype.sendPrivateAllocate = function(data) {
         'host': this.server,
     });
 
-    this.client.send(privateIq.tree());
+    this.sendIQ(privateIq.tree(), data.roomId);
 
 };
 // Method to send reject call
@@ -1006,7 +1050,7 @@ RtcXmpp.prototype.sendRayo = function sendRayo(data) {
 
     this.index++;
     // send the rayo command
-    this.client.send(rayo.tree());
+    this.sendIQ(rayo.tree(), data.roomId);
 }
 
 // Method to send Hangup command
@@ -1033,7 +1077,7 @@ RtcXmpp.prototype.sendHangup = function sendHangup(config, participantJid) {
 
     this.index++;
     // send the rayo command
-    this.client.send(hangup.tree());
+    this.sendIQ(hangup.tree(), config.roomId);
 }
 
 /**
@@ -1065,7 +1109,7 @@ RtcXmpp.prototype.sendMessageHold = function(config, participantJid, hold) {
     }).up();
 
     // send the hold/unhold private message
-    this.client.send(holdIQ.tree());
+    this.client.send(holdIQ.tree(), config.roomId);
 
 }
 
@@ -1093,7 +1137,7 @@ RtcXmpp.prototype.sendHold = function sendHold(config, participantJid) {
 
     this.index++;
     // send the rayo command
-    this.client.send(hold.tree());
+    this.sendIQ(hold.tree(), config.roomId);
 }
 
 // Method to send UnHold command
@@ -1119,7 +1163,7 @@ RtcXmpp.prototype.sendUnHold = function sendUnHold(config, participantJid) {
 
     this.index++;
     // send the rayo command
-    this.client.send(unhold.tree());
+    this.sendIQ(unhold.tree(), config.roomId);
 }
 
 // Method to send merge command
@@ -1145,7 +1189,7 @@ RtcXmpp.prototype.sendMerge = function sendMerge(config, firstParticipantJid, se
 
     this.index++;
     // send the rayo command
-    this.client.send(merge.tree());
+    this.sendIQ(merge.tree(), config.roomId);
 }
 
 // Method to send callStats through websocket
@@ -1156,24 +1200,26 @@ RtcXmpp.prototype.sendMerge = function sendMerge(config, firstParticipantJid, se
 RtcXmpp.prototype.sendCallStats = function(data) {
 
     var self = this;
+    logger.log(logger.level.INFO, "RtcXmpp",
+        " sendCallStats : " + data.stats.n);
 
-    const workFunction = finishedCallback => {
-        logger.log(logger.level.INFO, "RtcXmpp",
-            " sendCallStats : " + data.stats.n);
+    var privateIq = new xmppClient.Element(
+            'iq', {
+                id: this.index.toString() + ':sendStatsIQ',
+                "type": "set",
+            })
+        .c('query', {
+            'xmlns': 'jabber:iq:private',
+            'strict': false,
+        }).up();
+    // var myString = JSON.stringify(data.stats);
+    // myString = myString.replace(/\"/g, "");
+    // Add data element
 
-        var privateIq = new xmppClient.Element(
-                'iq', {
-                    id: this.index.toString() + ':sendStatsIQ',
-                    "type": "set",
-
-                })
-            .c('query', {
-                'xmlns': 'jabber:iq:private',
-                'strict': false,
-            }).up();
-        // var myString = JSON.stringify(data.stats);
-        // myString = myString.replace(/\"/g, "");
-        // Add data element
+    if (data.stats == "" || (typeof(data.stats) == 'object' && Object.keys(data.stats).length === 0) || (Array.isArray(data.stats) && !data.stats.length)) {
+        logger.log(logger.level.ERROR, "RtcXmpp", " sendCallStats : Empty stats body");
+        return;
+    } else {
         privateIq.c('data', {
             'xmlns': "urn:xmpp:comcast:info",
             'stats': JSON.stringify(data.stats),
@@ -1187,13 +1233,10 @@ RtcXmpp.prototype.sendCallStats = function(data) {
         this.index++;
 
         if (this.client) {
-            this.client.send(privateIq.tree());
-            self.sendMessageQueue.pause()
-            finishedCallback();
+            this.sendIQ(privateIq.tree(), data.roomId);
         }
     }
 
-    self.sendMessageQueue.push(workFunction);
 
 }
 
@@ -1201,9 +1244,8 @@ RtcXmpp.prototype.sendCallStats = function(data) {
  * 
  * @param {json} config - Config from session
  * @param {string} participantJid - Jid of the participant to be kicked
- * @param {string} participantName - Name of the participant
  */
-RtcXmpp.prototype.kickParticipant = function(config, participantJid, participantName) {
+RtcXmpp.prototype.kickParticipant = function(config, participantJid) {
 
     logger.log(logger.level.VERBOSE, "RtcXmpp",
         " kickParticipant :: " + participantJid);
@@ -1229,7 +1271,7 @@ RtcXmpp.prototype.kickParticipant = function(config, participantJid, participant
 
     this.index++;
     // Send kick iq to a participant
-    this.client.send(kick.tree());
+    this.sendIQ(kick.tree(), config.roomId);
 }
 
 /**
@@ -1261,7 +1303,7 @@ RtcXmpp.prototype.lockRoom = function(config) {
 
     this.index++;
     // Send lockRoom iq to a participant
-    this.client.send(lockRoom.tree());
+    this.sendIQ(lockRoom.tree(), config.roomId);
 }
 
 /**
@@ -1293,7 +1335,7 @@ RtcXmpp.prototype.unlockRoom = function(config) {
 
     this.index++;
     // Send unlockRoom iq to a participant
-    this.client.send(unlockRoom.tree());
+    this.sendIQ(unlockRoom.tree(), config.roomId);
 }
 
 RtcXmpp.prototype.sendSourceAdd = function sendSourceAdd(sdpDiffer, data) {
@@ -1329,7 +1371,7 @@ RtcXmpp.prototype.sendSourceAdd = function sendSourceAdd(sdpDiffer, data) {
         this.index++;
 
         // Send the source-add
-        this.client.send(add.tree());
+        this.sendIQ(add.tree(), data.roomId);
     }
 }
 
@@ -1364,7 +1406,7 @@ RtcXmpp.prototype.grantModeratorPrivilege = function(config, participantJid) {
 
     this.index++;
     // Send kick iq to a participant
-    this.client.send(moderator.tree());
+    this.sendIQ(moderator.tree(), config.roomId);
 }
 
 
@@ -1399,7 +1441,7 @@ RtcXmpp.prototype.revokeModeratorPrivilege = function(config, participantJid) {
 
     this.index++;
     // Send kick iq to a participant
-    this.client.send(moderator.tree());
+    this.sendIQ(moderator.tree(), config.roomId);
 }
 
 RtcXmpp.prototype.sendSourceRemove = function sendSourceRemove(sdpDiffer, data) {
@@ -1431,7 +1473,7 @@ RtcXmpp.prototype.sendSourceRemove = function sendSourceRemove(sdpDiffer, data) 
     this.index++;
 
     // Send the session-initiate
-    this.client.send(remove.tree());
+    this.sendIQ(remove.tree(), data.roomId);
 }
 
 // Callback to inform that connection is successful
@@ -1485,6 +1527,8 @@ RtcXmpp.prototype._onIQ = function _onIQ(stanza) {
         this._onPrivateIQ(stanza);
     } else if (stanza.getChild('ref')) {
         this._onRayoIQ(stanza);
+    } else if (stanza.getChild('query', "http://jabber.org/protocol/muc#admin")) {
+        this._onMucAdminIQ(stanza);
     } else if (stanza && stanza.attrs && stanza.attrs.id == 'c2s1') {
 
         self.isAlive = true;
@@ -1501,11 +1545,15 @@ RtcXmpp.prototype._onIQ = function _onIQ(stanza) {
 
     if (stanza.attrs && stanza.attrs.type == "result") {
 
-        if (stanza.id.includes('sendStatsIQ')) {
-
+        if (stanza.id.includes('c2s1')) {
+            // resume not required for c2s1 as it is not synchronised
+        } else {
+            clearTimeout(self.iQWaitingTimer);
+            self.iqResponseReceived = true;
             self.sendMessageQueue.resume();
+        }
 
-        } else if (stanza.getChild("conference")) {
+        if (stanza.getChild("conference")) {
 
             this._onConference(stanza);
 
@@ -1826,6 +1874,8 @@ RtcXmpp.prototype._onPresence = function _onPresence(stanza) {
                 "jid": fromField,
                 "role": item.attrs.role,
                 "affiliation": item.attrs.affiliation,
+                "rejoin": item.attrs.rejoin,
+                "lock": item.attrs.room,
                 "roomId": roomId,
                 "type": stanza.attrs.type,
                 "from": stanza.attrs.from,
@@ -1862,6 +1912,8 @@ RtcXmpp.prototype._onPresence = function _onPresence(stanza) {
                 "jid": jid,
                 "role": item.attrs.role,
                 "affiliation": item.attrs.affiliation,
+                "rejoin": item.attrs.rejoin,
+                "lock": item.attrs.room,
                 "roomId": roomId,
                 "type": "join",
                 "from": stanza.attrs.from,
@@ -2023,6 +2075,41 @@ RtcXmpp.prototype._onRayoIQ = function _onRayoIQ(stanza) {
         " OnRayo result: resourceid:", this.rayo_resourceid);
 
 };
+
+
+RtcXmpp.prototype._onMucAdminIQ = function(stanza) {
+    var self = this;
+
+    // Check if the query is for us
+    if (stanza && stanza.attrs && stanza.attrs.to && (stanza.attrs.to == this.xmppJid.toString())) {
+
+        // Check if the jid matches
+        if (stanza.attrs.type == "result") {
+
+            var roomId = stanza.attrs.from.split("@")[0];
+
+            // Get the x node
+            var x = stanza.getChild('query', 'http://jabber.org/protocol/muc#admin');
+            if (!x) { return; }
+
+            var item = x.getChild('item');
+            if (!item) return;
+
+            var roomLock = {
+                "roomId": roomId,
+                "lock": (item.attrs.room && item.attrs.room == "locked") ? true : (item.attrs.room == "unlocked") ? false : "",
+                "rejoin": (item.attrs.rejoin && item.attrs.rejoin == "false") ? false : (item.attrs.rejoin == "true") ? true : ""
+            }
+
+            self.emit(roomId, 'onRoomLock', roomLock);
+
+        }
+    } else {
+        logger.log(logger.level.ERROR, "RtcXmpp._onDiscoInfo",
+            " Received disco info error");
+    }
+}
+
 
 // Callback to parse XMPP chat messages
 //

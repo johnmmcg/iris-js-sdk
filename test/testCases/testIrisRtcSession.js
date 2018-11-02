@@ -435,6 +435,7 @@ describe('IrisRtcSession.createSession', () => {
         var irisRtcSession = new IrisRtcSession();
         var irisRtcConnection = new IrisRtcConnection();
         irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        irisRtcConnection.xmpp.sendCallStats = function() {}
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_CREATE_SESSION_FAILED &&
@@ -980,6 +981,7 @@ describe('IrisRtcSession.joinSession', () => {
         var irisRtcSession = new IrisRtcSession();
         var irisRtcConnection = new IrisRtcConnection();
         irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        irisRtcConnection.xmpp.sendCallStats = function() {}
         var irisRtcStream = new IrisRtcStream();
         irisRtcStream.localStream = "MediaStream";
 
@@ -1169,6 +1171,7 @@ describe('IrisRtcSession.createChatSession', () => {
         var irisRtcSession = new IrisRtcSession();
         var irisRtcConnection = new IrisRtcConnection();
         irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        irisRtcConnection.xmpp.sendCallStats = function() {}
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_CREATE_SESSION_FAILED &&
@@ -1411,6 +1414,7 @@ describe('IrisRtcSession.joinChatSession', () => {
         var irisRtcSession = new IrisRtcSession();
         var irisRtcConnection = new IrisRtcConnection();
         irisRtcConnection.xmpp = { "Dummy": "Dummy" }
+        irisRtcConnection.xmpp.sendCallStats = function() {}
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_CREATE_SESSION_FAILED &&
@@ -3331,6 +3335,50 @@ describe('IrisRtcSession.pstnHangup', () => {
 
     });
 
+    it('should throw error with no roomId, no firstParticipantJid', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
+                errorMessage == "pstnHangup :: Invalid parameters") {
+                done();
+            }
+        }
+
+        irisRtcSession.pstnHangup("", "");
+
+    });
+
+    it('should throw error with no roomId', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
+                errorMessage == "pstnHangup :: Invalid parameters") {
+                done();
+            }
+        }
+
+        irisRtcSession.pstnHangup("", "firstParticipantJid");
+
+    });
+
+    it('should throw error with no firstParticipantJid', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
+                errorMessage == "pstnHangup :: Invalid parameters") {
+                done();
+            }
+        }
+
+        irisRtcSession.pstnHangup("1234", "");
+
+    });
 
     after(() => {
 
@@ -3339,11 +3387,117 @@ describe('IrisRtcSession.pstnHangup', () => {
 });
 
 
+
 describe('IrisRtcSession.addPSTNParticipant', () => {
     before(() => {
 
     });
 
+    it('should throw error with no roomId, no toTN, no routingId', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
+                errorMessage == "addPSTNParticipant :: Invalid parameters") {
+                done();
+            }
+        }
+
+        irisRtcSession.addPSTNParticipant("", "", "");
+
+    });
+
+    it('should throw error with no roomId, no toTN', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
+                errorMessage == "addPSTNParticipant :: Invalid parameters") {
+                done();
+            }
+        }
+
+        irisRtcSession.addPSTNParticipant("", "", "routingId");
+
+    });
+
+    it('should throw error with no roomId, no routingId', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
+                errorMessage == "addPSTNParticipant :: Invalid parameters") {
+                done();
+            }
+        }
+
+        irisRtcSession.addPSTNParticipant("", "toTN", "");
+
+    });
+
+    it('should throw error with no toTN, no routingId', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
+                errorMessage == "addPSTNParticipant :: Invalid parameters") {
+                done();
+            }
+        }
+
+        irisRtcSession.addPSTNParticipant("1234", "", "");
+
+    });
+
+
+    it('should throw error with no roomId', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
+                errorMessage == "addPSTNParticipant :: Invalid parameters") {
+                done();
+            }
+        }
+
+        irisRtcSession.addPSTNParticipant("", "toTN", "routingId");
+
+    });
+
+    it('should throw error with no toTN', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
+                errorMessage == "addPSTNParticipant :: Invalid parameters") {
+                done();
+            }
+        }
+
+        irisRtcSession.addPSTNParticipant("1234", "", "routingId");
+
+    });
+
+    it('should throw error with no routingId', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
+                errorMessage == "addPSTNParticipant :: Invalid parameters") {
+                done();
+            }
+        }
+
+        irisRtcSession.addPSTNParticipant("1234", "toTN", "");
+
+    });
 
     after(() => {
 
@@ -3356,8 +3510,51 @@ describe('IrisRtcSession.sendDTMFTone', () => {
     before(() => {
 
     });
+    
+    it('should throw error with no roomId, no tone', (done) => {
 
+        var irisRtcSession = new IrisRtcSession();
 
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
+                errorMessage == "sendDTMFTone :: Invalid parameters") {
+                done();
+            }
+        }
+
+        irisRtcSession.sendDTMFTone("", "", "", "");
+
+    });
+    
+    it('should throw error with no roomId', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
+                errorMessage == "sendDTMFTone :: Invalid parameters") {
+                done();
+            }
+        }
+
+        irisRtcSession.sendDTMFTone("", "tone", "", "");
+
+    });
+
+    it('should throw error with no tone', (done) => {
+
+        var irisRtcSession = new IrisRtcSession();
+
+        irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
+            if (errorCode == RtcErrors.ERR_API_PARAMETERS &&
+                errorMessage == "sendDTMFTone :: Invalid parameters") {
+                done();
+            }
+        }
+
+        irisRtcSession.sendDTMFTone("1234", "", "", "");
+
+    });
     after(() => {
 
     });
@@ -3365,6 +3562,21 @@ describe('IrisRtcSession.sendDTMFTone', () => {
 });
 
 
+
+// describe('IrisRtcSession.ModeratorControls', () => {
+//     before(() => {
+
+//     });
+
+//     it('test case name', (done) => {
+
+//     });
+
+//     after(() => {
+
+//     });
+
+// });
 
 
 // describe('Test suite name', () => {

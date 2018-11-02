@@ -16,86 +16,162 @@ var RtcBrowserType = require('./Utils/RtcBrowserType.js');
 function RtcStats(options) {
 
     this.options = options;
+    if (options.sendStatsIQ) {
+        this.ReceiveBandwidth = "";
+        this.SendBandwidth = "";
+        this.TransmitBitrate = "";
+        this.rxbytesReceived = "";
+        this.FrameHeightReceived = "";
+        this.FrameRateReceived = "";
+        this.FrameWidthReceived = "";
+        this.rxpacketsLost = "";
+        this.rxpacketsReceived = "";
+        this.audioOutputLevel = "";
+        this.rxAudioBytesReceived = "";
+        this.rxAudiopacketsLost = "";
+        this.rxAudiopacketsReceived = "";
+        this.googDecodingPLCCNG = "";
+        this.googDecodingCNG = "";
+        this.googJitterBufferMs = "";
+        this.rxgoogJitterBufferMs = "";
+        this.googPreferredJitterBufferMs = "";
+        this.googDecodingPLC = "";
+        this.googDecodingNormal = "";
+        this.googJitterReceived = "";
+        this.googDecodingCTSG = "";
+        this.googDecodingCTN = "";
+        this.googCurrentDelayMs = "";
+        this.googCaptureStartNtpTimeMs = "";
+        this.rxgoogCaptureStartNtpTimeMs = "";
+        this.txbytesSent = "";
+        this.EncodeUsagePercent = "";
+        this.FrameHeightSent = "";
+        this.FrameRateSent = "";
+        this.FrameWidthSent = "";
+        this.txRtt = "";
+        this.txApacketsLost = "";
+        this.txApacketsSent = "";
+        this.audioInputLevel = "";
+        this.txAbytesSent = "";
+        this.googFrameWidthInput = "";
+        this.googPlisReceived = "";
+        this.googAvgEncodeMs = "";
+        this.googFrameHeightInput = "";
+        this.googFrameWidthSent = "";
+        this.txpacketsLost = "";
+        this.txpacketsSent = "";
+        this.rxCurrentDelayMs = "";
+        this.googFirsReceived = "";
+        this.googFrameRateSent = "";
+        this.googAdaptationChanges = "";
+        this.googFrameRateInput = "";
+        this.txAgoogRtt = "";
+        this.googNacksReceived = "";
+
+        this.googEchoCancellationReturnLoss = "";
+        this.googEchoCancellationEchoDelayStdDev = "";
+        this.googEchoCancellationQualityMin = "";
+
+        this.googEchoCancellationReturnLossEnhancement = "";
+        this.googEchoCancellationEchoDelayMedian = "";
+        this.rxgoogJitterReceived = "";
+        this.googFirsSent = "";
+        this.googFrameRateDecoded = "";
+        this.googMaxDecodeMs = "";
+        this.googRenderDelayMs = "";
+        this.googFrameRateOutput = "";
+        this.googMinPlayoutDelayMs = "";
+        this.googNacksSent = "";
+        this.googTargetDelayMs = "";
+        this.googDecodeMs = "";
+        this.googPlisSent = "";
+        this.googRetransmitBitrate = "";
+        this.googActualEncBitrate = "";
+    } else {
+        this.ReceiveBandwidth = [];
+        this.SendBandwidth = [];
+        this.TransmitBitrate = [];
+        this.rxbytesReceived = [];
+        this.FrameHeightReceived = [];
+        this.FrameRateReceived = [];
+        this.FrameWidthReceived = [];
+        this.rxpacketsLost = [];
+        this.rxpacketsReceived = [];
+        this.audioOutputLevel = [];
+        this.rxAudioBytesReceived = [];
+        this.rxAudiopacketsLost = [];
+        this.rxAudiopacketsReceived = [];
+        this.googDecodingPLCCNG = [];
+        this.googDecodingCNG = [];
+        this.googJitterBufferMs = [];
+        this.rxgoogJitterBufferMs = [];
+        this.googPreferredJitterBufferMs = [];
+        this.googDecodingPLC = [];
+        this.googDecodingNormal = [];
+        this.googJitterReceived = [];
+        this.googDecodingCTSG = [];
+        this.googDecodingCTN = [];
+        this.googCurrentDelayMs = [];
+        this.googCaptureStartNtpTimeMs = [];
+        this.rxgoogCaptureStartNtpTimeMs = [];
+        this.txbytesSent = [];
+        this.EncodeUsagePercent = [];
+        this.FrameHeightSent = [];
+        this.FrameRateSent = [];
+        this.FrameWidthSent = [];
+        this.txRtt = [];
+        this.txApacketsLost = [];
+        this.txApacketsSent = [];
+        this.audioInputLevel = [];
+        this.txAbytesSent = [];
+        this.googFrameWidthInput = [];
+        this.googPlisReceived = [];
+        this.googAvgEncodeMs = [];
+        this.googFrameHeightInput = [];
+        this.googFrameWidthSent = [];
+        this.txpacketsLost = [];
+        this.txpacketsSent = [];
+        this.rxCurrentDelayMs = [];
+        this.googFirsReceived = [];
+        this.googFrameRateSent = [];
+        this.googAdaptationChanges = [];
+        this.googFrameRateInput = [];
+        this.txAgoogRtt = [];
+        this.googNacksReceived = [];
+
+        this.googEchoCancellationReturnLoss = [];
+        this.googEchoCancellationEchoDelayStdDev = [];
+        this.googEchoCancellationQualityMin = [];
+
+        this.googEchoCancellationReturnLossEnhancement = [];
+        this.googEchoCancellationEchoDelayMedian = [];
+        this.rxgoogJitterReceived = [];
+        this.googFirsSent = [];
+        this.googFrameRateDecoded = [];
+        this.googMaxDecodeMs = [];
+        this.googRenderDelayMs = [];
+        this.googFrameRateOutput = [];
+        this.googMinPlayoutDelayMs = [];
+        this.googNacksSent = [];
+        this.googTargetDelayMs = [];
+        this.googDecodeMs = [];
+        this.googPlisSent = [];
+        this.googRetransmitBitrate = [];
+        this.googActualEncBitrate = [];
+
+    }
     this.rtcgSessionId = "";
     this.RxVideoStatsFlag = false;
     this.RxAudioStatsFlag = false;
     this.TxVideoStatsFlag = false;
     this.TxAudioStatsFlag = false;
     this.genericFlag = false;
-    this.ReceiveBandwidth = [];
-    this.SendBandwidth = [];
-    this.TransmitBitrate = [];
-    this.rxbytesReceived = [];
-    this.FrameHeightReceived = [];
-    this.FrameRateReceived = [];
-    this.FrameWidthReceived = [];
-    this.rxpacketsLost = [];
-    this.rxpacketsReceived = [];
-    this.audioOutputLevel = [];
-    this.rxAudioBytesReceived = [];
-    this.rxAudiopacketsLost = [];
-    this.rxAudiopacketsReceived = [];
-    this.googDecodingPLCCNG = [];
-    this.googDecodingCNG = [];
-    this.googJitterBufferMs = [];
-    this.rxgoogJitterBufferMs = [];
-    this.googPreferredJitterBufferMs = [];
-    this.googDecodingPLC = [];
-    this.googDecodingNormal = [];
-    this.googJitterReceived = [];
-    this.googDecodingCTSG = [];
-    this.googDecodingCTN = [];
-    this.googCurrentDelayMs = [];
-    this.googCaptureStartNtpTimeMs = [];
-    this.rxgoogCaptureStartNtpTimeMs = [];
-    this.txbytesSent = [];
-    this.EncodeUsagePercent = [];
-    this.FrameHeightSent = [];
-    this.FrameRateSent = [];
-    this.FrameWidthSent = [];
-    this.txRtt = [];
-    this.txApacketsLost = [];
-    this.txApacketsSent = [];
-    this.audioInputLevel = [];
-    this.txAbytesSent = [];
-    this.googFrameWidthInput = [];
-    this.googPlisReceived = [];
-    this.googAvgEncodeMs = [];
-    this.googFrameHeightInput = [];
-    this.googFrameWidthSent = [];
-    this.txpacketsLost = [];
-    this.txpacketsSent = [];
-    this.timestamp = 0;
-    this.rxCurrentDelayMs = [];
-    this.googFirsReceived = [];
-    this.googFrameRateSent = [];
-    this.googAdaptationChanges = [];
-    this.googFrameRateInput = [];
-    this.txAgoogRtt = [];
-    this.googNacksReceived = [];
-    this.googCodecName = "";
-    this.googEchoCancellationReturnLoss = [];
-    this.googEchoCancellationEchoDelayStdDev = [];
-    this.googEchoCancellationQualityMin = [];
-    this.txAgoogCodecName = "";
-    this.googEchoCancellationReturnLossEnhancement = [];
-    this.googEchoCancellationEchoDelayMedian = [];
-    this.rxgoogJitterReceived = [];
-    this.googFirsSent = [];
-    this.googFrameRateDecoded = [];
-    this.googMaxDecodeMs = [];
-    this.googRenderDelayMs = [];
-    this.googFrameRateOutput = [];
-    this.googMinPlayoutDelayMs = [];
-    this.googNacksSent = [];
-    this.googTargetDelayMs = [];
-    this.googDecodeMs = [];
-    this.googPlisSent = [];
-    this.googRetransmitBitrate = [];
-    this.googActualEncBitrate = [];
     this.timeseries;
     this.events = [];
     this.aQuery = [];
+    this.googCodecName = "";
+    this.timestamp = 0;
+    this.txAgoogCodecName = "";
     this.RxTimestamp = 0;
     this.TxTimeStamp = 0
     this.callEndTime = 0;
@@ -149,77 +225,156 @@ RtcStats.prototype.reset = function() {
     this.TxVideoStatsFlag = false;
     this.TxAudioStatsFlag = false;
     this.genericFlag = false;
-    this.ReceiveBandwidth = [];
-    this.SendBandwidth = [];
-    this.TransmitBitrate = [];
-    this.rxbytesReceived = [];
-    this.FrameHeightReceived = [];
-    this.FrameRateReceived = [];
-    this.FrameWidthReceived = [];
-    this.rxpacketsLost = [];
-    this.rxpacketsReceived = [];
-    this.audioOutputLevel = [];
-    this.rxAudioBytesReceived = [];
-    this.rxAudiopacketsLost = [];
-    this.rxAudiopacketsReceived = [];
-    this.googDecodingPLCCNG = [];
-    this.googDecodingCNG = [];
-    this.googJitterBufferMs = [];
-    this.rxgoogJitterBufferMs = [];
-    this.googPreferredJitterBufferMs = [];
-    this.googDecodingPLC = [];
-    this.googDecodingNormal = [];
-    this.googJitterReceived = [];
-    this.googDecodingCTSG = [];
-    this.googDecodingCTN = [];
-    this.googCurrentDelayMs = [];
-    this.googCaptureStartNtpTimeMs = [];
-    this.rxgoogCaptureStartNtpTimeMs = [];
-    this.txbytesSent = [];
-    this.EncodeUsagePercent = [];
-    this.FrameHeightSent = [];
-    this.FrameRateSent = [];
-    this.FrameWidthSent = [];
-    this.txRtt = [];
-    this.txApacketsLost = [];
-    this.txApacketsSent = [];
-    this.audioInputLevel = [];
-    this.txAbytesSent = [];
-    this.googFrameWidthInput = [];
-    this.googPlisReceived = [];
-    this.googAvgEncodeMs = [];
-    this.googFrameHeightInput = [];
-    this.googFrameWidthSent = [];
-    this.txpacketsLost = [];
-    this.txpacketsSent = [];
-    this.timestamp = 0;
-    this.rxCurrentDelayMs = [];
-    this.googFirsReceived = [];
-    this.googFrameRateSent = [];
-    this.googAdaptationChanges = [];
-    this.googFrameRateInput = [];
-    this.txAgoogRtt = [];
-    this.googNacksReceived = [];
-    this.googCodecName = "";
-    this.googEchoCancellationReturnLoss = [];
-    this.googEchoCancellationEchoDelayStdDev = [];
-    this.googEchoCancellationQualityMin = [];
-    this.txAgoogCodecName = "";
-    this.googEchoCancellationReturnLossEnhancement = [];
-    this.googEchoCancellationEchoDelayMedian = [];
-    this.rxgoogJitterReceived = [];
-    this.googFirsSent = [];
-    this.googFrameRateDecoded = [];
-    this.googMaxDecodeMs = [];
-    this.googRenderDelayMs = [];
-    this.googFrameRateOutput = [];
-    this.googMinPlayoutDelayMs = [];
-    this.googNacksSent = [];
-    this.googTargetDelayMs = [];
-    this.googDecodeMs = [];
-    this.googPlisSent = [];
-    this.googRetransmitBitrate = [];
-    this.googActualEncBitrate = [];
+
+
+
+    if (options.sendStatsIQ) {
+        this.ReceiveBandwidth = "";
+        this.SendBandwidth = "";
+        this.TransmitBitrate = "";
+        this.rxbytesReceived = "";
+        this.FrameHeightReceived = "";
+        this.FrameRateReceived = "";
+        this.FrameWidthReceived = "";
+        this.rxpacketsLost = "";
+        this.rxpacketsReceived = "";
+        this.audioOutputLevel = "";
+        this.rxAudioBytesReceived = "";
+        this.rxAudiopacketsLost = "";
+        this.rxAudiopacketsReceived = "";
+        this.googDecodingPLCCNG = "";
+        this.googDecodingCNG = "";
+        this.googJitterBufferMs = "";
+        this.rxgoogJitterBufferMs = "";
+        this.googPreferredJitterBufferMs = "";
+        this.googDecodingPLC = "";
+        this.googDecodingNormal = "";
+        this.googJitterReceived = "";
+        this.googDecodingCTSG = "";
+        this.googDecodingCTN = "";
+        this.googCurrentDelayMs = "";
+        this.googCaptureStartNtpTimeMs = "";
+        this.rxgoogCaptureStartNtpTimeMs = "";
+        this.txbytesSent = "";
+        this.EncodeUsagePercent = "";
+        this.FrameHeightSent = "";
+        this.FrameRateSent = "";
+        this.FrameWidthSent = "";
+        this.txRtt = "";
+        this.txApacketsLost = "";
+        this.txApacketsSent = "";
+        this.audioInputLevel = "";
+        this.txAbytesSent = "";
+        this.googFrameWidthInput = "";
+        this.googPlisReceived = "";
+        this.googAvgEncodeMs = "";
+        this.googFrameHeightInput = "";
+        this.googFrameWidthSent = "";
+        this.txpacketsLost = "";
+        this.txpacketsSent = "";
+        this.rxCurrentDelayMs = "";
+        this.googFirsReceived = "";
+        this.googFrameRateSent = "";
+        this.googAdaptationChanges = "";
+        this.googFrameRateInput = "";
+        this.txAgoogRtt = "";
+        this.googNacksReceived = "";
+
+        this.googEchoCancellationReturnLoss = "";
+        this.googEchoCancellationEchoDelayStdDev = "";
+        this.googEchoCancellationQualityMin = "";
+
+        this.googEchoCancellationReturnLossEnhancement = "";
+        this.googEchoCancellationEchoDelayMedian = "";
+        this.rxgoogJitterReceived = "";
+        this.googFirsSent = "";
+        this.googFrameRateDecoded = "";
+        this.googMaxDecodeMs = "";
+        this.googRenderDelayMs = "";
+        this.googFrameRateOutput = "";
+        this.googMinPlayoutDelayMs = "";
+        this.googNacksSent = "";
+        this.googTargetDelayMs = "";
+        this.googDecodeMs = "";
+        this.googPlisSent = "";
+        this.googRetransmitBitrate = "";
+        this.googActualEncBitrate = "";
+    } else {
+        this.ReceiveBandwidth = [];
+        this.SendBandwidth = [];
+        this.TransmitBitrate = [];
+        this.rxbytesReceived = [];
+        this.FrameHeightReceived = [];
+        this.FrameRateReceived = [];
+        this.FrameWidthReceived = [];
+        this.rxpacketsLost = [];
+        this.rxpacketsReceived = [];
+        this.audioOutputLevel = [];
+        this.rxAudioBytesReceived = [];
+        this.rxAudiopacketsLost = [];
+        this.rxAudiopacketsReceived = [];
+        this.googDecodingPLCCNG = [];
+        this.googDecodingCNG = [];
+        this.googJitterBufferMs = [];
+        this.rxgoogJitterBufferMs = [];
+        this.googPreferredJitterBufferMs = [];
+        this.googDecodingPLC = [];
+        this.googDecodingNormal = [];
+        this.googJitterReceived = [];
+        this.googDecodingCTSG = [];
+        this.googDecodingCTN = [];
+        this.googCurrentDelayMs = [];
+        this.googCaptureStartNtpTimeMs = [];
+        this.rxgoogCaptureStartNtpTimeMs = [];
+        this.txbytesSent = [];
+        this.EncodeUsagePercent = [];
+        this.FrameHeightSent = [];
+        this.FrameRateSent = [];
+        this.FrameWidthSent = [];
+        this.txRtt = [];
+        this.txApacketsLost = [];
+        this.txApacketsSent = [];
+        this.audioInputLevel = [];
+        this.txAbytesSent = [];
+        this.googFrameWidthInput = [];
+        this.googPlisReceived = [];
+        this.googAvgEncodeMs = [];
+        this.googFrameHeightInput = [];
+        this.googFrameWidthSent = [];
+        this.txpacketsLost = [];
+        this.txpacketsSent = [];
+        this.rxCurrentDelayMs = [];
+        this.googFirsReceived = [];
+        this.googFrameRateSent = [];
+        this.googAdaptationChanges = [];
+        this.googFrameRateInput = [];
+        this.txAgoogRtt = [];
+        this.googNacksReceived = [];
+
+        this.googEchoCancellationReturnLoss = [];
+        this.googEchoCancellationEchoDelayStdDev = [];
+        this.googEchoCancellationQualityMin = [];
+
+        this.googEchoCancellationReturnLossEnhancement = [];
+        this.googEchoCancellationEchoDelayMedian = [];
+        this.rxgoogJitterReceived = [];
+        this.googFirsSent = [];
+        this.googFrameRateDecoded = [];
+        this.googMaxDecodeMs = [];
+        this.googRenderDelayMs = [];
+        this.googFrameRateOutput = [];
+        this.googMinPlayoutDelayMs = [];
+        this.googNacksSent = [];
+        this.googTargetDelayMs = [];
+        this.googDecodeMs = [];
+        this.googPlisSent = [];
+        this.googRetransmitBitrate = [];
+        this.googActualEncBitrate = [];
+
+    }
+
+
+
     this.timeseries;
     this.aQuery = [];
     this.RxTimestamp = 0;
@@ -1431,197 +1586,419 @@ RtcStats.prototype.getPeerStats = function(conn, statsInterval, timerFlag) {
             self.TxVideoStatsFlag = false;
             self.TxAudeoStatsFlag = false;
             self.genericFlag = false;
-            getStats(pc, function(rawStats) {
+            if (RtcBrowserType.isSafari()) {
+                function RxAudioStats(obj) {
+                    // var names = obj.names();
+                    if (obj.googTrackId === 'mixedlabelaudio0')
+                        return;
+                    // for (var i = 0; i < names.length; ++i) {
+                    Object.keys(obj).forEach(function(val) {
 
-                var stats = new AugumentedStatsResponse(rawStats);
-                var results = "";
-                if (rawStats.result) {
-                    results = stats.result();
-                } else {
-                    results = rawStats;
-                    logger.log(logger.level.VERBOSE, "RtcStats", "Raw Stats : \n" + JSON.stringify(rawStats));
+                        switch (val) {
+
+                            case 'bytesReceived':
+                                self.rxAudioBytesReceived = obj[val];
+                                break;
+                            case 'packetsLost':
+                                self.rxAudiopacketsLost = obj[val];
+                                break;
+                            case 'packetsReceived':
+                                self.rxAudiopacketsReceived = obj[val];
+                                break;
+
+                            case 'framesDecoded':
+                                self.framesDecoded = obj[val];
+                                break;
+
+                            case 'jitter':
+                                self.rxgoogJitterReceived = obj[val];
+                                break;
+
+                            default:
+
+                        }
+                    })
+                    this.RxAudioStatsFlag = true;
                 }
-                elementIndex = 0;
-                //logger.log(logger.level.INFO, "IrisRtcStats", "parent results.length is " + results.length);
-                for (var i = 0; i < results.length; ++i) {
-                    elementIndex++;
-                    var res = results[i];
 
-                    if (res) {
-                        // logger.log(logger.level.INFO, "IrisRtcStats", "Each Stat Object : \n" + res);
-                        logStats(res);
+                function RxVideoStats(obj) {
+                    Object.keys(obj).forEach(function(val) {
+
+                        switch (val) {
+
+                            case 'framesDecoded':
+                                self.FrameRateReceived = obj[val];
+                                break;
+                            case 'bytesReceived':
+                                self.rxbytesReceived = obj[val];
+                                break;
+
+                            case 'packetsLost':
+                                self.rxpacketsLost = obj[val];
+                                break;
+                            case 'packetsReceived':
+                                self.rxpacketsReceived = obj[val];
+                                break;
+
+                            case 'jitter':
+                                self.googJitterBufferMs = obj[val];
+                                break;
+                            case 'nackCount':
+                                self.googNacksSent = obj[val];
+                                break;
+
+                            default:
+
+                        }
+
+                    });
+                    this.RxVideoStatsFlag = true;
+                }
+
+                function TxAudioStats(obj) {
+                    Object.keys(obj).forEach(function(val) {
+
+                        switch (val) {
+
+                            case 'bytesSent':
+                                self.txAbytesSent = obj[val];
+                                break;
+                            case 'packetsLost':
+                                self.txApacketsLost = obj[val];
+                                break;
+                            case 'packetsSent':
+                                self.txApacketsSent = obj[val];
+                                break;
+                            case 'jitter':
+                                self.googJitterReceived = obj[val];
+                                break;
+
+                            default:
+
+                        }
+                    });
+
+                    this.TxAudioStatsFlag = true;
+                }
+
+                function TxVideoStats(obj) {
+                    Object.keys(obj).forEach(function(val) {
+
+                        switch (val) {
+                            case 'bytesSent':
+                                self.txbytesSent = obj[val];
+
+                            case 'packetsLost':
+                                self.txpacketsLost = obj[val];
+                                break;
+                            case 'packetsSent':
+                                self.txpacketsSent = obj[val];
+                                break;
+
+                            case 'framesEncoded':
+                                self.FrameRateSent = obj[val];
+                                break;
+
+                            case 'nackCount':
+                                self.googNacksReceived = obj[val];
+                                break;
+
+                            case 'pliCount':
+                                self.googPlisReceived = obj[val];
+                                break;
+
+                            case 'googFirsReceived':
+                                self.googFirsReceived = obj[val];
+                                break;
+
+                            default:
+
+                        }
+                    });
+                    this.TxVideoStatsFlag = true;
+                }
+
+                function logStatsSafari(obj) {
+                    self.timestamp = obj.timestamp;
+                    if (obj.type) {
+
+                        if (obj.type == 'inbound-rtp' && obj.id.search('Audio') !== -1) {
+                            RxAudioStats(obj);
+                        } else if (obj.type == 'inbound-rtp' && obj.id.search('Video') !== -1) {
+                            RxVideoStats(obj);
+                        } else if (obj.type == 'outbound-rtp' && obj.id.search('Video') !== -1) {
+                            TxVideoStats(obj);
+                        } else if (obj.type == 'outbound-rtp' && obj.id.search('Audio') !== -1) {
+                            TxAudioStats(obj);
+                        } else if (obj.type == 'candidate-pair') {
+                            // candidate(obj);
+                        } else if (obj.type == 'googAvailableSendBandwidth') {
+                            generic(obj);
+                        }
                     }
                 }
-                if (this.RxVideoStatsFlag == false) {
-                    self.ReceiveBandwidth.push("0");
-                    self.FrameRateReceived.push("0");
-                    self.rxbytesReceived.push("0");
-                    self.FrameHeightReceived.push("0");
-                    self.FrameWidthReceived.push("0");
-                    self.rxpacketsLost.push("0");
-                    self.rxpacketsReceived.push("0");
-                    self.rxCurrentDelayMs.push("0");
-                    self.googFirsSent.push("0");
-                    self.googFrameRateDecoded.push("0");
-                    self.googJitterBufferMs.push("0");
-                    self.googMaxDecodeMs.push("0");
-                    self.googRenderDelayMs.push("0");
-                    self.googFrameRateOutput.push("0");
-                    self.googMinPlayoutDelayMs.push("0");
-                    self.googNacksSent.push("0");
-                    self.googTargetDelayMs.push("0");
-                    self.googCaptureStartNtpTimeMs.push("0");
-                    self.googDecodeMs.push("0");
-                    self.googPlisSent.push("0");
-                }
-                if (this.RxAudioStatsFlag == false) {
-                    self.audioOutputLevel.push("0");
-                    self.rxAudioBytesReceived.push("0");
-                    self.rxAudiopacketsLost.push("0");
-                    self.rxAudiopacketsReceived.push("0");
-                    self.googDecodingCNG.push("0");
-                    self.googDecodingPLCCNG.push("0");
-                    self.rxgoogJitterBufferMs.push("0");
-                    self.googPreferredJitterBufferMs.push("0");
-                    self.googDecodingPLC.push("0");
-                    self.googDecodingNormal.push("0");
-                    self.googCurrentDelayMs.push("0");
-                    self.googCaptureStartNtpTimeMs.push("0");
-                    self.rxgoogJitterReceived.push("0");
-                    self.googDecodingCTSG.push("0");
-                    self.googDecodingCTN.push("0");
-                }
-                if (this.TxAudioStatsFlag == false) {
-                    self.audioInputLevel.push("0");
-                    self.txAbytesSent.push("0");
-                    self.txApacketsLost.push("0");
-                    self.txApacketsSent.push("0");
-                    self.googEchoCancellationReturnLoss.push("0");
-                    self.googEchoCancellationEchoDelayStdDev.push("0");
-                    self.googEchoCancellationQualityMin.push("0");
-                    self.txAgoogCodecName = "0";
-                    self.txAgoogRtt.push("0");
-                    self.googEchoCancellationEchoDelayMedian.push("0");
-                    self.googJitterReceived.push("0");
-                    self.googEchoCancellationReturnLossEnhancement.push("0");
-                }
-                if (this.TxVideoStatsFlag == false) {
-                    self.txbytesSent.push("0");
-                    self.EncodeUsagePercent.push("0");
-                    self.FrameHeightSent.push("0");
-                    self.FrameWidthSent.push("0");
-                    self.txRtt.push("0");
-                    self.txpacketsLost.push("0");
-                    self.txpacketsSent.push("0");
-                    self.SendBandwidth.push("0");
-                    self.FrameRateSent.push("0");
-                    self.googAdaptationChanges.push("0");
-                    self.googFrameRateInput.push("0");
-                    self.googNacksReceived.push("0");
-                    self.googFrameWidthInput.push("0");
-                    self.googPlisReceived.push("0");
-                    self.googAvgEncodeMs.push("0");
-                    self.googFrameHeightInput.push("0");
-                    self.googCodecName = "0";
-                    self.googFirsReceived.push("0");
-                }
-                if (this.genericFlag == false) {
-                    self.ReceiveBandwidth.push("0");
-                    self.SendBandwidth.push("0");
-                    self.googRetransmitBitrate.push("0");
-                    self.googActualEncBitrate.push("0");
-                    self.TransmitBitrate.push("0");
-                }
-                //if (self.statsCounter == 10) {
-                var currentStats = {
 
-                    "General": { "googAvailableReceiveBandwidth": self.ReceiveBandwidth, "googAvailableSendBandwidth": self.SendBandwidth, "googTransmitBitrate": self.TransmitBitrate, "googRetransmitBitrate": self.googRetransmitBitrate, "googActualEncBitrate": self.googActualEncBitrate, "timestamp": self.timestamp },
-                    "rxVideo": {
-                        "bytesReceived": self.rxbytesReceived,
-                        "googCurrentDelayMs": self.rxCurrentDelayMs,
-                        "googFrameHeightReceived": self.FrameHeightReceived,
-                        "googFrameRateReceived": self.FrameRateReceived,
-                        "googFrameWidthReceived": self.FrameWidthReceived,
-                        "packetsLost": self.rxpacketsLost,
-                        "packetsReceived": self.rxpacketsReceived,
-                        "googFirsSent": self.googFirsSent,
-                        "googFrameRateDecoded": self.googFrameRateDecoded,
-                        "googJitterBufferMs": self.rxgoogJitterBufferMs,
-                        "googMaxDecodeMs": self.googMaxDecodeMs,
-                        "googRenderDelayMs": self.googRenderDelayMs,
-                        "googFrameRateOutput": self.googFrameRateOutput,
-                        "googMinPlayoutDelayMs": self.googMinPlayoutDelayMs,
-                        "googNacksSent": self.googNacksSent,
-                        "googTargetDelayMs": self.googTargetDelayMs,
-                        "googCaptureStartNtpTimeMs": self.googCaptureStartNtpTimeMs,
-                        "googDecodeMs": self.googDecodeMs,
-                        "googPlisSent": self.googPlisSent
-                    },
-                    "rxAudio": { "audioOutputLevel": self.audioOutputLevel, "bytesReceived": self.rxAudioBytesReceived, "packetsLost": self.rxAudiopacketsLost, "packetsReceived": self.rxAudiopacketsReceived, "googDecodingCNG": self.googDecodingCNG, "googDecodingPLCCNG": self.googDecodingPLCCNG, "googJitterBufferMs": self.googJitterBufferMs, "googPreferredJitterBufferMs": self.googPreferredJitterBufferMs, "googDecodingPLC": self.googDecodingPLC, "googDecodingNormal": self.googDecodingNormal, "googCurrentDelayMs": self.googCurrentDelayMs, "googJitterReceived": self.rxgoogJitterReceived, "googCaptureStartNtpTimeMs": self.rxgoogCaptureStartNtpTimeMs, "googDecodingCTN": self.googDecodingCTN, "googDecodingCTSG": self.googDecodingCTSG },
-                    "txVideo": {
-                        "bytesSent": self.txbytesSent,
-                        "googEncodeUsagePercent": self.EncodeUsagePercent,
-                        "googFrameHeightSent": self.FrameHeightSent,
-                        "googFrameRateSent": self.FrameRateSent,
-                        "googFrameWidthSent": self.FrameWidthSent,
-                        "googRtt": self.txRtt,
-                        "packetsLost": self.txpacketsLost,
-                        "packetsSent": self.txpacketsSent,
-                        "googFirsReceived": self.googFirsReceived,
-                        "googAdaptationChanges": self.googAdaptationChanges,
-                        "googFrameRateInput": self.googFrameRateInput,
-                        "googNacksReceived": self.googNacksReceived,
-                        "googCodecName": self.googCodecName,
-                        "googFrameWidthInput": self.googFrameWidthInput,
-                        "googPlisReceived": self.googPlisReceived,
-                        "googAvgEncodeMs": self.googAvgEncodeMs,
-                        "googFrameHeightInput": self.googFrameHeightInput,
-                    },
-                    "txAudio": {
-                        "audioInputLevel": self.audioInputLevel,
-                        "bytesSent": self.txAbytesSent,
-                        "packetsLost": self.txApacketsLost,
-                        "packetsSent": self.txApacketsSent,
-                        "googEchoCancellationReturnLoss": self.googEchoCancellationReturnLoss,
-                        "googEchoCancellationEchoDelayStdDev": self.googEchoCancellationEchoDelayStdDev,
-                        "googEchoCancellationQualityMin": self.googEchoCancellationQualityMin,
-                        "googCodecName": self.txAgoogCodecName,
-                        "googRtt": self.txAgoogRtt,
-                        "googEchoCancellationEchoDelayMedian": self.googEchoCancellationEchoDelayMedian,
-                        "googJitterReceived": self.googJitterReceived,
-                        "googEchoCancellationReturnLossEnhancement": self.googEchoCancellationReturnLossEnhancement
+
+
+                pc.getStats(null).then(rawStats => {
+                    let statsOutput = "";
+
+                    rawStats.forEach(report => {
+                        logStatsSafari(report);
+                        var currentStats = {
+
+                            "rxVideo": {
+                                "bytesReceived": self.rxbytesReceived,
+                                "googFrameRateReceived": self.FrameRateReceived,
+                                "packetsLost": self.rxpacketsLost,
+                                "packetsReceived": self.rxpacketsReceived,
+                                "googJitterBufferMs": self.rxgoogJitterBufferMs,
+                                "googNacksSent": self.googNacksSent,
+
+
+                            },
+                            "rxAudio": { "bytesReceived": self.rxAudioBytesReceived, "packetsLost": self.rxAudiopacketsLost, "packetsReceived": self.rxAudiopacketsReceived, "googDecodingNormal": self.googDecodingNormal, "googJitterReceived": self.rxgoogJitterReceived },
+                            "txVideo": {
+                                "bytesSent": self.txbytesSent,
+                                "googFrameRateSent": self.FrameRateSent,
+                                "packetsLost": self.txpacketsLost,
+                                "packetsSent": self.txpacketsSent,
+                                "googFirsReceived": self.googFirsReceived,
+                                "googNacksReceived": self.googNacksReceived,
+                                "googPlisReceived": self.googPlisReceived
+
+                            },
+                            "txAudio": {
+                                "bytesSent": self.txAbytesSent,
+                                "packetsLost": self.txApacketsLost,
+                                "packetsSent": self.txApacketsSent,
+                                "googJitterReceived": self.googJitterReceived
+                            }
+
+
+                        }
+                        self.timeseries = currentStats;
+                        self.statsCounter = 0;
+
+                        self.statsCounter++;
+                        return self.timeseries;
+                        //update the arrays
+                        // self.newbytesRec = self.rxbytesReceived;
+                        // var tempReceiveBW = ((self.newbytesRec - self.oldbytesRec) / 1024) * 8;
+                        // self.oldbytesRec = self.newbytesRec;
+                        // self.RecvBWArray[arrayIndex] = tempReceiveBW;
+
+                        // //packet loss variance
+                        // self.newPacketLoss = self.rxpacketsLost;
+                        // self.newPacketRecv = self.rxpacketsReceived;
+                        // var totalPacketRec = (self.newPacketLoss - self.oldPacketLoss) + (self.newPacketRecv - self.oldPacketRecv);
+                        // var packetLossVariance = (self.newPacketLoss - self.oldPacketLoss) * 100 / totalPacketRec;
+                        // self.oldPacketLoss = self.newPacketLoss;
+                        // self.oldPacketRecv = self.newPacketRecv;
+                        // self.packetLossArray[arrayIndex] = packetLossVariance;
+                        // arrayIndex++;
+                        // if (arrayIndex == self.NETWORK_CHECK_VAL) arrayIndex = 0;
+                        // self.checkNetworkState();
+
+                        //Print the stats 
+
+                    });
+                    // document.querySelector(".stats-box").innerHTML = statsOutput;
+                });
+            } else {
+
+
+                getStats(pc, function(rawStats) {
+
+                    var stats = new AugumentedStatsResponse(rawStats);
+                    var results = "";
+                    if (rawStats.result) {
+                        results = stats.result();
+                    } else {
+                        results = rawStats;
+                        logger.log(logger.level.VERBOSE, "RtcStats", "Raw Stats : \n" + JSON.stringify(rawStats));
                     }
+                    elementIndex = 0;
+                    //logger.log(logger.level.INFO, "IrisRtcStats", "parent results.length is " + results.length);
+                    for (var i = 0; i < results.length; ++i) {
+                        elementIndex++;
+                        var res = results[i];
+
+                        if (res) {
+                            // logger.log(logger.level.INFO, "IrisRtcStats", "Each Stat Object : \n" + res);
+                            logStats(res);
+                        }
+                    }
+                    if (this.RxVideoStatsFlag == false) {
+                        self.ReceiveBandwidth = 0;
+                        self.FrameRateReceived = 0;
+                        self.rxbytesReceived = 0;
+                        self.FrameHeightReceived = 0;
+                        self.FrameWidthReceived = 0;
+                        self.rxpacketsLost = 0;
+                        self.rxpacketsReceived = 0;
+                        self.rxCurrentDelayMs = 0;
+                        self.googFirsSent = 0;
+                        self.googFrameRateDecoded = 0;
+                        self.googJitterBufferMs = 0;
+                        self.googMaxDecodeMs = 0;
+                        self.googRenderDelayMs = 0;
+                        self.googFrameRateOutput = 0;
+                        self.googMinPlayoutDelayMs = 0;
+                        self.googNacksSent = 0;
+                        self.googTargetDelayMs = 0;
+                        self.googCaptureStartNtpTimeMs = 0;
+                        self.googDecodeMs = 0;
+                        self.googPlisSent = 0;
+                    }
+                    if (this.RxAudioStatsFlag == false) {
+                        self.audioOutputLevel = 0;
+                        self.rxAudioBytesReceived = 0;
+                        self.rxAudiopacketsLost = 0;
+                        self.rxAudiopacketsReceived = 0;
+                        self.googDecodingCNG = 0;
+                        self.googDecodingPLCCNG = 0;
+                        self.rxgoogJitterBufferMs = 0;
+                        self.googPreferredJitterBufferMs = 0;
+                        self.googDecodingPLC = 0;
+                        self.googDecodingNormal = 0;
+                        self.googCurrentDelayMs = 0;
+                        self.googCaptureStartNtpTimeMs = 0;
+                        self.rxgoogJitterReceived = 0;
+                        self.googDecodingCTSG = 0;
+                        self.googDecodingCTN = 0;
+                    }
+                    if (this.TxAudioStatsFlag == false) {
+                        self.audioInputLevel = 0;
+                        self.txAbytesSent = 0;
+                        self.txApacketsLost = 0;
+                        self.txApacketsSent = 0;
+                        self.googEchoCancellationReturnLoss = 0;
+                        self.googEchoCancellationEchoDelayStdDev = 0;
+                        self.googEchoCancellationQualityMin = 0;
+                        self.txAgoogCodecName = "0";
+                        self.txAgoogRtt = 0;
+                        self.googEchoCancellationEchoDelayMedian = 0;
+                        self.googJitterReceived = 0;
+                        self.googEchoCancellationReturnLossEnhancement = 0;
+                    }
+                    if (this.TxVideoStatsFlag == false) {
+                        self.txbytesSent = 0;
+                        self.EncodeUsagePercent = 0;
+                        self.FrameHeightSent = 0;
+                        self.FrameWidthSent = 0;
+                        self.txRtt = 0;
+                        self.txpacketsLost = 0;
+                        self.txpacketsSent = 0;
+                        self.SendBandwidth = 0;
+                        self.FrameRateSent = 0;
+                        self.googAdaptationChanges = 0;
+                        self.googFrameRateInput = 0;
+                        self.googNacksReceived = 0;
+                        self.googFrameWidthInput = 0;
+                        self.googPlisReceived = 0;
+                        self.googAvgEncodeMs = 0;
+                        self.googFrameHeightInput = 0;
+                        self.googCodecName = "0";
+                        self.googFirsReceived = 0;
+                    }
+                    if (this.genericFlag == false) {
+                        self.ReceiveBandwidth = 0;
+                        self.SendBandwidth = 0;
+                        self.googRetransmitBitrate = 0;
+                        self.googActualEncBitrate = 0;
+                        self.TransmitBitrate = 0;
+                    }
+                    //if (self.statsCounter == 10) {
+                    var currentStats = {
+
+                        "General": { "googAvailableReceiveBandwidth": self.ReceiveBandwidth, "googAvailableSendBandwidth": self.SendBandwidth, "googTransmitBitrate": self.TransmitBitrate, "googRetransmitBitrate": self.googRetransmitBitrate, "googActualEncBitrate": self.googActualEncBitrate, "timestamp": self.timestamp },
+                        "rxVideo": {
+                            "bytesReceived": self.rxbytesReceived,
+                            "googCurrentDelayMs": self.rxCurrentDelayMs,
+                            "googFrameHeightReceived": self.FrameHeightReceived,
+                            "googFrameRateReceived": self.FrameRateReceived,
+                            "googFrameWidthReceived": self.FrameWidthReceived,
+                            "packetsLost": self.rxpacketsLost,
+                            "packetsReceived": self.rxpacketsReceived,
+                            "googFirsSent": self.googFirsSent,
+                            "googFrameRateDecoded": self.googFrameRateDecoded,
+                            "googJitterBufferMs": self.rxgoogJitterBufferMs,
+                            "googMaxDecodeMs": self.googMaxDecodeMs,
+                            "googRenderDelayMs": self.googRenderDelayMs,
+                            "googFrameRateOutput": self.googFrameRateOutput,
+                            "googMinPlayoutDelayMs": self.googMinPlayoutDelayMs,
+                            "googNacksSent": self.googNacksSent,
+                            "googTargetDelayMs": self.googTargetDelayMs,
+                            "googCaptureStartNtpTimeMs": self.googCaptureStartNtpTimeMs,
+                            "googDecodeMs": self.googDecodeMs,
+                            "googPlisSent": self.googPlisSent
+                        },
+                        "rxAudio": { "audioOutputLevel": self.audioOutputLevel, "bytesReceived": self.rxAudioBytesReceived, "packetsLost": self.rxAudiopacketsLost, "packetsReceived": self.rxAudiopacketsReceived, "googDecodingCNG": self.googDecodingCNG, "googDecodingPLCCNG": self.googDecodingPLCCNG, "googJitterBufferMs": self.googJitterBufferMs, "googPreferredJitterBufferMs": self.googPreferredJitterBufferMs, "googDecodingPLC": self.googDecodingPLC, "googDecodingNormal": self.googDecodingNormal, "googCurrentDelayMs": self.googCurrentDelayMs, "googJitterReceived": self.rxgoogJitterReceived, "googCaptureStartNtpTimeMs": self.rxgoogCaptureStartNtpTimeMs, "googDecodingCTN": self.googDecodingCTN, "googDecodingCTSG": self.googDecodingCTSG },
+                        "txVideo": {
+                            "bytesSent": self.txbytesSent,
+                            "googEncodeUsagePercent": self.EncodeUsagePercent,
+                            "googFrameHeightSent": self.FrameHeightSent,
+                            "googFrameRateSent": self.FrameRateSent,
+                            "googFrameWidthSent": self.FrameWidthSent,
+                            "googRtt": self.txRtt,
+                            "packetsLost": self.txpacketsLost,
+                            "packetsSent": self.txpacketsSent,
+                            "googFirsReceived": self.googFirsReceived,
+                            "googAdaptationChanges": self.googAdaptationChanges,
+                            "googFrameRateInput": self.googFrameRateInput,
+                            "googNacksReceived": self.googNacksReceived,
+                            "googCodecName": self.googCodecName,
+                            "googFrameWidthInput": self.googFrameWidthInput,
+                            "googPlisReceived": self.googPlisReceived,
+                            "googAvgEncodeMs": self.googAvgEncodeMs,
+                            "googFrameHeightInput": self.googFrameHeightInput,
+                        },
+                        "txAudio": {
+                            "audioInputLevel": self.audioInputLevel,
+                            "bytesSent": self.txAbytesSent,
+                            "packetsLost": self.txApacketsLost,
+                            "packetsSent": self.txApacketsSent,
+                            "googEchoCancellationReturnLoss": self.googEchoCancellationReturnLoss,
+                            "googEchoCancellationEchoDelayStdDev": self.googEchoCancellationEchoDelayStdDev,
+                            "googEchoCancellationQualityMin": self.googEchoCancellationQualityMin,
+                            "googCodecName": self.txAgoogCodecName,
+                            "googRtt": self.txAgoogRtt,
+                            "googEchoCancellationEchoDelayMedian": self.googEchoCancellationEchoDelayMedian,
+                            "googJitterReceived": self.googJitterReceived,
+                            "googEchoCancellationReturnLossEnhancement": self.googEchoCancellationReturnLossEnhancement
+                        }
 
 
-                }
-                self.timeseries = currentStats;
-                self.statsCounter = 0;
-                //} 
+                    }
+                    self.timeseries = currentStats;
+                    self.statsCounter = 0;
+                    //} 
 
-                self.statsCounter++;
-                //update the arrays
-                self.newbytesRec = self.rxbytesReceived;
-                var tempReceiveBW = ((self.newbytesRec - self.oldbytesRec) / 1024) * 8;
-                self.oldbytesRec = self.newbytesRec;
-                self.RecvBWArray[arrayIndex] = tempReceiveBW;
+                    self.statsCounter++;
+                    //update the arrays
+                    self.newbytesRec = self.rxbytesReceived;
+                    var tempReceiveBW = ((self.newbytesRec - self.oldbytesRec) / 1024) * 8;
+                    self.oldbytesRec = self.newbytesRec;
+                    self.RecvBWArray[arrayIndex] = tempReceiveBW;
 
-                //packet loss variance
-                self.newPacketLoss = self.rxpacketsLost;
-                self.newPacketRecv = self.rxpacketsReceived;
-                var totalPacketRec = (self.newPacketLoss - self.oldPacketLoss) + (self.newPacketRecv - self.oldPacketRecv);
-                var packetLossVariance = (self.newPacketLoss - self.oldPacketLoss) * 100 / totalPacketRec;
-                self.oldPacketLoss = self.newPacketLoss;
-                self.oldPacketRecv = self.newPacketRecv;
-                self.packetLossArray[arrayIndex] = packetLossVariance;
-                arrayIndex++;
-                if (arrayIndex == self.NETWORK_CHECK_VAL) arrayIndex = 0;
-                self.checkNetworkState();
+                    //packet loss variance
+                    self.newPacketLoss = self.rxpacketsLost;
+                    self.newPacketRecv = self.rxpacketsReceived;
+                    var totalPacketRec = (self.newPacketLoss - self.oldPacketLoss) + (self.newPacketRecv - self.oldPacketRecv);
+                    var packetLossVariance = (self.newPacketLoss - self.oldPacketLoss) * 100 / totalPacketRec;
+                    self.oldPacketLoss = self.newPacketLoss;
+                    self.oldPacketRecv = self.newPacketRecv;
+                    self.packetLossArray[arrayIndex] = packetLossVariance;
+                    arrayIndex++;
+                    if (arrayIndex == self.NETWORK_CHECK_VAL) arrayIndex = 0;
+                    self.checkNetworkState();
 
-                //Print the stats 
-                logger.log(logger.level.VERBOSE, "RtcStats", "Stats ", self.timeseries);
+                    //Print the stats 
+                    logger.log(logger.level.VERBOSE, "RtcStats", "Stats ", self.timeseries);
 
-            });
-
+                });
+            }
             if (timerFlag) {
                 // Collect Stats for every 2 seconds till 30 seconds and the use interval from config
                 if (0 < self.localStatInterval && self.localStatInterval < 20000) {
@@ -1746,5 +2123,153 @@ RtcStats.prototype.parseUserAgent = function() {
         }
     } catch (error) {
         logger.log(logger.level.ERROR, "IrisRtcStats", "Failed to parse userAgent");
+    }
+}
+
+RtcStats.prototype.getLastStats = function(pc, cb) {
+    getStats(pc, function(rawStats) {
+        function AugumentedStatsResponse(response) {
+            this.response = response;
+            this.addressPairMap = [];
+        }
+
+        AugumentedStatsResponse.prototype.result = function() {
+            return this.response.result();
+        }
+
+        AugumentedStatsResponse.prototype.get = function(key) {
+            return this.response[key];
+        }
+        var stats = new AugumentedStatsResponse(rawStats);
+        var results = "";
+        if (rawStats.result) {
+            results = stats.result();
+        } else {
+            results = rawStats;
+            logger.log(logger.level.VERBOSE, "RtcStats", "Raw Stats : \n" + JSON.stringify(rawStats));
+        }
+        elementIndex = 0;
+        //logger.log(logger.level.INFO, "IrisRtcStats", "parent results.length is " + results.length);
+        for (var i = 0; i < results.length; ++i) {
+            elementIndex++;
+            var obj = results[i];
+
+            if (obj) {
+                self.timestamp = obj.timestamp;
+                statsData(obj, () => {
+                    var currentStats = {
+
+                        "rxVideo": {
+                            "bytesReceived": self.videobytesReceived,
+                            "packetsLost": self.videopacketsLost,
+                            "packetsReceived": self.videopacketsReceived,
+
+                        },
+                        "rxAudio": { "bytesReceived": self.audioBytesReceived, "packetsLost": self.audiopacketsLost, "packetsReceived": self.audiopacketsReceived },
+                        "txVideo": {
+                            "bytesSent": self.videobytesSent,
+                            "packetsLost": self.videopacketsLost,
+                            "packetsSent": self.videopacketsSent,
+
+                        },
+                        "txAudio": {
+                            "bytesSent": self.audiobytesSent,
+                            "packetsLost": self.audiopacketsLost,
+                            "packetsSent": self.audiopacketsSent,
+                        }
+
+
+                    }
+                    self.timeseriesend = currentStats;
+                    console.log("self.timeseries ===", self.timeseriesend);
+                })
+            }
+        }
+        if (self.timeseriesend)
+            cb(self.timeseriesend);
+    });
+
+    function statsData(obj, cb) {
+
+        if (obj.names) {
+            var names = obj.names();
+            for (var i = 0; i < names.length; ++i) {
+                if (names[i] == 'audioOutputLevel') {
+                    var names = obj.names();
+                    if (obj.stat("googTrackId") === 'mixedlabelaudio0')
+                        return;
+                    for (var i = 0; i < names.length; ++i) {
+                        switch (names[i]) {
+                            case 'bytesReceived':
+                                self.audioBytesReceived = obj.stat(names[i]);
+                                break;
+                            case 'packetsLost':
+                                self.audiopacketsLost = obj.stat(names[i]);
+                                break;
+                            case 'packetsReceived':
+                                self.audiopacketsReceived = obj.stat(names[i]);
+                                break;
+                            default:
+
+                        }
+                    }
+                    break;
+                } else if (names[i] == 'googFrameHeightReceived') {
+                    var names = obj.names();
+                    if (obj.stat("googTrackId") === 'mixedlabelvideo0')
+                        return;
+                    for (var i = 0; i < names.length; ++i) {
+                        switch (names[i]) {
+                            case 'bytesReceived':
+                                self.videobytesReceived = obj.stat(names[i]);
+                                break;
+                            case 'packetsLost':
+                                self.videopacketsLost = obj.stat(names[i]);
+                                break;
+                            case 'packetsReceived':
+                                self.videopacketsReceived = obj.stat(names[i]);
+                                break;
+                            default:
+                        }
+                    }
+                    break;
+                } else if (names[i] == 'googFrameHeightSent') {
+                    var names = obj.names();
+                    for (var i = 0; i < names.length; ++i) {
+                        switch (names[i]) {
+                            case 'bytesSent':
+                                self.videobytesSent = obj.stat(names[i]);
+                                break;
+                            case 'packetsLost':
+                                self.videopacketsLost = obj.stat(names[i]);
+                                break;
+                            case 'packetsSent':
+                                self.videopacketsSent = obj.stat(names[i]);
+                                break;
+                            default:
+                        }
+                    }
+                    break;
+                } else if (names[i] == 'audioInputLevel') {
+                    var names = obj.names();
+                    for (var i = 0; i < names.length; ++i) {
+                        switch (names[i]) {
+                            case 'bytesSent':
+                                self.audiobytesSent = obj.stat(names[i]);
+                                break;
+                            case 'packetsLost':
+                                self.audiopacketsLost = obj.stat(names[i]);
+                                break;
+                            case 'packetsSent':
+                                self.audiopacketsSent = obj.stat(names[i]);
+                                break;
+                            default:
+                        }
+                    }
+                    break;
+                }
+            }
+            cb();
+        }
     }
 }

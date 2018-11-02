@@ -144,7 +144,7 @@ SDPUtil = {
                     candidate.tcptype = elems[i + 1];
                     break;
                 default: // TODO
-                    logger.log(logger.level.INFO, "SDPUtil", 'parse_icecandidate not translating "' + elems[i] + '" = "' + elems[i + 1] + '"');
+                    logger.log(logger.level.VERBOSE, "SDPUtil", 'parse_icecandidate not translating "' + elems[i] + '" = "' + elems[i + 1] + '"');
             }
         }
         candidate.network = '1';
@@ -300,7 +300,7 @@ SDPUtil = {
                     candidate.tcptype = elems[i + 1];
                     break;
                 default: // TODO
-                    logger.log(logger.level.INFO, "SDPUtil", 'not translating "' + elems[i] + '" = "' + elems[i + 1] + '"');
+                    logger.log(logger.level.VERBOSE, "SDPUtil", 'not translating "' + elems[i] + '" = "' + elems[i + 1] + '"');
             }
         }
         candidate.network = '1';

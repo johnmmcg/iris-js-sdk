@@ -1,6 +1,6 @@
 {
     "name": "iris-js-sdk",
-    "version": "3.4.30",
+    "version": "3.4.31.2",
     "description": "JavaScript SDK for Iris Platform",
     "repository": {
         "type": "git",
@@ -26,7 +26,7 @@
         "sdp-interop": "^0.1.11",
         "sdp-transform": "^1.6.2",
         "uuid": "3.0.1",
-        "web-audio-api": "^0.2.2"
+        "webrtc-adapter": "^6.3.2"
     },
     "devDependencies": {
         "browserify": "^14.1.0",
