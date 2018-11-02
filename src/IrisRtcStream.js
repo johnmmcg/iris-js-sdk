@@ -183,7 +183,6 @@ function setParamsToConstraints(streamConfig, constraints) {
 function getUserMedia(constraints) {
     try {
         logger.log(logger.level.VERBOSE, "IrisRtcStream", " getUserMedia");
-
         return new Promise(function(resolve, reject) {
             WebRTC.getUserMedia(constraints, function(stream) {
                 if (stream) {
@@ -195,6 +194,9 @@ function getUserMedia(constraints) {
         });
     } catch (error) {
         logger.log(logger.level.ERROR, "IrisRtcStream", " Failed to getUserMedia ", error);
+        self.onStreamError(RtcErrors.ERR_CREATE_STREAM_FAILED,
+            "Failed to create stream");
+
     }
 };
 

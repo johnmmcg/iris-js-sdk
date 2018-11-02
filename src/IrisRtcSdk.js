@@ -25,3 +25,5 @@ global.IrisRtcLogger = IrisRtcLogger;
 // Import the config
 var IrisRtcConfig = require('./modules/RtcConfig.js');
 global.IrisRtcConfig = IrisRtcConfig;
+
+exports.module = { IrisRtcConnection, IrisRtcSession, IrisRtcStream, IrisRtcErrors, IrisRtcLogger, IrisRtcConfig }

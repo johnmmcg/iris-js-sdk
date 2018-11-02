@@ -18,7 +18,7 @@ RtcConfig.json = {
         /*Stats Server*/
         // UEStatsServer: '',
     },
-    pingInterval: 1000,
+    pingInterval: 3000,
     pingCounter: 3,
     pingPongInterval: 3000,
     presInterval: 10000,
@@ -29,7 +29,7 @@ RtcConfig.json = {
     useBridge: true, // for p2p flow set this flag to false
     logLevel: 2, // 0: Error, 1: Warning, 2: Info, 3: Verbose
     channelLastN: "-1",
-    sdkVersion: '3.4.28'
+    sdkVersion: '3.4.31.2'
 }
 
 /**
