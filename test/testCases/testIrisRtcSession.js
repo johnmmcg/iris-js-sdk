@@ -16,7 +16,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid user config or rtc connection") {
+                errorMessage == "createSession :: Invalid user config or rtc connection") {
                 done();
             }
         }
@@ -30,7 +30,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid user config or rtc connection") {
+                errorMessage == "createSession :: Invalid user config or rtc connection") {
                 done();
             }
         }
@@ -45,7 +45,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid user config or rtc connection") {
+                errorMessage == "createSession :: Invalid user config or rtc connection") {
                 done();
             }
         }
@@ -61,7 +61,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid roomName") {
+                errorMessage == "createSession :: Invalid roomName") {
                 done();
             }
         }
@@ -77,7 +77,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid number of participants") {
+                errorMessage == "createSession :: Invalid number of participants") {
                 done();
             }
         }
@@ -93,7 +93,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid roomId") {
+                errorMessage == "createSession :: Invalid roomId") {
                 done();
             }
         }
@@ -108,7 +108,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid type") {
+                errorMessage == "createSession :: Invalid type") {
                 done();
             }
         }
@@ -123,7 +123,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid type") {
+                errorMessage == "createSession :: Invalid type") {
                 done();
             }
         }
@@ -139,7 +139,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid irisToken") {
+                errorMessage == "createSession :: Invalid irisToken") {
                 done();
             }
         }
@@ -154,7 +154,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid routingId") {
+                errorMessage == "createSession :: Invalid routingId") {
                 done();
             }
         }
@@ -171,7 +171,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Stream is not required for recvonly calls") {
+                errorMessage == "createSession :: Stream is not required for recvonly calls") {
                 done();
             }
         }
@@ -212,7 +212,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Local media stream is not available") {
+                errorMessage == "createSession :: Local media stream is not available") {
                 done();
             }
         }
@@ -233,7 +233,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Local media stream is not available") {
+                errorMessage == "createSession :: Local media stream is not available") {
                 done();
             }
         }
@@ -256,7 +256,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "For pstn calls toTN, fromTN and toRoutingId are mandatory parameters") {
+                errorMessage == "createSession :: For pstn calls toTN, fromTN and toRoutingId are mandatory parameters") {
                 done();
             }
         }
@@ -278,7 +278,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "For pstn calls toTN, fromTN and toRoutingId are mandatory parameters") {
+                errorMessage == "createSession :: For pstn calls toTN, fromTN and toRoutingId are mandatory parameters") {
                 done();
             }
         }
@@ -302,7 +302,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "For pstn calls toTN, fromTN and toRoutingId are mandatory parameters") {
+                errorMessage == "createSession :: For pstn calls toTN, fromTN and toRoutingId are mandatory parameters") {
                 done();
             }
         }
@@ -326,7 +326,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "For audio call, send audio stream only") {
+                errorMessage == "createSession :: For audio call, send audio stream only") {
                 done();
             }
         }
@@ -348,7 +348,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "For audio call, send audio stream only") {
+                errorMessage == "createSession :: For audio call, send audio stream only") {
                 done();
             }
         }
@@ -391,7 +391,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "For chat, stream is not required") {
+                errorMessage == "createSession :: For chat, stream is not required") {
                 done();
             }
         }
@@ -412,7 +412,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "RtcConfig is not updated") {
+                errorMessage == "create :: RtcConfig is not updated") {
                 done();
             }
         }
@@ -439,7 +439,7 @@ describe('IrisRtcSession.createSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_CREATE_SESSION_FAILED &&
-                errorMessage == "Failed to create a session") {
+                errorMessage == "createSession :: Failed to create a session") {
                 done();
             }
         }
@@ -469,7 +469,7 @@ describe('IrisRtcSession.createSessionWithTN', () => {
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             console.log("Nija", errorCode);
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Media stream is required to make a call") {
+                errorMessage == "createSessionWithTN :: Media stream is required to make a call") {
                 done();
             }
         }
@@ -484,7 +484,7 @@ describe('IrisRtcSession.createSessionWithTN', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid user config or rtc connection") {
+                errorMessage == "createSessionWithTN :: Invalid user config or rtc connection") {
                 done();
             }
         }
@@ -500,7 +500,7 @@ describe('IrisRtcSession.createSessionWithTN', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid user config or rtc connection") {
+                errorMessage == "createSessionWithTN :: Invalid user config or rtc connection") {
                 done();
             }
         }
@@ -516,7 +516,7 @@ describe('IrisRtcSession.createSessionWithTN', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid user config or rtc connection") {
+                errorMessage == "createSessionWithTN :: Invalid user config or rtc connection") {
                 done();
             }
         }
@@ -532,7 +532,7 @@ describe('IrisRtcSession.createSessionWithTN', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Anonymous PSTN call is not allowed") {
+                errorMessage == "createSessionWithTN :: Anonymous PSTN call is not allowed") {
                 done();
             }
         }
@@ -554,7 +554,7 @@ describe('IrisRtcSession.createSessionWithTN', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid type") {
+                errorMessage == "createSessionWithTN :: Invalid type") {
                 done();
             }
         }
@@ -573,7 +573,7 @@ describe('IrisRtcSession.createSessionWithTN', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid type") {
+                errorMessage == "createSessionWithTN :: Invalid type") {
                 done();
             }
         }
@@ -591,7 +591,7 @@ describe('IrisRtcSession.createSessionWithTN', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid irisToken") {
+                errorMessage == "createSessionWithTN :: Invalid irisToken") {
                 done();
             }
         }
@@ -613,7 +613,7 @@ describe('IrisRtcSession.createSessionWithTN', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid routingId") {
+                errorMessage == "createSessionWithTN :: Invalid routingId") {
                 done();
             }
         }
@@ -637,7 +637,7 @@ describe('IrisRtcSession.createSessionWithTN', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "For pstn calls toTN and fromTN are mandatory parameters") {
+                errorMessage == "createSessionWithTN :: For pstn calls toTN and fromTN are mandatory parameters") {
                 done();
             }
         }
@@ -661,7 +661,7 @@ describe('IrisRtcSession.createSessionWithTN', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "For pstn calls toTN and fromTN are mandatory parameters") {
+                errorMessage == "createSessionWithTN :: For pstn calls toTN and fromTN are mandatory parameters") {
                 done();
             }
         }
@@ -695,7 +695,7 @@ describe('IrisRtcSession.joinSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid notificationPayload") {
+                errorMessage == "joinSession :: Invalid notificationPayload") {
                 done();
             }
         }
@@ -711,7 +711,7 @@ describe('IrisRtcSession.joinSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid config or rtc connection") {
+                errorMessage == "joinSession :: Invalid config or rtc connection") {
                 done();
             }
         }
@@ -727,7 +727,7 @@ describe('IrisRtcSession.joinSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid config or rtc connection") {
+                errorMessage == "joinSession :: Invalid config or rtc connection") {
                 done();
             }
         }
@@ -742,7 +742,7 @@ describe('IrisRtcSession.joinSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid config or rtc connection") {
+                errorMessage == "joinSession :: Invalid config or rtc connection") {
                 done();
             }
         }
@@ -758,7 +758,7 @@ describe('IrisRtcSession.joinSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid type") {
+                errorMessage == "joinSession :: Invalid type") {
                 done();
             }
         }
@@ -779,7 +779,7 @@ describe('IrisRtcSession.joinSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid type") {
+                errorMessage == "joinSession :: Invalid type") {
                 done();
             }
         }
@@ -821,7 +821,7 @@ describe('IrisRtcSession.joinSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Local media stream cannot be null for audio or video call") {
+                errorMessage == "joinSession :: Local media stream cannot be null for audio or video call") {
                 done();
             }
         }
@@ -842,7 +842,7 @@ describe('IrisRtcSession.joinSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Local media stream cannot be null for audio or video call") {
+                errorMessage == "joinSession :: Local media stream cannot be null for audio or video call") {
                 done();
             }
         }
@@ -865,7 +865,7 @@ describe('IrisRtcSession.joinSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Stream is not required for recvonly call") {
+                errorMessage == "joinSession :: Stream is not required for recvonly call") {
                 done();
             }
         }
@@ -888,7 +888,7 @@ describe('IrisRtcSession.joinSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid notificationpayload") {
+                errorMessage == "joinSession :: Invalid notificationpayload") {
                 done();
             }
         }
@@ -905,7 +905,7 @@ describe('IrisRtcSession.joinSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid notificationpayload") {
+                errorMessage == "joinSession :: Invalid notificationpayload") {
                 done();
             }
         }
@@ -921,7 +921,7 @@ describe('IrisRtcSession.joinSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid notificationpayload") {
+                errorMessage == "joinSession :: Invalid notificationpayload") {
                 done();
             }
         }
@@ -939,7 +939,7 @@ describe('IrisRtcSession.joinSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid notificationpayload") {
+                errorMessage == "joinSession :: Invalid notificationpayload") {
                 done();
             }
         }
@@ -962,7 +962,7 @@ describe('IrisRtcSession.joinSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid notificationpayload") {
+                errorMessage == "joinSession :: Invalid notificationpayload") {
                 done();
             }
         }
@@ -987,7 +987,7 @@ describe('IrisRtcSession.joinSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_CREATE_SESSION_FAILED &&
-                errorMessage == "Failed to join session") {
+                errorMessage == "joinSession :: Failed to join session") {
                 done();
             }
         }
@@ -1022,7 +1022,7 @@ describe('IrisRtcSession.createChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid config or rtc connection") {
+                errorMessage == "createChatSession :: Invalid config or rtc connection") {
                 done();
             }
         }
@@ -1037,7 +1037,7 @@ describe('IrisRtcSession.createChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid config or rtc connection") {
+                errorMessage == "createChatSession :: Invalid config or rtc connection") {
                 done();
             }
         }
@@ -1053,7 +1053,7 @@ describe('IrisRtcSession.createChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid config or rtc connection") {
+                errorMessage == "createChatSession :: Invalid config or rtc connection") {
                 done();
             }
         }
@@ -1069,7 +1069,7 @@ describe('IrisRtcSession.createChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid config or rtc connection") {
+                errorMessage == "createChatSession :: Invalid config or rtc connection") {
                 done();
             }
         }
@@ -1086,7 +1086,7 @@ describe('IrisRtcSession.createChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid roomId") {
+                errorMessage == "createChatSession :: Invalid roomId") {
                 done();
             }
         }
@@ -1103,7 +1103,7 @@ describe('IrisRtcSession.createChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid type") {
+                errorMessage == "createChatSession :: Invalid type") {
                 done();
             }
         }
@@ -1121,7 +1121,7 @@ describe('IrisRtcSession.createChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid type") {
+                errorMessage == "createChatSession :: Invalid type") {
                 done();
             }
         }
@@ -1139,7 +1139,7 @@ describe('IrisRtcSession.createChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid irisToken") {
+                errorMessage == "createChatSession :: Invalid irisToken") {
                 done();
             }
         }
@@ -1157,7 +1157,7 @@ describe('IrisRtcSession.createChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid routingId") {
+                errorMessage == "createChatSession :: Invalid routingId") {
                 done();
             }
         }
@@ -1175,7 +1175,7 @@ describe('IrisRtcSession.createChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_CREATE_SESSION_FAILED &&
-                errorMessage == "Failed to create chat session") {
+                errorMessage == "createChatSession :: Failed to create chat session") {
                 done();
             }
         }
@@ -1201,7 +1201,7 @@ describe('IrisRtcSession.joinChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid config or connection or notificationPayload") {
+                errorMessage == "joinChatSession :: Invalid config or connection or notificationPayload") {
                 done();
             }
         }
@@ -1216,7 +1216,7 @@ describe('IrisRtcSession.joinChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid config or connection or notificationPayload") {
+                errorMessage == "joinChatSession :: Invalid config or connection or notificationPayload") {
                 done();
             }
         }
@@ -1232,7 +1232,7 @@ describe('IrisRtcSession.joinChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid config or connection or notificationPayload") {
+                errorMessage == "joinChatSession :: Invalid config or connection or notificationPayload") {
                 done();
             }
         }
@@ -1249,7 +1249,7 @@ describe('IrisRtcSession.joinChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid config or connection or notificationPayload") {
+                errorMessage == "joinChatSession :: Invalid config or connection or notificationPayload") {
                 done();
             }
         }
@@ -1266,7 +1266,7 @@ describe('IrisRtcSession.joinChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid type") {
+                errorMessage == "joinChatSession :: Invalid type") {
                 done();
             }
         }
@@ -1284,7 +1284,7 @@ describe('IrisRtcSession.joinChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid type") {
+                errorMessage == "joinChatSession :: Invalid type") {
                 done();
             }
         }
@@ -1302,7 +1302,7 @@ describe('IrisRtcSession.joinChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid notification payload") {
+                errorMessage == "joinChatSession :: Invalid notification payload") {
                 done();
             }
         }
@@ -1320,7 +1320,7 @@ describe('IrisRtcSession.joinChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid notification payload") {
+                errorMessage == "joinChatSession :: Invalid notification payload") {
                 done();
             }
         }
@@ -1337,7 +1337,7 @@ describe('IrisRtcSession.joinChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid notification payload") {
+                errorMessage == "joinChatSession :: Invalid notification payload") {
                 done();
             }
         }
@@ -1354,7 +1354,7 @@ describe('IrisRtcSession.joinChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid notification payload") {
+                errorMessage == "joinChatSession :: Invalid notification payload") {
                 done();
             }
         }
@@ -1372,7 +1372,7 @@ describe('IrisRtcSession.joinChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid notification payload") {
+                errorMessage == "joinChatSession :: Invalid notification payload") {
                 done();
             }
         }
@@ -1418,7 +1418,7 @@ describe('IrisRtcSession.joinChatSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_CREATE_SESSION_FAILED &&
-                errorMessage == "Failed to join chat session") {
+                errorMessage == "joinChatSession :: Failed to join chat session") {
                 done();
             }
         }
@@ -1455,7 +1455,7 @@ describe('IrisRtcSession.downgradeToChat', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid config or notificationPayload") {
+                errorMessage == "downgradeToChat :: Invalid config or notificationPayload") {
                 done();
             }
         }
@@ -1474,7 +1474,7 @@ describe('IrisRtcSession.downgradeToChat', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid config or notificationPayload") {
+                errorMessage == "downgradeToChat :: Invalid config or notificationPayload") {
                 done();
             }
         }
@@ -1493,7 +1493,7 @@ describe('IrisRtcSession.downgradeToChat', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid config or notificationPayload") {
+                errorMessage == "downgradeToChat :: Invalid config or notificationPayload") {
                 done();
             }
         }
@@ -1511,7 +1511,7 @@ describe('IrisRtcSession.downgradeToChat', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid config or notificationPayload") {
+                errorMessage == "downgradeToChat :: Invalid config or notificationPayload") {
                 done();
             }
         }
@@ -1529,7 +1529,7 @@ describe('IrisRtcSession.downgradeToChat', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Failed to downgrade to chat session") {
+                errorMessage == "downgradeToChat :: Failed to downgrade to chat session") {
                 done();
             }
         }
@@ -1548,7 +1548,7 @@ describe('IrisRtcSession.downgradeToChat', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Failed to downgrade to chat session") {
+                errorMessage == "downgradeToChat :: Failed to downgrade to chat session") {
                 done();
             }
         }
@@ -1579,7 +1579,7 @@ describe('IrisRtcSession.upgradeToVideo', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid stream or config or notificationPayload") {
+                errorMessage == "upgradeToVideo :: Invalid stream or config or notificationPayload") {
                 done();
             }
         }
@@ -1597,7 +1597,7 @@ describe('IrisRtcSession.upgradeToVideo', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid stream or config or notificationPayload") {
+                errorMessage == "upgradeToVideo :: Invalid stream or config or notificationPayload") {
                 done();
             }
         }
@@ -1615,7 +1615,7 @@ describe('IrisRtcSession.upgradeToVideo', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid stream or config or notificationPayload") {
+                errorMessage == "upgradeToVideo :: Invalid stream or config or notificationPayload") {
                 done();
             }
         }
@@ -1634,7 +1634,7 @@ describe('IrisRtcSession.upgradeToVideo', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Failed to upgrade to video session") {
+                errorMessage == "upgradeToVideo :: Failed to upgrade to video session") {
                 done();
             }
         }
@@ -1649,7 +1649,7 @@ describe('IrisRtcSession.upgradeToVideo', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid config, no userData available") {
+                errorMessage == "upgradeToVideo :: Invalid config, no userData available") {
                 done();
             }
         }
@@ -1665,7 +1665,7 @@ describe('IrisRtcSession.upgradeToVideo', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid notificationPayload") {
+                errorMessage == "upgradeToVideo :: Invalid notificationPayload") {
                 done();
             }
         }
@@ -1680,7 +1680,7 @@ describe('IrisRtcSession.upgradeToVideo', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid notificationPayload") {
+                errorMessage == "upgradeToVideo :: Invalid notificationPayload") {
                 done();
             }
         }
@@ -1696,7 +1696,7 @@ describe('IrisRtcSession.upgradeToVideo', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid notificationPayload") {
+                errorMessage == "upgradeToVideo :: Invalid notificationPayload") {
                 done();
             }
         }
@@ -1714,7 +1714,7 @@ describe('IrisRtcSession.upgradeToVideo', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid notificationPayload") {
+                errorMessage == "upgradeToVideo :: Invalid notificationPayload") {
                 done();
             }
         }
@@ -1733,7 +1733,7 @@ describe('IrisRtcSession.upgradeToVideo', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid notificationPayload") {
+                errorMessage == "upgradeToVideo :: Invalid notificationPayload") {
                 done();
             }
         }
@@ -1767,7 +1767,7 @@ describe('IrisRtcSession.endSession', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "End session called with wrong roomId") {
+                errorMessage == "endSession :: End session called with wrong roomId") {
                 done();
             }
         }
@@ -1796,7 +1796,7 @@ describe('IrisRtcSession.switchStream', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "switchStream :: Invalid parameters") {
                 done();
             }
         }
@@ -1815,7 +1815,7 @@ describe('IrisRtcSession.switchStream', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "switchStream :: Invalid parameters") {
                 done();
             }
         }
@@ -1835,7 +1835,7 @@ describe('IrisRtcSession.switchStream', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "switchStream :: Invalid parameters") {
                 done();
             }
         }
@@ -1855,7 +1855,7 @@ describe('IrisRtcSession.switchStream', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "switchStream :: Invalid parameters") {
                 done();
             }
         }
@@ -1875,7 +1875,7 @@ describe('IrisRtcSession.switchStream', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "switchStream :: Invalid parameters") {
                 done();
             }
         }
@@ -1895,7 +1895,7 @@ describe('IrisRtcSession.switchStream', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "switchStream :: Invalid parameters") {
                 done();
             }
         }
@@ -1915,7 +1915,7 @@ describe('IrisRtcSession.switchStream', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "switchStream :: Invalid parameters") {
                 done();
             }
         }
@@ -1935,7 +1935,7 @@ describe('IrisRtcSession.switchStream', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "switchStream :: Invalid parameters") {
                 done();
             }
         }
@@ -1954,7 +1954,7 @@ describe('IrisRtcSession.switchStream', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "switchStream :: Invalid parameters") {
                 done();
             }
         }
@@ -1975,7 +1975,7 @@ describe('IrisRtcSession.switchStream', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "switchStream :: Invalid parameters") {
                 done();
             }
         }
@@ -2003,7 +2003,7 @@ describe('IrisRtcSession.switchStream', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_CREATE_STREAM_FAILED &&
-                errorMessage == "Failed to create stream") {
+                errorMessage == "switchStream :: Failed to create stream") {
                 done();
             }
         }
@@ -2030,7 +2030,7 @@ describe('IrisRtcSession.muteParticipantVideo', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "muteParticipantVideo :: Invalid parameters") {
                 done();
             }
         }
@@ -2045,7 +2045,7 @@ describe('IrisRtcSession.muteParticipantVideo', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "muteParticipantVideo :: Invalid parameters") {
                 done();
             }
         }
@@ -2061,7 +2061,7 @@ describe('IrisRtcSession.muteParticipantVideo', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "muteParticipantVideo :: Invalid parameters") {
                 done();
             }
         }
@@ -2077,7 +2077,7 @@ describe('IrisRtcSession.muteParticipantVideo', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "muteParticipantVideo :: Invalid parameters") {
                 done();
             }
         }
@@ -2093,7 +2093,7 @@ describe('IrisRtcSession.muteParticipantVideo', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "muteParticipantVideo :: Invalid parameters") {
                 done();
             }
         }
@@ -2108,7 +2108,7 @@ describe('IrisRtcSession.muteParticipantVideo', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "muteParticipantVideo :: Invalid parameters") {
                 done();
             }
         }
@@ -2126,7 +2126,7 @@ describe('IrisRtcSession.muteParticipantVideo', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "muteParticipantVideo :: Invalid parameters") {
                 done();
             }
         }
@@ -2145,7 +2145,7 @@ describe('IrisRtcSession.muteParticipantVideo', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "muteParticipantVideo :: Invalid parameters") {
                 done();
             }
         }
@@ -2172,7 +2172,7 @@ describe('IrisRtcSession.muteParticipantAudio', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "muteParticipantAudio :: Invalid parameters") {
                 done();
             }
         }
@@ -2187,7 +2187,7 @@ describe('IrisRtcSession.muteParticipantAudio', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "muteParticipantAudio :: Invalid parameters") {
                 done();
             }
         }
@@ -2203,7 +2203,7 @@ describe('IrisRtcSession.muteParticipantAudio', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "muteParticipantAudio :: Invalid parameters") {
                 done();
             }
         }
@@ -2219,7 +2219,7 @@ describe('IrisRtcSession.muteParticipantAudio', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "muteParticipantAudio :: Invalid parameters") {
                 done();
             }
         }
@@ -2235,7 +2235,7 @@ describe('IrisRtcSession.muteParticipantAudio', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "muteParticipantAudio :: Invalid parameters") {
                 done();
             }
         }
@@ -2250,7 +2250,7 @@ describe('IrisRtcSession.muteParticipantAudio', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "muteParticipantAudio :: Invalid parameters") {
                 done();
             }
         }
@@ -2268,7 +2268,7 @@ describe('IrisRtcSession.muteParticipantAudio', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "muteParticipantAudio :: Invalid parameters") {
                 done();
             }
         }
@@ -2287,7 +2287,7 @@ describe('IrisRtcSession.muteParticipantAudio', () => {
 
         irisRtcSession.onSessionError = function(roomId, errorCode, errorMessage) {
             if (errorCode == RtcErrors.ERR_INCORRECT_PARAMETERS &&
-                errorMessage == "Invalid parameters") {
+                errorMessage == "muteParticipantAudio :: Invalid parameters") {
                 done();
             }
         }
@@ -3510,7 +3510,7 @@ describe('IrisRtcSession.sendDTMFTone', () => {
     before(() => {
 
     });
-    
+
     it('should throw error with no roomId, no tone', (done) => {
 
         var irisRtcSession = new IrisRtcSession();
@@ -3525,7 +3525,7 @@ describe('IrisRtcSession.sendDTMFTone', () => {
         irisRtcSession.sendDTMFTone("", "", "", "");
 
     });
-    
+
     it('should throw error with no roomId', (done) => {
 
         var irisRtcSession = new IrisRtcSession();

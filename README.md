@@ -32,7 +32,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   
   ```html
-  <script src="https://unpkg.com/iris-js-sdk@3.4.29/dist/iris-js-sdk.min.js"></script>
+  <script src="https://unpkg.com/iris-js-sdk@3.4.34/dist/iris-js-sdk.min.js"></script>
   ```
 
 
@@ -92,6 +92,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   logLevel                  integer         (OPTIONAL)  Log level required by user
   name                      string          (OPTIONAL)  Name of the participant
   publicId                  string          (OPTIONAL)  Public Id of the participant
+  useUnifiedPlan            boolean         (OPTIONAL)  true for using unified plan for sdp or false for using plan-b
   ```
  
 * **Example**  <br />
@@ -1024,7 +1025,7 @@ Iris RTC JavaScript SDK provides a stack of simple API's to build an application
   
   
   ```html
-  <script src="https://unpkg.com/iris-js-sdk@3.4.29/dist/iris-js-sdk.min.js"></script>
+  <script src="https://unpkg.com/iris-js-sdk@3.4.34/dist/iris-js-sdk.min.js"></script>
   ```
   
 ### Example for Using API's
