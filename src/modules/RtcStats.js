@@ -215,6 +215,9 @@ function RtcStats(options) {
 
     this.submitLevel = 0;
     this.statsInterval = 10000;
+
+    this.localAddress = "";
+    this.remoteAddress = "";
 };
 
 
@@ -685,6 +688,11 @@ RtcStats.prototype.getPeerStatsEndCall = function(conn, statsInterval, timerFlag
             }
         }*/
     }
+
+    function connectedPair(obj) {
+        //console.log("Hello : ", obj)
+    }
+
 
     function RxVideoStats(obj) {
         var names = obj.names();
@@ -1261,13 +1269,29 @@ RtcStats.prototype.getPeerStats = function(conn, statsInterval, timerFlag) {
     function candidate(obj) {
         var names = obj.names();
 
-        /*for (var i = 0; i < names.length; ++i) {
+        for (var i = 0; i < names.length; ++i) {
+
+            // switch (names[i]) {
+            //     case 'networkType':
+            //         logger.log(logger.level.INFO, "IrisRtcStats", "networkType" + obj.stat(names[i]));
+            // }
+            //logger.log(logger.level.INFO, "IrisRtcStats", "name :: " + names[i] + " == " + +obj.stat(names[i]));
+
+        }
+    }
+
+    function connectedPair(obj) {
+        for (var i = 0; i < names.length; ++i) {
 
             switch (names[i]) {
-                case 'networkType':
-                    logger.log(logger.level.INFO, "IrisRtcStats","networkType" + obj.stat(names[i]));
+                case 'googLocalAddress':
+                    logger.log(logger.level.INFO, "IrisRtcStats", "googLocalAddress :: " + obj.stat(names[i]));
+                    break;
+                case 'googRemoteAddress':
+                    logger.log(logger.level.INFO, "IrisRtcStats", "googRemoteAddress :: " + obj.stat(names[i]));
+                    break;
             }
-        }*/
+        }
     }
 
     function RxVideoStats(obj) {
@@ -1540,36 +1564,57 @@ RtcStats.prototype.getPeerStats = function(conn, statsInterval, timerFlag) {
         self.genericFlag = true;
     }
 
+    var idPair = "";
+
     function logStats(obj) {
         self.timestamp = obj.timestamp;
 
         if (obj.names) {
             var names = obj.names();
-            // logger.log(logger.level.VERBOSE, "RtcStats", "Names of each stats object : " + JSON.stringify(names));
+            // logger.log(logger.level.INFO, "RtcStats", "Names of each stats object : " + JSON.stringify(names));
             // logger.log(logger.level.VERBOSE, "RtcStats", "Names of each stats object : " + JSON.stringify(obj.stat(names[i])));
 
+            console.log("\n\n");
             for (var i = 0; i < names.length; ++i) {
+                if (names[i] == 'selectedCandidatePairId') {
+                    console.log("Nija :: " + "selectedCandidatePairId :: " + obj.stat(names[i]));
+                    idPair = obj.stat(names[i]);
+
+                }
+
                 if (names[i] == 'audioOutputLevel') {
                     RxAudioStats(obj);
-                    break;
                 } else if (names[i] == 'googFrameHeightReceived') {
                     RxVideoStats(obj);
-                    break;
                 } else if (names[i] == 'googFrameHeightSent') {
                     TxVideoStats(obj);
-                    break;
                 } else if (names[i] == 'audioInputLevel') {
                     TxAudioStats(obj);
-                    break;
                 } else if (names[i] == 'candidateType') {
                     candidate(obj);
-                    break;
                 } else if (names[i] == 'googAvailableSendBandwidth') {
                     generic(obj);
-                    break;
+                } else if (names[i] == 'googCandidatePair') {
+                    // connectedPair(obj);
                 }
             }
         }
+        // if (obj.type == 'googCandidatePair' && obj.id == idPair) {
+
+        //     var names = obj.names();
+
+        //     for (var i = 0; i < names.length; ++i) {
+
+        //         if (names[i] == 'googLocalAddress') {
+        //             self.localAddress = obj.stat(names[i]);
+        //         } else if (names[i] == 'googRemoteAddress') {
+        //             self.remoteAddress = obj.stat(names[i]);
+
+        //         }
+        //         console.log("Nijaguna :: " + names[i] + " :: " + obj.stat(names[i]));
+
+        //     }
+        // }
     }
 
     if (pc) {
@@ -1816,7 +1861,7 @@ RtcStats.prototype.getPeerStats = function(conn, statsInterval, timerFlag) {
                         results = stats.result();
                     } else {
                         results = rawStats;
-                        logger.log(logger.level.VERBOSE, "RtcStats", "Raw Stats : \n" + JSON.stringify(rawStats));
+                        logger.log(logger.level.INFO, "RtcStats", "Raw Stats : \n" + JSON.stringify(rawStats));
                     }
                     elementIndex = 0;
                     //logger.log(logger.level.INFO, "IrisRtcStats", "parent results.length is " + results.length);
@@ -2127,6 +2172,7 @@ RtcStats.prototype.parseUserAgent = function() {
 }
 
 RtcStats.prototype.getLastStats = function(pc, cb) {
+    var idPair = "";
     getStats(pc, function(rawStats) {
         function AugumentedStatsResponse(response) {
             this.response = response;
@@ -2176,6 +2222,14 @@ RtcStats.prototype.getLastStats = function(pc, cb) {
                             "bytesSent": self.audiobytesSent,
                             "packetsLost": self.audiopacketsLost,
                             "packetsSent": self.audiopacketsSent,
+                        },
+                        "ip": {
+                            "localAddress": self.localAddress,
+                            "remoteAddress": self.remoteAddress
+                        },
+                        "bandwidth": {
+                            "avaliableReceiveBandwidth": self.avaliableReceiveBandwidth,
+                            "avaliableSendBandwidth": self.avaliableSendBandwidth
                         }
 
 
@@ -2213,7 +2267,6 @@ RtcStats.prototype.getLastStats = function(pc, cb) {
 
                         }
                     }
-                    break;
                 } else if (names[i] == 'googFrameHeightReceived') {
                     var names = obj.names();
                     if (obj.stat("googTrackId") === 'mixedlabelvideo0')
@@ -2232,7 +2285,6 @@ RtcStats.prototype.getLastStats = function(pc, cb) {
                             default:
                         }
                     }
-                    break;
                 } else if (names[i] == 'googFrameHeightSent') {
                     var names = obj.names();
                     for (var i = 0; i < names.length; ++i) {
@@ -2249,7 +2301,6 @@ RtcStats.prototype.getLastStats = function(pc, cb) {
                             default:
                         }
                     }
-                    break;
                 } else if (names[i] == 'audioInputLevel') {
                     var names = obj.names();
                     for (var i = 0; i < names.length; ++i) {
@@ -2266,10 +2317,58 @@ RtcStats.prototype.getLastStats = function(pc, cb) {
                             default:
                         }
                     }
-                    break;
+                } else if (names[i] == 'selectedCandidatePairId') {
+                    console.log("getLastStats :: " + "selectedCandidatePairId :: " + obj.stat(names[i]));
+                    idPair = obj.stat(names[i]);
+
+                } else if (names[i] == 'googAvailableSendBandwidth') {
+                    var names = obj.names();
+                    for (var i = 0; i < names.length; ++i) {
+
+                        switch (names[i]) {
+                            case 'googAvailableReceiveBandwidth':
+                                self.avaliableReceiveBandwidth = obj.stat(names[i]);
+                                // self.ReceiveBandwidth.push(obj.stat(names[i]));
+                                break;
+                            case 'googAvailableSendBandwidth':
+                                self.avaliableSendBandwidth = obj.stat(names[i]);
+
+                                // self.SendBandwidth.push(obj.stat(names[i]));
+                                break;
+                            case 'googRetransmitBitrate':
+                                // self.googRetransmitBitrate.push(obj.stat(names[i]));
+                                break;
+                            case 'googActualEncBitrate':
+                                // self.actualBitrate = obj.stat(names[i]);
+                                break;
+                            case 'googTransmitBitrate':
+                                // self.TransmitBitrate.push(obj.stat(names[i]));
+                                break;
+                        }
+                    }
                 }
+            }
+        }
+
+
+
+        if (obj.type == 'googCandidatePair' && obj.id == idPair) {
+
+            var names = obj.names();
+
+            for (var i = 0; i < names.length; ++i) {
+
+                if (names[i] == 'googLocalAddress') {
+                    self.localAddress = obj.stat(names[i]);
+                } else if (names[i] == 'googRemoteAddress') {
+                    self.remoteAddress = obj.stat(names[i]);
+
+                }
+                console.log("Murthy :: " + names[i] + " :: " + obj.stat(names[i]));
+
             }
             cb();
         }
+
     }
 }

@@ -192,7 +192,7 @@ RtcXmpp.prototype.sendIQ = function(msg, roomId) {
 
                 self.sendMessageQueue.resume();
                 self.emit(roomId, 'onXMPPNOACK');
-
+                
             } else {
                 clearTimeout(self.iQWaitingTimer);
             }
@@ -1216,7 +1216,7 @@ RtcXmpp.prototype.sendCallStats = function(data) {
     // myString = myString.replace(/\"/g, "");
     // Add data element
 
-    if (data.stats == "" || (typeof(data.stats) == 'object' && Object.keys(data.stats).length === 0) || (Array.isArray(data.stats) && !data.stats.length)) {
+    if(data.stats == "" || (typeof(data.stats) == 'object' && Object.keys(data.stats).length === 0) || (Array.isArray(data.stats) && !data.stats.length)) {
         logger.log(logger.level.ERROR, "RtcXmpp", " sendCallStats : Empty stats body");
         return;
     } else {
@@ -1227,16 +1227,16 @@ RtcXmpp.prototype.sendCallStats = function(data) {
             'traceid': data.traceId,
             'event': "callstats",
             'action': "log"
-
+    
         });
-
+    
         this.index++;
-
+    
         if (this.client) {
             this.sendIQ(privateIq.tree(), data.roomId);
         }
     }
-
+    
 
 }
 

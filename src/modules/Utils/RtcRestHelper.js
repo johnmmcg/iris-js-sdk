@@ -322,9 +322,6 @@ RtcRestHelper.EventManager = {
 
             });
 
-            // write json
-            req.write(JSON.stringify(jsonBody));
-
             // Write json
             req.end();
 
@@ -334,5 +331,233 @@ RtcRestHelper.EventManager = {
                 "sendRootEventWithRoomId :: xmpp root event failed with error  ", e);
             failureCallback(e);
         }
+    },
+
+    /**
+     * Renew room token
+     * @param {json} config - Config from session
+     * @param {function} successCallback - 
+     * @param {function} failureCallback - 
+     */
+    renewRoomToken: function(config, successCallback, failureCallback) {
+        try {
+            logger.log(logger.level.INFO, "RtcRestHelper.EventManager",
+                " renewRoomToken called ");
+
+            var options = {
+                host: Rtcconfig.json.urls.eventManager,
+                path: "/v1.1/xmpp/muc/" + config.roomId + "/token",
+                method: 'GET',
+                headers: {
+                    "Authorization": "Bearer " + config.irisToken,
+                    "Content-Type": "application/json",
+                    "Trace-Id": config.traceId
+                }
+            };
+
+            // Send the http request and wait for response
+            var req = https.request(options, function(response) {
+                var body = ''
+
+                // Callback for data
+                response.on('data', function(chunk) {
+                    body += chunk;
+                });
+
+                // Callback when complete data is received
+                response.on('end', function() {
+                    logger.log(logger.level.INFO, "RtcRestHelper.EventManager",
+                        " Received server response  " + body);
+
+                    // check if the status code is correct
+                    if (response.statusCode != 200) {
+                        logger.log(logger.level.ERROR, "RtcRestHelper.EventManager",
+                            "Room token renewal failed with status code " +
+                            response.statusCode + " & response " + body);
+
+                        failureCallback("Room token renewal failed with status code " +
+                            response.statusCode + " & response " + body);
+
+                        return;
+                    } else {
+
+                        // Get the the response json
+                        var resJson = JSON.parse(body);
+                        successCallback(resJson);
+                    }
+
+                });
+            });
+
+            // Catch errors 
+            req.on('error', function(e) {
+                logger.log(logger.level.ERROR, "RtcRestHelper.EventManager",
+                    " Room token renewal failed with error  " + e);
+
+                failureCallback(e);
+
+            });
+
+            // write json
+            req.write(JSON.stringify(jsonBody));
+
+            // Write json
+            req.end();
+
+
+        } catch (e) {
+            logger.log(logger.level.ERROR, "RtcRestHelper.EventManager",
+                "renewRoomToken :: room token renewal failed with error  ", e);
+            failureCallback(e);
+        }
     }
+}
+
+
+RtcRestHelper.PCMMNG = {
+
+
+    createSession: function(payload, host, port, successCallback, failureCallback) {
+
+        var options = {
+            host: host,
+            port: port,
+            path: "/pcmmng/webrtc/session",
+            method: 'POST',
+            headers: {
+                "Content-Type": "application/json",
+            }
+        };
+        logger.log(logger.level.INFO, "RtcRestHelper.PCMMNG",
+            "createSession options ::  " + JSON.stringify(options));
+
+        logger.log(logger.level.INFO, "RtcRestHelper.PCMMNG",
+            "createSession payload ::  " + JSON.stringify(payload));
+
+        // Send the http request and wait for response
+        var req = https.request(options, function(response) {
+            var body = ''
+
+            // Callback for data
+            response.on('data', function(chunk) {
+                body += chunk;
+            });
+
+            // Callback when complete data is received
+            response.on('end', function() {
+                if (response.statusCode != 200 && response.statusCode != 201) {
+
+                    logger.log(logger.level.ERROR, "RtcRestHelper.PCMMNG",
+                        " createSession  " +
+                        response.statusCode + " & response " + body);
+
+                    var responseBody = JSON.parse(body);
+
+                    failureCallback("RtcRestHelper.PCMMNG :: createSession  " +
+                        response.statusCode + " & response " + body, response.statusCode, responseBody);
+                    return;
+
+                } else {
+
+                    // Get the the response json
+                    var resJson = JSON.parse(body);
+                    successCallback(resJson);
+                }
+            });
+
+
+        });
+
+
+
+        // Catch errors 
+        req.on('error', function(e) {
+            logger.log(logger.level.ERROR, "RtcRestHelper.PCMMNG",
+                " CreateSession  " + e);
+
+            failureCallback(e);
+
+        });
+
+        req.write(JSON.stringify(payload));
+
+        // Write json
+        req.end();
+
+
+    },
+
+    deleteSession: function(payload, host, port, successCallback, failureCallback) {
+
+        var options = {
+            host: host,
+            port: port,
+            path: "/pcmmng/webrtc/session",
+            method: 'DELETE',
+            headers: {
+                "Content-Type": "application/json",
+            }
+        };
+        logger.log(logger.level.INFO, "RtcRestHelper.PCMMNG",
+            "deleteSession options ::  " + JSON.stringify(options));
+
+        logger.log(logger.level.INFO, "RtcRestHelper.PCMMNG",
+            "deleteSession payload ::  " + JSON.stringify(payload));
+
+        // Send the http request and wait for response
+        var req = https.request(options, function(response) {
+            var body = ''
+
+            // Callback for data
+            response.on('data', function(chunk) {
+                body += chunk;
+            });
+
+            // Callback when complete data is received
+            response.on('end', function() {
+                if (response.statusCode != 200 && response.statusCode != 201) {
+
+                    logger.log(logger.level.ERROR, "RtcRestHelper.PCMMNG",
+                        " deleteSession  " +
+                        response.statusCode + " & response " + body);
+
+                    var responseBody = JSON.parse(body);
+
+                    failureCallback("RtcRestHelper.PCMMNG :: deleteSession  " +
+                        response.statusCode + " & response " + body, response.statusCode, responseBody);
+                    return;
+
+                } else {
+
+                    // Get the the response json
+                    var resJson = JSON.parse(body);
+                    successCallback(resJson);
+                }
+            });
+
+
+        });
+
+
+
+        // Catch errors 
+        req.on('error', function(e) {
+            logger.log(logger.level.ERROR, "RtcRestHelper.PCMMNG",
+                " deleteSession  " + e);
+
+            failureCallback(e);
+
+        });
+
+        req.write(JSON.stringify(payload));
+
+        // Write json
+        req.end();
+
+    },
+
+    getSession: function() {
+
+    }
+
 }
